@@ -1,0 +1,163 @@
+{
+  "id": "04-black-skyline-hck01",
+  "name": "LB-ER34 Super Silhouette Nissan Skyline",
+  "code": "HCK01",
+  "edition": "2022 Mountain Drifters 0/5 chase",
+  "support_source": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+  "notes": "Black body and wheels, white/silver LBWK number 5 graphics and red roll cage match the chase edition.",
+  "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+  "catalog_count": 5,
+  "reference_count": 12,
+  "largest_width": 2151,
+  "files": [
+    {
+      "file": "pack-photo.webp",
+      "width": 2905,
+      "height": 3554,
+      "bytes": 1531534,
+      "sha256": "672c1a642d03037a2bdc886a2d89c180fc9ad84c2e6f70ffc248fc633dcfb61a",
+      "source_page": null,
+      "image_url": null,
+      "kind": "user-saved-pack-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "catalog-01.jpg",
+      "width": 2134,
+      "height": 947,
+      "bytes": 185563,
+      "sha256": "6c6abee06a60b4bda4d12432c39eff09fc0da40e3e46646157f097c2954617e4",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-20843-8e192ab4.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 1
+    },
+    {
+      "file": "catalog-02.jpg",
+      "width": 908,
+      "height": 1154,
+      "bytes": 112633,
+      "sha256": "2fecbcf40617e526ccd4cca0fe6090e534fcb58a507939ae7eda5ee5a5491cc8",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-20843-faef8e0f.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 2
+    },
+    {
+      "file": "catalog-03.jpg",
+      "width": 2151,
+      "height": 963,
+      "bytes": 179469,
+      "sha256": "6cb4857a581d7fd4343e2902a43351f4922057973c57112cec7ee0cde2937a8b",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-20843-dbf8a72b.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 3
+    },
+    {
+      "file": "catalog-04.jpg",
+      "width": 978,
+      "height": 924,
+      "bytes": 87859,
+      "sha256": "733e5879d4454df5251be696321f262e48da2c86847eb8cec6ba7ece22b530c6",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-20843-b2a9bb75.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 4
+    },
+    {
+      "file": "catalog-05.jpg",
+      "width": 2106,
+      "height": 943,
+      "bytes": 176850,
+      "sha256": "9138b25a046d583d7cd4483d4ec795ad43aaffc56a8b95fe0a71457cacc88ec2",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-20843-cf443fe6.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 5
+    },
+    {
+      "file": "supporting/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Base.jpg",
+      "width": 750,
+      "height": 659,
+      "bytes": 89928,
+      "sha256": "7d337162136471e5a90266ec68fc61e68ce7288afd75bbf72a5ba6f72b0f4e67",
+      "source_page": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+      "image_url": "https://www.hwtreasure.com/wp-content/uploads/cars/2022/04/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Base.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Back-768x746.jpg",
+      "width": 768,
+      "height": 746,
+      "bytes": 145185,
+      "sha256": "fc56555bd874be47125cfe7fdf3fb09c0653c18b0c10715cd2fcfd28a7ae9c8b",
+      "source_page": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+      "image_url": "https://www.hwtreasure.com/wp-content/uploads/cars/2022/04/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Back-768x746.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Card-768x873.jpg",
+      "width": 768,
+      "height": 873,
+      "bytes": 116856,
+      "sha256": "1ab773af4e327158c85f22cf42d9287762d2989013b6748c77114ca50ddde34a",
+      "source_page": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+      "image_url": "https://www.hwtreasure.com/wp-content/uploads/cars/2022/04/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Card-768x873.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-1.jpg",
+      "width": 558,
+      "height": 335,
+      "bytes": 58114,
+      "sha256": "063e7330da02b3880b5fc4d97f5c593da411af8071f583301fafd7074d984c49",
+      "source_page": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+      "image_url": "https://www.hwtreasure.com/wp-content/uploads/cars/2022/04/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-1.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-2.jpg",
+      "width": 566,
+      "height": 293,
+      "bytes": 55646,
+      "sha256": "64d99527d05c4b1e11e8c9a809ebb43db7d1c58134ef77525307a03678fb2b00",
+      "source_page": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+      "image_url": "https://www.hwtreasure.com/wp-content/uploads/cars/2022/04/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-2.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-3-768x532.jpg",
+      "width": 768,
+      "height": 532,
+      "bytes": 80130,
+      "sha256": "5630b872ee39b56929a2e87d2fd698c92cd67c6ba4531b926b55a4d61bdcab7d",
+      "source_page": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+      "image_url": "https://www.hwtreasure.com/wp-content/uploads/cars/2022/04/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-3-768x532.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Top.jpg",
+      "width": 750,
+      "height": 689,
+      "bytes": 113687,
+      "sha256": "4c5a9e9f70795492496bf298f5ab8fa4c3600659504b8b224c5b5d97f02054b9",
+      "source_page": "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/",
+      "image_url": "https://www.hwtreasure.com/wp-content/uploads/cars/2022/04/LB-ER34-Super-Silhouette-Nissan-Skyline-Chase-Top.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    }
+  ],
+  "note": "Original source bytes copied unchanged. Canonical paths are relative to this reference/ directory. Photography watermarks retained."
+}

@@ -1,0 +1,94 @@
+{
+  "id": "mustang-cobra-r-hgk61",
+  "name": "1993 Ford Mustang Cobra R — turquoise Nationals dinner car",
+  "code": "HGK61",
+  "edition": "2022 Charlotte 22nd Collectors Nationals dinner car",
+  "files": [
+    {
+      "file": "catalog-01.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-47c986ce.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1769,
+      "height": 806,
+      "bytes": 225267,
+      "sha256": "9037d22c7a945acbaded9413cf890042d2c969b5fca8d8fa1b73435d5629e983",
+      "view_notes": "Right front-quarter; fuel flap visible"
+    },
+    {
+      "file": "catalog-02.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-69b1a7c9.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 785,
+      "height": 954,
+      "bytes": 125988,
+      "sha256": "92b7729134ead6d2c6356bbeb7350a84f5e72c5e31a2965e57041b1d0a995f46",
+      "view_notes": "Elevated front/roof, hood closed"
+    },
+    {
+      "file": "catalog-03.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-fa6e3e07.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 821,
+      "height": 1004,
+      "bytes": 141224,
+      "sha256": "0cde721b87815b7dfe6107470de7514cb3b24e81f8da4c76b251e57c9ca42772",
+      "view_notes": "Open hood engine; different mechanical pose, not input"
+    },
+    {
+      "file": "catalog-04.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-02b4541a.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1808,
+      "height": 908,
+      "bytes": 216035,
+      "sha256": "0f41335fafadbbd03f055b60ab78aecfdee6dad211d52c7f98467479638af7e7",
+      "view_notes": "Left front-quarter; no fuel flap"
+    },
+    {
+      "file": "catalog-05.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-669bc862.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 831,
+      "height": 925,
+      "bytes": 118987,
+      "sha256": "8ac0dc72b29bf474190d4ebd1aa4e694f7d1d2ee92a3c1f49edae5d0dd3693f6",
+      "view_notes": "Elevated rear; KOIBRA plate and dual exhaust"
+    },
+    {
+      "file": "catalog-06.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-d908e7c1.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2058,
+      "height": 909,
+      "bytes": 250259,
+      "sha256": "582c0ccc582ef121b510a7d8c4afb448722e0d5446c79a21cf8a3f58805f89d1",
+      "view_notes": "Underside, not top view; not input"
+    },
+    {
+      "file": "pack-photo.png",
+      "kind": "user-supplied pack photo",
+      "source_page": null,
+      "image_url": null,
+      "width": 389,
+      "height": 600,
+      "bytes": 442951,
+      "sha256": "e3394ce0ceb2179df767902a8a1200721f2720099620d33c27da76350830e0ff"
+    }
+  ],
+  "notes": [
+    "Native real photographic sources, preserved unchanged; no generated inputs.",
+    "Fuel flap appears only on the vehicle-right rear quarter. Hood fixed closed; opening-engine photo retained but excluded from inputs."
+  ]
+}

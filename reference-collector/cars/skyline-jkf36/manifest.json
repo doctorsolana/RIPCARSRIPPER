@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "id": "skyline-jkf36",
+  "name": "LB-ER34 Super Silhouette Nissan Skyline — gold chase",
+  "product_code": "JKF36",
+  "edition": "2026 Car Culture Aérostyles 0/5 chase",
+  "updated_on": "2026-10-12",
+  "status": "needs_correction",
+  "selected": null,
+  "reference": {
+    "directory": "reference",
+    "pack_photo": "reference/pack-photo.png",
+    "sources": "reference/sources.json",
+    "photo_count": 6,
+    "side_evidence": "reference/side-evidence.json"
+  },
+  "prompts": [
+    "generation.prompt.txt"
+  ],
+  "review": {
+    "side_profile": "visual_fail",
+    "ground_shadows": "visual_pass",
+    "material_depth": "visual_pass",
+    "sides": {
+      "right": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      },
+      "left": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      }
+    },
+    "notes": [
+      "Both sides still reveal front headlight faces, hood upper planes and offset wing supports.",
+      "Left-side sill exhaust is supported by real photos; v2 correctly locates it on the upper edge of the nose-right overhead.",
+      "Door badge printing, hood relief and wing geometry remain synthetic approximations.",
+      "True vertical top photo unavailable; overhead is inferred from elevated real photos.",
+      "Fine printing, reflections and reconstructed geometry are approximate, not a neutral albedo map or calibrated CAD.",
+      "No 3D reconstruction test was performed for this sheet."
+    ]
+  },
+  "workflow": "../../workflow/README.md",
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt",
+  "preview": {
+    "file": "generated/draft-sheet.png",
+    "version": 2,
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2568190,
+      "sha256": "60a83a0208e03856face6c2e68c9416108aaa2c1b13177279ea0456ed32b4fec"
+    },
+    "review_record": "review.json",
+    "latest_prompt": "generation.prompt.txt",
+    "generation_strategy": "direct_from_real_photos",
+    "generated_inputs": 0,
+    "view_count": 5
+  }
+}

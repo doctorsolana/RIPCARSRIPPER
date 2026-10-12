@@ -1,0 +1,82 @@
+{
+  "id": "skyline-jkf36",
+  "name": "LB-ER34 Super Silhouette Nissan Skyline — gold chase",
+  "code": "JKF36",
+  "edition": "2026 Car Culture Aérostyles 0/5 chase",
+  "files": [
+    {
+      "file": "catalog-01.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-33182-653b1463.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1868,
+      "height": 863,
+      "bytes": 145477,
+      "sha256": "c60ba02aee5badfd8b10c69681e3e614754f9ab85ec661e8bb7e4beda380d985",
+      "view_notes": "Right front-quarter; anniversary badge"
+    },
+    {
+      "file": "catalog-02.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-33182-72d0b3a3.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 799,
+      "height": 1045,
+      "bytes": 86903,
+      "sha256": "c8b30a9b846bf2825b84ef115447868d94177acbb4ad8df7d0d13eeea8cc8398",
+      "view_notes": "Elevated front/roof"
+    },
+    {
+      "file": "catalog-03.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-33182-10cd883e.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1851,
+      "height": 887,
+      "bytes": 146090,
+      "sha256": "d4d43166d80f58a3292c82e8fabe241f4cfe7283948f765fc65529ac0186d15a",
+      "view_notes": "Left front-quarter; gold sill exhaust"
+    },
+    {
+      "file": "catalog-04.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-33182-3ff8fbd0.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 837,
+      "height": 833,
+      "bytes": 78749,
+      "sha256": "7ae5ccb4701327b7c6d53c830f40177d4fab8be3d3284330455dbb41912e31e7",
+      "view_notes": "Elevated rear/roof"
+    },
+    {
+      "file": "catalog-05.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-33182-0d5a5bc3.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1952,
+      "height": 891,
+      "bytes": 172080,
+      "sha256": "368c5be1a5404ee35680cd1c006506e999df1839bc2b7b884c5efd52a0d9b8a4",
+      "view_notes": "Gold underside; not overhead or input"
+    },
+    {
+      "file": "pack-photo.png",
+      "kind": "user-supplied pack photo",
+      "source_page": null,
+      "image_url": null,
+      "width": 487,
+      "height": 600,
+      "bytes": 514622,
+      "sha256": "1b803905291ef81be535767de8c98d619ad1cfc053d292933d5f3d4dd6139c4e"
+    }
+  ],
+  "notes": [
+    "Native real photographic sources, preserved unchanged; no generated inputs.",
+    "Gold sill exhaust protrudes on vehicle-left only. Door anniversary badges are independently readable on both sides. Pack FRY86 is the assortment code; exact gold chase is JKF36."
+  ]
+}

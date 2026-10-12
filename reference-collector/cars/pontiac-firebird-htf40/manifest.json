@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "id": "pontiac-firebird-htf40",
+  "name": "'77 Pontiac Firebird T/A — black Super Treasure Hunt",
+  "product_code": "HTF40",
+  "edition": "2024 Super Treasure Hunt, Muscle Mania 4/5, 206/250",
+  "updated_on": "2026-10-12",
+  "status": "needs_correction",
+  "selected": null,
+  "reference": {
+    "directory": "reference",
+    "pack_photo": "reference/pack-photo.png",
+    "sources": "reference/sources.json",
+    "photo_count": 6,
+    "side_evidence": "reference/side-evidence.json"
+  },
+  "prompts": [
+    "generation.prompt.txt"
+  ],
+  "review": {
+    "side_profile": "visual_fail",
+    "ground_shadows": "visual_pass",
+    "material_depth": "visual_pass",
+    "sides": {
+      "right": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      },
+      "left": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      }
+    },
+    "notes": [
+      "All three attempts generated directly from four real photographs; no generated sheet used as input.",
+      "Both side rows fail the strict camera gate: broad hood and rear-deck top planes remain visible.",
+      "Front and rear panels also retain elevated cameras.",
+      "Overhead geometry is synthesized; exposed wheel-face projections may not be consistent with a true vertical view.",
+      "Tiny logos/lettering and exact textures are generative approximations."
+    ]
+  },
+  "workflow": "../../workflow/README.md",
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt",
+  "preview": {
+    "file": "generated/draft-sheet.png",
+    "version": 3,
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2797311,
+      "sha256": "35757d3d5f7f8b93610729a9719eaefdc64c3b1e0ac4bc38cb9323cbf5eb82ad"
+    },
+    "review_record": "review.json",
+    "latest_prompt": "generation.prompt.txt",
+    "generation_strategy": "direct_from_real_photos",
+    "generated_inputs": 0,
+    "view_count": 5
+  }
+}

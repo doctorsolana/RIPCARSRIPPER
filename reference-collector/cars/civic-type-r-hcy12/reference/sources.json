@@ -1,0 +1,109 @@
+{
+  "id": "civic-type-r-hcy12",
+  "name": "'99 Honda Civic Type R (EK9) — gold Super Treasure Hunt",
+  "code": "HCY12",
+  "edition": "2022 Super Treasure Hunt, HW Hatchbacks 5/5, 125/250",
+  "files": [
+    {
+      "file": "ebay-01.webp",
+      "kind": "seller loose-toy photograph",
+      "source_page": "https://www.ebay.com/itm/177101398338",
+      "image_url": "https://i.ebayimg.com/images/g/SbAAAeSw8AFo9ddS/s-l1600.webp",
+      "watermark": "Original photography retained unchanged.",
+      "width": 1600,
+      "height": 1600,
+      "bytes": 304246,
+      "sha256": "7765da79b1602cf9386b029e849b6096873cfbbdd39eba56bb2771d88592fc7d",
+      "view_notes": "Near-level right side; no fuel flap"
+    },
+    {
+      "file": "ebay-02.webp",
+      "kind": "seller loose-toy photograph",
+      "source_page": "https://www.ebay.com/itm/177101398338",
+      "image_url": "https://i.ebayimg.com/images/g/XREAAeSwr3No9ddS/s-l1600.webp",
+      "watermark": "Original photography retained unchanged.",
+      "width": 700,
+      "height": 700,
+      "bytes": 89764,
+      "sha256": "f868edc7dbed9f679d2861d632ce5fde0a26ef0bb652b1faadf67a3c3dde642d",
+      "view_notes": "Front/right quarter"
+    },
+    {
+      "file": "ebay-03.webp",
+      "kind": "seller loose-toy photograph",
+      "source_page": "https://www.ebay.com/itm/177101398338",
+      "image_url": "https://i.ebayimg.com/images/g/DikAAeSwXEVo9ddS/s-l1600.webp",
+      "watermark": "Original photography retained unchanged.",
+      "width": 700,
+      "height": 700,
+      "bytes": 98416,
+      "sha256": "d7eeda22cd7aaf6bff7037a8cbc7ab856ee63b5c1ed5814baa37ebda361bc161",
+      "view_notes": "Near-level left side; fuel flap"
+    },
+    {
+      "file": "ebay-04.webp",
+      "kind": "seller loose-toy photograph",
+      "source_page": "https://www.ebay.com/itm/177101398338",
+      "image_url": "https://i.ebayimg.com/images/g/Ep4AAeSw~9Zo9ddT/s-l1600.webp",
+      "watermark": "Original photography retained unchanged.",
+      "width": 700,
+      "height": 700,
+      "bytes": 123376,
+      "sha256": "cbbae82c136329d04366d7a1a48fa478af217db5f50ca7fe47cd7b771d5ebbe5",
+      "view_notes": "Elevated top/right quarter"
+    },
+    {
+      "file": "ebay-05.webp",
+      "kind": "seller loose-toy photograph",
+      "source_page": "https://www.ebay.com/itm/177101398338",
+      "image_url": "https://i.ebayimg.com/images/g/5kMAAeSwAi5o9ddS/s-l1600.webp",
+      "watermark": "Original photography retained unchanged.",
+      "width": 700,
+      "height": 700,
+      "bytes": 141320,
+      "sha256": "2921b35fb17bf4084e55fe1349bd29a8d1d12e3f07f91e9eb07b58564f00dad9",
+      "view_notes": "Elevated top/right; not calibrated vertical top"
+    },
+    {
+      "file": "ebay-06.webp",
+      "kind": "seller loose-toy photograph",
+      "source_page": "https://www.ebay.com/itm/177101398338",
+      "image_url": "https://i.ebayimg.com/images/g/N0sAAeSwA-lo9ddS/s-l1600.webp",
+      "watermark": "Original photography retained unchanged.",
+      "width": 700,
+      "height": 700,
+      "bytes": 72216,
+      "sha256": "ff21c5296e408b83794a0c67c37b03fb02a7cf5248cbda3fca83e25bc5b93a76",
+      "view_notes": "Rear; TH, RYU, exhaust"
+    },
+    {
+      "file": "ebay-07.webp",
+      "kind": "seller loose-toy photograph",
+      "source_page": "https://www.ebay.com/itm/177101398338",
+      "image_url": "https://i.ebayimg.com/images/g/cP4AAeSwkIFo9ddS/s-l1600.webp",
+      "watermark": "Original photography retained unchanged.",
+      "width": 700,
+      "height": 700,
+      "bytes": 122502,
+      "sha256": "5679be44991b02404658e933f446ad69717253111da7ec6a91ac55ab2e150afb",
+      "view_notes": "Black underside; not overhead/input"
+    },
+    {
+      "file": "pack-photo.png",
+      "kind": "user-supplied pack photo",
+      "source_page": null,
+      "image_url": null,
+      "width": 395,
+      "height": 600,
+      "bytes": 377288,
+      "sha256": "c6bb696c6f489f8b977025b3c56503e593b432710417dc513ee638da32efb055"
+    }
+  ],
+  "supporting_release_page": "https://www.hwtreasure.com/2022-super/99-honda-civic-type-r-ek9/",
+  "notes": [
+    "Seller original photos downloaded in native delivered WebP; pack identity corroborated by HWtreasure HCY12 release description.",
+    "HWtreasure photos could be located but its server denied downloads; alternative real loose-toy photographs used.",
+    "No generated input photographs or source retouching.",
+    "Square fuel flap only on vehicle-left rear quarter; exhaust at vehicle-right. Both sides have real seller photographs; source set includes lower-resolution 700px images, preserved without upscaling."
+  ]
+}

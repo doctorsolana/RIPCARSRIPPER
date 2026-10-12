@@ -1,0 +1,224 @@
+{
+  "car": "porsche-911-gt3-rs",
+  "calibration": {
+    "L": 4.0,
+    "H": 1.2891,
+    "W": 1.6999,
+    "W_body": 1.6873,
+    "W/L": 0.425,
+    "H/L": 0.3223,
+    "top_scale_vs_side": 1.0126,
+    "left_height_vs_right": 0.0118,
+    "front_aspect_mismatch": 0.1385,
+    "rear_aspect_mismatch": 0.2128
+  },
+  "registration": {
+    "top": {
+      "axle_shift_pct": [
+        0.69,
+        -0.95
+      ]
+    },
+    "left": {
+      "axle_shift_pct": [
+        0.81,
+        0.7
+      ]
+    }
+  },
+  "wing": {
+    "band": 0.1205,
+    "plate": 0.0482,
+    "span": 0.724,
+    "endplate": 0.0425,
+    "upright": 0.0595,
+    "upright_z": 0.3258
+  },
+  "end_registration": {
+    "front": {
+      "applied": true,
+      "edge_match": [
+        0.108,
+        0.482
+      ],
+      "scale": [
+        1.04,
+        0.97
+      ],
+      "shift_px": [
+        0.0,
+        33.4
+      ]
+    },
+    "rear": {
+      "applied": true,
+      "edge_match": [
+        0.11,
+        0.374
+      ],
+      "scale": [
+        0.98,
+        1.0
+      ],
+      "shift_px": [
+        0.0,
+        15.1
+      ]
+    }
+  },
+  "texture_share": {
+    "side": 0.225,
+    "left": 0.226,
+    "top": 0.42,
+    "front": 0.057,
+    "rear": 0.072
+  },
+  "left_source": "left",
+  "colour_gains": {
+    "side": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "top": [
+      1.017,
+      1.1,
+      1.048
+    ],
+    "left": [
+      0.992,
+      0.987,
+      0.957
+    ],
+    "front": [
+      1.004,
+      0.917,
+      0.8
+    ],
+    "rear": [
+      0.963,
+      0.975,
+      0.8
+    ]
+  },
+  "glass_share": 0.1392,
+  "greenhouse": {
+    "belt": 0.8486,
+    "roof": 1.2838,
+    "x0": -1.8839,
+    "x1": 0.6964
+  },
+  "cabin_from_glass": null,
+  "view_match": {
+    "side": {
+      "colour_dE": 23.82,
+      "iou": 0.9898
+    },
+    "top": {
+      "colour_dE": 28.68,
+      "iou": 0.9695
+    },
+    "left": {
+      "colour_dE": 26.35,
+      "iou": 0.9742
+    },
+    "front": {
+      "colour_dE": 41.05,
+      "iou": 0.8152
+    },
+    "rear": {
+      "colour_dE": 42.63,
+      "iou": 0.853
+    }
+  },
+  "checks": {
+    "side_iou>=0.97": true,
+    "top_iou>=0.94": true,
+    "left_iou>=0.92": true,
+    "front_iou>=0.82": true,
+    "rear_iou>=0.82": true,
+    "every_view_paints_the_texture": true,
+    "body_outward": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.0,
+    "height": 1.2891,
+    "width": 1.6999
+  },
+  "wheels": [
+    {
+      "x": -1.1316,
+      "y": 0.3468,
+      "r": 0.3427,
+      "fit_err_px": 0.5031,
+      "width_source": "rear",
+      "z_outer": 0.8176,
+      "z_inner": 0.5229,
+      "rim_symmetry": 0.907,
+      "covered": false,
+      "name": "wheel_rear_right",
+      "side": 1
+    },
+    {
+      "x": -1.1316,
+      "y": 0.3468,
+      "r": 0.3427,
+      "fit_err_px": 0.5031,
+      "width_source": "rear",
+      "z_outer": 0.8176,
+      "z_inner": 0.5229,
+      "rim_symmetry": 0.907,
+      "covered": false,
+      "name": "wheel_rear_left",
+      "side": -1
+    },
+    {
+      "x": 1.1337,
+      "y": 0.3468,
+      "r": 0.3427,
+      "fit_err_px": 1.014,
+      "width_source": "front",
+      "z_outer": 0.8197,
+      "z_inner": 0.5831,
+      "rim_symmetry": 0.881,
+      "covered": false,
+      "name": "wheel_front_right",
+      "side": 1
+    },
+    {
+      "x": 1.1337,
+      "y": 0.3468,
+      "r": 0.3427,
+      "fit_err_px": 1.014,
+      "width_source": "front",
+      "z_outer": 0.8197,
+      "z_inner": 0.5831,
+      "rim_symmetry": 0.881,
+      "covered": false,
+      "name": "wheel_front_left",
+      "side": -1
+    }
+  ],
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9901,
+    "top": 0.9696,
+    "left": 0.9743,
+    "front": 0.8886,
+    "rear": 0.9176
+  },
+  "glb": {
+    "bytes": 959660,
+    "triangles": 15080
+  },
+  "seconds": 22.7
+}

@@ -1,0 +1,83 @@
+{
+  "id": "pontiac-firebird-htf40",
+  "name": "'77 Pontiac Firebird T/A — black Super Treasure Hunt",
+  "code": "HTF40",
+  "edition": "2024 Super Treasure Hunt, Muscle Mania 4/5, 206/250",
+  "files": [
+    {
+      "file": "catalog-01.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/%2777%20Pontiac%20Firebird-24485-677ce92d.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2073,
+      "height": 884,
+      "bytes": 209531,
+      "sha256": "3211100b4a76f49f9cb43099f13a9dc122e8aacc4586849e508b02517a763125",
+      "view_notes": "Right front-quarter; TH at rear of door"
+    },
+    {
+      "file": "catalog-02.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/%2777%20Pontiac%20Firebird-24485-fb811931.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 993,
+      "height": 1055,
+      "bytes": 137080,
+      "sha256": "6d5adce67f1517b92a2fd8c51ffd6c261236f1d8ceac6dbfce157b8a61ece340",
+      "view_notes": "Elevated front, hood phoenix, scoop and roof; not orthographic overhead"
+    },
+    {
+      "file": "catalog-03.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/%2777%20Pontiac%20Firebird-24485-a4afcb68.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2003,
+      "height": 872,
+      "bytes": 198705,
+      "sha256": "fe4ce2308231931b63dfd9be54228d2a626e7fdc100014905793287252ed029a",
+      "view_notes": "Left front-quarter; TH at rear of door"
+    },
+    {
+      "file": "catalog-04.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/%2777%20Pontiac%20Firebird-24485-7b22e8fa.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 964,
+      "height": 881,
+      "bytes": 111506,
+      "sha256": "4cb524e742775b5f80a4fba2f09e74dbcac2dc7fe3f258e95dc5d2f153d95450",
+      "view_notes": "Elevated rear and roof; largely unpainted metallic slat relief"
+    },
+    {
+      "file": "catalog-05.jpg",
+      "kind": "loose-toy catalog photograph",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/%2777%20Pontiac%20Firebird-24485-8e9e6f01.jpg?v=",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2224,
+      "height": 1028,
+      "bytes": 313982,
+      "sha256": "191be9181b4fd090c31ebe49357668a1bde7c667a48e3210629174d3137f93be",
+      "view_notes": "Underside, chrome base and rubber tire tread; NOT overhead; not generation input"
+    },
+    {
+      "file": "pack-photo.png",
+      "kind": "user-supplied pack photo",
+      "source_page": null,
+      "image_url": null,
+      "width": 397,
+      "height": 600,
+      "bytes": 380268,
+      "sha256": "de0db5cd1af368b105431fb33a7b0bf358b625f5a99201729f0883a77f62c627"
+    }
+  ],
+  "notes": [
+    "Both sides photographed with normally readable TH at the rear of each door and small Hot Wheels above. Rear lamp relief is largely unpainted metallic chrome, unlike full-size-car assumptions.",
+    "Only real loose-toy catalog photographs are used as generation inputs; source bytes and watermarks retained."
+  ],
+  "supporting_release_page": "https://www.hwtreasure.com/2024-super/77-pontiac-firebird/"
+}

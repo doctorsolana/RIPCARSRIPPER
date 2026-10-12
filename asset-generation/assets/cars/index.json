@@ -1,0 +1,75 @@
+{
+  "cars": [
+    {
+      "id": "beach-bomb-too-k3370",
+      "make": "Hot Wheels",
+      "model": "Beach Bomb Too",
+      "year": 2006,
+      "rarity": "legendary",
+      "modelled": true,
+      "passed": false,
+      "versions": [],
+      "source": null
+    },
+    {
+      "id": "chevy-impala-jkb99",
+      "make": "Chevrolet",
+      "model": "Impala",
+      "year": 1964,
+      "rarity": "legendary",
+      "modelled": true,
+      "passed": true,
+      "versions": [],
+      "source": null
+    },
+    {
+      "id": "porsche-911-gt3-rs",
+      "make": "Porsche",
+      "model": "911 GT3 RS",
+      "year": 2011,
+      "rarity": "rare",
+      "modelled": true,
+      "passed": true,
+      "versions": [],
+      "source": null
+    },
+    {
+      "id": "porsche-964-gdf88",
+      "make": "Porsche",
+      "model": "964",
+      "year": 1989,
+      "rarity": "epic",
+      "modelled": true,
+      "passed": true,
+      "versions": [],
+      "source": null
+    },
+    {
+      "id": "roxy-porsche-hrv96",
+      "make": "Porsche",
+      "model": "911 GT3 R \u201cRoxy\u201d",
+      "year": 2023,
+      "rarity": "chase",
+      "modelled": true,
+      "passed": true,
+      "versions": [],
+      "source": null
+    },
+    {
+      "id": "skyline-hck01",
+      "make": "Nissan",
+      "model": "LB-ER34 Skyline",
+      "year": 1998,
+      "rarity": "chase",
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "scripted",
+        "tripo-multiview",
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    }
+  ]
+}

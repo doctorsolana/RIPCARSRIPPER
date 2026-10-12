@@ -1,0 +1,138 @@
+{
+  "id": "02-grey-porsche-964-gdf88",
+  "name": "Porsche 964 — Magnus Walker / Urban Outlaw",
+  "code": "GDF88",
+  "edition": "2019 RLC, dark grey carded release",
+  "support_source": "https://hwrlc.com/porsche-964/",
+  "notes": "Dark grey paint and silver fifteen52 wheels match. Distinct from the slate/black FPN10 acrylic-case release. Supporting loose-car photos are mostly 600 pixels wide.",
+  "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7b38fc30-2cc4-46dc-bea7-a866520d6292",
+  "catalog_count": 2,
+  "reference_count": 10,
+  "largest_width": 1823,
+  "files": [
+    {
+      "file": "pack-photo.webp",
+      "width": 2322,
+      "height": 3548,
+      "bytes": 798668,
+      "sha256": "7a765e6cb9c5791dc790fd875a433130cbf89ceac46445edbeb0627294c40dbf",
+      "source_page": null,
+      "image_url": null,
+      "kind": "user-saved-pack-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "catalog-01.jpg",
+      "width": 1323,
+      "height": 688,
+      "bytes": 128205,
+      "sha256": "c337a3a625e24b7a03c2527f3e45e5cce2c8bb171d387d4d83509c7c1a1c5535",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7b38fc30-2cc4-46dc-bea7-a866520d6292",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20964-15193-ec19d174.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 1
+    },
+    {
+      "file": "catalog-02.jpg",
+      "width": 1823,
+      "height": 765,
+      "bytes": 186627,
+      "sha256": "178dfc8b14f8309fe2471cac7f879713464df664fa4a89ff05b4ebc3346371e6",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7b38fc30-2cc4-46dc-bea7-a866520d6292",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20964-15193-c10d48de.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 2
+    },
+    {
+      "file": "supporting/19-Porsche-964-Base-768x410.jpg",
+      "width": 768,
+      "height": 410,
+      "bytes": 37638,
+      "sha256": "69d18f6d7c5ad9f154bf4a8f4968a6761c4c9b7a389388e79dda81092cb33389",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Base-768x410.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/19-Porsche-964-Card.jpg",
+      "width": 647,
+      "height": 1000,
+      "bytes": 136042,
+      "sha256": "919f9e14f7ea45e706e1e25cba39e92fca782fa256cba44ff5c8bcf7fec429c2",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Card.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/19-Porsche-964-Left-Rear.jpg",
+      "width": 600,
+      "height": 359,
+      "bytes": 36116,
+      "sha256": "9a89c35d047cf5ec1e92bd431b5db81fee3153c53efeaabf03d9159d21776768",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Left-Rear.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/19-Porsche-964-Left.jpg",
+      "width": 600,
+      "height": 345,
+      "bytes": 34458,
+      "sha256": "cf0c733365bcc87c94118eb4b9130102c50be92507b28aed6f81af54d6edd78c",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Left.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/19-Porsche-964-Open-Hood.jpg",
+      "width": 600,
+      "height": 432,
+      "bytes": 41797,
+      "sha256": "b1dc3bb5ceb6abf9da176c51f5c18377cc1bd59ee1e133ed38f077272c3bb126",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Open-Hood.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/19-Porsche-964-Right-2.jpg",
+      "width": 600,
+      "height": 324,
+      "bytes": 31927,
+      "sha256": "13570be87b998c58880992c10950eede084e45680377d157599ddb54f811460e",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Right-2.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/19-Porsche-964-Right.jpg",
+      "width": 600,
+      "height": 349,
+      "bytes": 35238,
+      "sha256": "3d7aaf3e42ee5f5a5a53a1aa348b3b6b138fbf92ccc0c0152efe134ac4f02b94",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Right.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "supporting/19-Porsche-964-Back.jpg",
+      "width": 658,
+      "height": 1000,
+      "bytes": 127552,
+      "sha256": "8a9b5bbf24222c0a3624133b3ad1846843368880bac4465587779bf812735c44",
+      "source_page": "https://hwrlc.com/porsche-964/",
+      "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Back.jpg",
+      "kind": "supporting-car-or-packaging-photo",
+      "watermark": "as supplied"
+    }
+  ],
+  "note": "Original source bytes copied unchanged. Canonical paths are relative to this reference/ directory. Photography watermarks retained."
+}

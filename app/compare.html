@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Model Compare</title>
+    <style>
+      :root { --bg: #0d0e12; --panel: #16171d; --text: #eef0f3; --muted: #8b90a0; --line: #2a2c35; --accent: #ff3d6e; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 Inter, system-ui, sans-serif; }
+      #views { position: fixed; inset: 0 0 64px 0; display: grid; grid-template-columns: repeat(var(--cols, 2), 1fr); grid-auto-rows: 1fr; }
+      .view.ref { background: #fff; display: flex; align-items: center; justify-content: center; }
+      .view.ref img { max-width: 92%; max-height: 86%; object-fit: contain; }
+      .view.ref .tag { background: rgba(0,0,0,.7); }
+      .view { position: relative; border-right: 1px solid var(--line); overflow: hidden; }
+      .view canvas { display: block; width: 100%; height: 100%; }
+      .tag { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,.55); padding: 8px 12px; border-radius: 8px; pointer-events: none; }
+      .tag b { display: block; font-size: 15px; }
+      .tag span { color: var(--muted); font-size: 12px; }
+      #bar { position: fixed; left: 0; right: 0; bottom: 0; height: 64px; display: flex; gap: 8px; align-items: center; padding: 0 16px; background: var(--panel); border-top: 1px solid var(--line); overflow-x: auto; }
+      #bar button { flex: none; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: #1f2129; color: var(--text); cursor: pointer; font: inherit; }
+      #bar button.on { border-color: var(--accent); color: #fff; background: #2a1520; }
+      #bar .sep { flex: none; width: 1px; height: 28px; background: var(--line); margin: 0 4px; }
+      #hint { color: var(--muted); font-size: 12px; margin-left: auto; flex: none; }
+    </style>
+  </head>
+  <body>
+    <div id="views">
+
+    </div>
+    <div id="bar">
+      <button data-view="0.75,0.3">Front ¾</button>
+      <button data-view="-0.9,0.3">Rear ¾</button>
+      <button data-view="0,0.02">Side</button>
+      <button data-view="1.5708,0.05">Front</button>
+      <button data-view="-1.5708,0.05">Rear</button>
+      <button data-view="0,1.5">Top</button>
+      <span class="sep"></span>
+      <button id="t-tex" class="on">Texture</button>
+      <button id="t-wire">Wireframe</button>
+      <button id="t-spin">Spin</button>
+      <span id="hint">Drag to orbit · scroll to zoom · both views move together</span>
+    </div>
+    <script type="module" src="/src/compare.ts"></script>
+  </body>
+</html>

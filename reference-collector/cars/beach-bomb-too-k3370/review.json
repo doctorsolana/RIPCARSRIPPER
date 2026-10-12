@@ -1,0 +1,161 @@
+{
+  "schema_version": 2,
+  "version": 2,
+  "status": "accepted",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "direct_from_real_photos",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "3d55abe87207876829a9a77a6dca4aff67fb34163af15404d5e690ae0b06a750",
+  "saved_output": "generated/reference-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2370494,
+    "sha256": "c409c4e4ec10a14858909bf4071aa0872d5802553d92a86b46c92d19dfaffaf6"
+  },
+  "real_inputs": [
+    {
+      "file": "reference/catalog-01.jpg",
+      "role": "Vehicle-right front-quarter; silver-chrome surfboard and right livery",
+      "sha256": "290c5a91943019d4286bcab22141986f7350b044b8c7793e043d7f1288ea3a54"
+    },
+    {
+      "file": "reference/catalog-05.jpg",
+      "role": "Vehicle-left front-quarter; orange-chrome surfboard and left livery",
+      "sha256": "97ff84cce9995983dc5ea311a73c38ae6847331e3f1019bb066518e97d55e856"
+    },
+    {
+      "file": "reference/catalog-03.jpg",
+      "role": "Elevated front; front fascia, roof stripes and sunroof evidence",
+      "sha256": "18e3181eac07a4ff3b345657cc2412f87ba517c5a602e8cf111d594f09e946be"
+    },
+    {
+      "file": "reference/catalog-06.jpg",
+      "role": "Elevated rear; rear plate, chrome engine, lamps, roof and board positions",
+      "sha256": "7365f1a728375106eae4132182b940b917137a2400ca051aceca44ddb8adbbc9"
+    }
+  ],
+  "review": {
+    "level_side_camera": {
+      "result": "pass",
+      "observation": "Right-facing row is level and perpendicular; bumper/headlamp reduced to narrow edge contours."
+    },
+    "top_planes_hidden": {
+      "result": "pass",
+      "observation": "No broad roof or white stripe surface; thin curved roof rail remains."
+    },
+    "front_rear_faces_hidden": {
+      "result": "pass",
+      "observation": "No front vent panel or rear lamp panel; lamp edge visible only as a narrow protruding contour."
+    },
+    "interior_at_side_height": {
+      "result": "pass",
+      "observation": "Chrome seat/back is seen through side window at side height, without a top-down cushion view."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Circular near wheels with level baseline; no separated far wheel pair."
+    },
+    "shape_and_stance_preserved": {
+      "result": "pass",
+      "observation": "Tall chopped van, flared pod, redline wheel scale, roof height and raised rear surfboard retained."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Right-facing row is level and perpendicular; bumper/headlamp reduced to narrow edge contours."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad roof or white stripe surface; thin curved roof rail remains."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "No front vent panel or rear lamp panel; lamp edge visible only as a narrow protruding contour."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Chrome seat/back is seen through side window at side height, without a top-down cushion view."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular near wheels with level baseline; no separated far wheel pair."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Tall chopped van, flared pod, redline wheel scale, roof height and raised rear surfboard retained."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Left-facing row is level with perpendicular side elevation."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad roof stripe or upper body plane; roof is a thin rounded contour."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "No front vents or rear panel; front lamp is an edge-on protrusion rather than a disk face."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Side-height chrome cabin recess without downward seat-cushion reveal."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel pair and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Roof height, side pod, wheelbase, low stance and orange board silhouette preserved."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Exactly five complete views in four rows: right, left, top, front and rear."
+    },
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "All panels have white exterior backgrounds without visible cast/contact shadow pools or halos."
+    },
+    "material_depth": {
+      "result": "pass",
+      "observation": "Purple body has soft curved highlight gradients, chrome boards/cabin have reflective depth, wheels have recessed dark spokes and round tire shading. Geometry reads as a physical miniature under level side cameras."
+    },
+    "identity_and_graphics": {
+      "result": "pass",
+      "observation": "Purple K3370 club-car identity, stripe roof, sunroof, HWC side graphics and redlines are recognizable; local insert-color limitation recorded."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Silver board on right and orange board on left; overhead preserves corresponding physical sides."
+    },
+    "readable_not_mirrored_text": {
+      "result": "pass",
+      "observation": "Collectors/Club text is normally readable on both sides; BCHCLB plate is legible; tiny sponsor lettering approximate."
+    },
+    "cross_view_consistency": {
+      "result": "pass",
+      "observation": "Same van geometry, wheels, board sides, roof stripes/sunroof and pose across panels; chrome insert-color mismatch noted."
+    },
+    "front_rear_cameras": {
+      "result": "pass",
+      "observation": "Bottom fascia views are visually near-level and straight; no broad roof stripe planes exposed."
+    },
+    "limitations": [
+      "No direct vertical top photograph: overhead geometry and hidden relief are synthesized from oblique photos.",
+      "Tiny sponsor/plate characters and metallic reflections remain approximate.",
+      "The small molded insert behind the left front wheel is silver in this sheet; the source photograph has an orange-chrome appearance there. Board color itself is correctly side-specific.",
+      "Surface highlights are baked into RGB; this is not a neutral albedo map or measured geometry. No 3D reconstruction test performed."
+    ],
+    "selection_rationale": "Select source-only v2: both strict profiles, white-background and photographic material-depth gates pass. Keep small source-fidelity limitations explicit."
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-12",
+  "id": "godzilla-skyline-jhw90",
+  "product_code": "JHW90",
+  "physical_side_convention": "Vehicle left/right as seated facing forward; right-side nose-right, left-side nose-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Both physical sides have separate artwork photographs; Japanese glyphs must remain readable. HXD63 is the assortment, exact model JHW90. Catalog title calls it MF Red; actual photos show cream front and burgundy rear."
+  ],
+  "inferred_details": [
+    "No calibrated true overhead photo; top is inferred from elevated original photos.",
+    "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/Variation/Details/6ad41e29-b85a-41cb-a5c6-78a5356e9ae1"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "e43c1b4dd3cb93b152d8e4e5efe289f10d909ebf8f836a66d4e03759c62771ff",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/6ad41e29-b85a-41cb-a5c6-78a5356e9ae1",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Skyline%20GT-R%20%28BNR34%29%20%28retool%29-30877-b2e34acc.jpg?v=",
+          "width": 2041,
+          "height": 985
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "8959c297913cd8176593e2aa95185906189a12ac122aab66e0e251a436e7c0ea",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/6ad41e29-b85a-41cb-a5c6-78a5356e9ae1",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Skyline%20GT-R%20%28BNR34%29%20%28retool%29-30877-67a1a951.jpg?v=",
+          "width": 2065,
+          "height": 1013
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    }
+  }
+}

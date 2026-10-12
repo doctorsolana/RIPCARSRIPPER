@@ -1,0 +1,104 @@
+{
+  "schema_version": 2,
+  "id": "beach-bomb-too-k3370",
+  "name": "Beach Bomb Too — purple RLC club car",
+  "product_code": "K3370",
+  "edition": "2006 RLC membership car, Spectraflame purple",
+  "updated_on": "2026-10-12",
+  "status": "accepted",
+  "selected": {
+    "file": "generated/reference-sheet.png",
+    "version": 2,
+    "view_count": 5,
+    "generation_strategy": "direct_from_real_photos",
+    "generated_inputs": 0,
+    "background": {
+      "color": "#FFFFFF",
+      "cast_shadow": "none",
+      "contact_shadow": "none"
+    },
+    "layout": [
+      {
+        "id": "right",
+        "row": 1,
+        "nose_direction": "right",
+        "physical_side": "vehicle-right"
+      },
+      {
+        "id": "left",
+        "row": 2,
+        "nose_direction": "left",
+        "physical_side": "vehicle-left"
+      },
+      {
+        "id": "top",
+        "row": 3,
+        "nose_direction": "right"
+      },
+      {
+        "id": "front",
+        "row": 4,
+        "column": "left"
+      },
+      {
+        "id": "rear",
+        "row": 4,
+        "column": "right"
+      }
+    ],
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2370494,
+      "sha256": "c409c4e4ec10a14858909bf4071aa0872d5802553d92a86b46c92d19dfaffaf6"
+    },
+    "latest_prompt": "generation.prompt.txt",
+    "review_record": "review.json",
+    "tool": "image_gen.imagegen (built-in)"
+  },
+  "reference": {
+    "directory": "reference",
+    "pack_photo": "reference/pack-photo.webp",
+    "sources": "reference/sources.json",
+    "photo_count": 8,
+    "side_evidence": "reference/side-evidence.json"
+  },
+  "prompts": [
+    "generation.prompt.txt"
+  ],
+  "review": {
+    "side_profile": "visual_pass",
+    "ground_shadows": "visual_pass",
+    "material_depth": "visual_pass",
+    "sides": {
+      "right": {
+        "side_profile": "visual_pass",
+        "evidence_status": "real_reference",
+        "review_record": "review.json",
+        "source_files": [
+          "reference/catalog-01.jpg"
+        ]
+      },
+      "left": {
+        "side_profile": "visual_pass",
+        "evidence_status": "real_reference",
+        "review_record": "review.json",
+        "source_files": [
+          "reference/catalog-05.jpg"
+        ]
+      }
+    },
+    "notes": [
+      "Complete sheet generated directly from four real original photos; no generated sheet input at any stage.",
+      "Both side profiles independently pass level-camera review; white exterior backgrounds and photographic surface depth also pass.",
+      "Both physical sides have real photos: silver board right, orange-chrome board left.",
+      "No direct vertical top photograph: overhead geometry and hidden relief are synthesized from oblique photos.",
+      "Tiny sponsor/plate characters and metallic reflections remain approximate.",
+      "The small molded insert behind the left front wheel is silver in this sheet; the source photograph has an orange-chrome appearance there. Board color itself is correctly side-specific.",
+      "Surface highlights are baked into RGB; this is not a neutral albedo map or measured geometry. No 3D reconstruction test performed."
+    ]
+  },
+  "workflow": "../../workflow/README.md",
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt"
+}

@@ -1,0 +1,109 @@
+{
+  "photo": "../../../../reference-collector/cars/chevy-impala-jkb99/reference/pack-photo.webp",
+  "segModel": "birefnet-general",
+  "carBox": [
+    190,
+    2630,
+    1910,
+    530
+  ],
+  "wheels": [
+    {
+      "cx": 738,
+      "cy": 3039,
+      "r": 105
+    },
+    {
+      "cx": 1810,
+      "cy": 3057,
+      "r": 106
+    }
+  ],
+  "model": {
+    "glass": {
+      "add": {
+        "top": [
+          [
+            [
+              283,
+              712
+            ],
+            [
+              330,
+              707
+            ],
+            [
+              333,
+              840
+            ],
+            [
+              330,
+              968
+            ],
+            [
+              283,
+              960
+            ],
+            [
+              274,
+              900
+            ],
+            [
+              272,
+              840
+            ],
+            [
+              274,
+              780
+            ]
+          ],
+          [
+            [
+              628,
+              712
+            ],
+            [
+              660,
+              703
+            ],
+            [
+              700,
+              703
+            ],
+            [
+              713,
+              740
+            ],
+            [
+              717,
+              842
+            ],
+            [
+              713,
+              945
+            ],
+            [
+              700,
+              983
+            ],
+            [
+              660,
+              985
+            ],
+            [
+              628,
+              976
+            ],
+            [
+              624,
+              842
+            ]
+          ]
+        ]
+      }
+    }
+  },
+  "notes": [
+    "model.glass.add.top: the windscreen and rear window show the red interior from above, so the automatic glass finder (grey, paint-unlike pixels) misses them - traced by hand on the sheet"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "notes": [
+    "widthRatio: real 997 GT3 RS is 1852/4460 = 0.415; HW castings run a touch wide \u2192 0.43",
+    "cabin.beltline: side-window lower edge, measured rear tip (703,2923) \u2192 front corner (1243,2981)",
+    "cabin.x: from where the roofline meets the wing deck to the windshield base",
+    "paint: copper metal-flake mid-tone picked from the photo (extract median #7d2c17 read too dark once lit)",
+    "reveal: profile until a proper library model exists for this casting",
+    "realSize: 997.1 GT3 RS 4460 \u00d7 1852 \u00d7 1280 mm (reference for widthRatio)",
+    "pitch now solved from the tracked near top edge (hints.nearTop anchors pin the rear hip + headlight)",
+    "plan: rounder ends (front 3.2, rear 4.5) so the loft closes without a flat end face"
+  ],
+  "widthRatio": 0.43,
+  "plan": {
+    "front": 3.2,
+    "rear": 4.5
+  },
+  "cabin": {
+    "x": [
+      600,
+      1500
+    ],
+    "beltline": [
+      [
+        703,
+        2923
+      ],
+      [
+        1243,
+        2981
+      ]
+    ],
+    "roofRatio": 0.72
+  },
+  "tire": {
+    "widthRatio": 0.07,
+    "color": "#141414"
+  },
+  "paint": {
+    "color": "#b8461e",
+    "metalness": 0.25,
+    "roughness": 0.45,
+    "clearcoat": 0.3,
+    "clearcoatRoughness": 0.15
+  },
+  "glass": "#0d1014",
+  "wing": {
+    "widthRatio": 0.86
+  },
+  "realSize": {
+    "l": 4460,
+    "w": 1852,
+    "h": 1280
+  },
+  "reveal": "profile"
+}

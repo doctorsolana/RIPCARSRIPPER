@@ -1,0 +1,159 @@
+{
+  "schema_version": 2,
+  "version": 2,
+  "status": "needs_correction",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "direct_from_real_photos",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "b83e196560f7df667130f34c0b94daeabe671bee0ca6aa0819384797fe15904e",
+  "saved_output": "generated/draft-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2520422,
+    "sha256": "744c2de548489ec36cdd4af4d6f83cb2ae5a671e3242db11f748f46a101380e7"
+  },
+  "real_inputs": [
+    {
+      "file": "reference/catalog-01.jpg",
+      "role": "Vehicle-right front-quarter; Godzilla right artwork and hood/roof",
+      "sha256": "e43c1b4dd3cb93b152d8e4e5efe289f10d909ebf8f836a66d4e03759c62771ff"
+    },
+    {
+      "file": "reference/catalog-03.jpg",
+      "role": "Vehicle-left front-quarter; independently readable left Japanese artwork",
+      "sha256": "8959c297913cd8176593e2aa95185906189a12ac122aab66e0e251a436e7c0ea"
+    },
+    {
+      "file": "reference/catalog-02.jpg",
+      "role": "Elevated front; hood stripes, roof claw marks, nismo lip",
+      "sha256": "d45981d3394928cdb9ec9f47574c444cee237a71655742182a7b5a416180e2f5"
+    },
+    {
+      "file": "reference/catalog-04.jpg",
+      "role": "Elevated rear; GO-JIRA plate, lamps and wing inscription",
+      "sha256": "7a8761a7a81354a90a40fbb77e99091192b25537d32690c6264c81d8af3d3fff"
+    }
+  ],
+  "review": {
+    "level_side_camera": {
+      "result": "fail",
+      "observation": "Right exposes broad hood, frontal headlight/bumper details and roof sliver. Left exposes hood upper plane and front face."
+    },
+    "top_planes_hidden": {
+      "result": "fail",
+      "observation": "Right exposes broad hood, frontal headlight/bumper details and roof sliver. Left exposes hood upper plane and front face."
+    },
+    "front_rear_faces_hidden": {
+      "result": "fail",
+      "observation": "Right roof claw marks, hood stripe and headlight face exposed. Left exposes roof artwork and broad hood stripe plane, plus front fascia."
+    },
+    "interior_at_side_height": {
+      "result": "uncertain",
+      "observation": "Right roof claw marks, hood stripe and headlight face exposed. Left exposes roof artwork and broad hood stripe plane, plus front fascia."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Right roof claw marks, hood stripe and headlight face exposed. Left exposes roof artwork and broad hood stripe plane, plus front fascia."
+    },
+    "shape_and_stance_preserved": {
+      "result": "uncertain",
+      "observation": "Right roof claw marks, hood stripe and headlight face exposed. Left exposes roof artwork and broad hood stripe plane, plus front fascia."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Right exposes broad hood, frontal headlight/bumper details and roof sliver."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Right exposes broad hood, frontal headlight/bumper details and roof sliver."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "Roof artwork still has FOUR slashes; Hot Wheels flame beneath left Japanese has illegible/mirrored-like glyphs. Burgundy/cream body and main ゴジラ readable."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Left exposes hood upper plane and front face."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Left exposes hood upper plane and front face."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "Roof artwork still has FOUR slashes; Hot Wheels flame beneath left Japanese has illegible/mirrored-like glyphs. Burgundy/cream body and main ゴジラ readable."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Five complete views in four rows with requested orientations."
+    },
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Pure-white exterior to silhouettes; no visible floor pools or ground reflections in all five panels."
+    },
+    "material_depth": {
+      "result": "pass",
+      "observation": "Curved metallic highlights, spoke recesses, tire and cabin shading preserve photographic volume."
+    },
+    "identity_and_graphics": {
+      "result": "fail",
+      "observation": "Roof artwork still has FOUR slashes; Hot Wheels flame beneath left Japanese has illegible/mirrored-like glyphs. Burgundy/cream body and main ゴジラ readable."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Separate side details and graphics provided, no whole-side pixel mirroring."
+    },
+    "readable_not_mirrored_text": {
+      "result": "uncertain",
+      "observation": "Main text orientation normal; exact tiny marks not reliable."
+    },
+    "cross_view_consistency": {
+      "result": "uncertain",
+      "observation": "Roof artwork still has FOUR slashes; Hot Wheels flame beneath left Japanese has illegible/mirrored-like glyphs. Burgundy/cream body and main ゴジラ readable."
+    },
+    "front_rear_cameras": {
+      "result": "fail",
+      "observation": "Bottom cameras expose broad hood or upper rear/roof surfaces."
+    },
+    "limitations": [
+      "True overhead is inferred from elevated original photographs.",
+      "Fine printing and reconstructed dimensions are synthetic approximations."
+    ],
+    "selection_rationale": "Reject: both profiles remain elevated/oblique. White background and material depth now pass. Final source-only retry focuses on literal lateral projection."
+  }
+}

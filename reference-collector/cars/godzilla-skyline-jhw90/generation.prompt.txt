@@ -1,0 +1,23 @@
+Create a PHOTOREALISTIC ORTHOGRAPHIC TURNAROUND of this physical die-cast toy using only the attached real photos as evidence. One finished five-view sheet. Reconstruct the toy, then choose NEW cameras; never retain the source photograph angles.
+
+HARD CAMERA REQUIREMENT: both side images are exact lateral elevations. Camera X axis along car length; camera looks exactly along the lateral axis at mid-door height with ZERO elevation, ZERO yaw, ZERO roll. Parallel orthographic rays. Roof, hood and trunk top surfaces collapse to thin curved silhouette edges. The far wing support overlaps the near support. Grilles and front/rear lamp PANEL FACES are hidden edge-on. Only the side-turning edge of a lamp may show. No look-down cabin view. Preserve full roof height and actual curved cross-section. This is a shaded 3D object viewed sideways, not a flat drawing.
+
+HARD BACKGROUND REQUIREMENT: objects suspended in empty pure-white space. There is NO floor or shadow catcher. White #FFFFFF begins at the silhouette boundary including directly beneath the tires and chassis. Zero external cast shadows, zero contact shadow blobs, zero gray haze or ground reflection. Internal wheel, window and body recesses remain dark and volumetric. Do not remove the miniature's surface shading.
+
+LAYOUT portrait 2:3, four rows, exactly FIVE complete views: row1 vehicle-RIGHT side nose RIGHT; row2 vehicle-LEFT side nose LEFT; row3 vertical 90-degree TOP nose RIGHT; row4 level straight FRONT left and level straight REAR right. First three views matching car length. Ample blank white gutters, no labels or borders. The top view is a conservative synthesis from original photos. Front/rear cameras also horizontal, no looking down over hood/roof. All body panels closed.
+
+SOFTBOX MATERIALS: realistic shaded 3D miniature, metallic flakes and paint reflections, curved highlight gradients on fenders, round rubber tire walls, deep recessed spokes, glazing/cabin depth. Orthographic camera changes projection only; retain realistic physical volume. No flat fills, vector art, outlines, cel shading or sprites.
+
+SUBJECT-SPECIFIC CAMERA AND FIDELITY CHECK:
+Exactly THREE separate cream claw slashes on roof, not four. Roof claws and hood stripes fully present in overhead; in side profiles these graphics are geometrically edge-on and invisible. Do not simply erase their textures from a slanted roof. Retain readable ゴジラ on both sides.
+
+EXACT RELEASE DETAILS
+JHW90 Nissan Skyline GT-R (BNR34), 2026 Pop Culture Godzilla. Standard premium R34 coupe casting, NOT the LB-ER34 widebody race car. Cream/ivory front body and hood, deep metallic burgundy/red roof, rear quarter, trunk and raised rear wing. Black six-spoke rubber-tire wheels, black cockpit, smoked windows, thin black front lip. Extremely important side texture: large burgundy-and-cream engraved-style GODZILLA head on each door, mouth/beams directed toward the front, swirling cloud motifs along rocker/rear quarters, fine dotted transition on upper rear quarters. Black Japanese text 'ゴジラ' and Hot Wheels flame near the FRONT of each door; independently normally readable on each side, never reverse Japanese glyphs with an image flip. Preserve photo-specific drawing rather than copying packaging illustration. Hood: broad burgundy longitudinal center stripe flanked by narrow cream gaps and black parallel stripes; gentle ribbed hood relief. Burgundy roof has THREE cream slashing claw marks in the source orientation. Burgundy wing has small cream Japanese Hot Wheels lettering. Front printed headlamps, amber indicators, black grilles and 'nismo' on cream lip above the black splitter. Rear four round red/amber lights, central Nissan/GT-R badges, white Japanese plate '品川 02' above 'く GO-JIRA', dark exhaust low on vehicle-left. Do not invent sponsors or recolor rear burgundy to cream.
+
+REAL INPUT PHOTOS IN ORDER
+1. Vehicle-right front-quarter; Godzilla right artwork and hood/roof
+2. Vehicle-left front-quarter; independently readable left Japanese artwork
+3. Elevated front; hood stripes, roof claw marks, nismo lip
+4. Elevated rear; GO-JIRA plate, lamps and wing inscription
+
+Do not add a sixth view, packaging or source watermark. Do not mirror text. All source inputs are real photos, no generated sheet.

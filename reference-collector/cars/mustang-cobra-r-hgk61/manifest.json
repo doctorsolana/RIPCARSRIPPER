@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "id": "mustang-cobra-r-hgk61",
+  "name": "1993 Ford Mustang Cobra R — turquoise Nationals dinner car",
+  "product_code": "HGK61",
+  "edition": "2022 Charlotte 22nd Collectors Nationals dinner car",
+  "updated_on": "2026-10-12",
+  "status": "needs_correction",
+  "selected": null,
+  "reference": {
+    "directory": "reference",
+    "pack_photo": "reference/pack-photo.png",
+    "sources": "reference/sources.json",
+    "photo_count": 7,
+    "side_evidence": "reference/side-evidence.json"
+  },
+  "prompts": [
+    "generation.prompt.txt"
+  ],
+  "review": {
+    "side_profile": "visual_fail",
+    "ground_shadows": "visual_pass",
+    "material_depth": "visual_pass",
+    "sides": {
+      "right": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      },
+      "left": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      }
+    },
+    "notes": [
+      "Both profile rows expose broad hood/cowl and spoiler top surfaces; bottom front/rear cameras remain elevated.",
+      "The hood rear edge remains raised rather than sitting fully flush.",
+      "Fine convention/spoiler lettering is unreliable; v3 invents an incorrect event inscription.",
+      "True vertical top photo unavailable; overhead is inferred from elevated real photos.",
+      "Fine printing, reflections and reconstructed geometry are approximate, not a neutral albedo map or calibrated CAD.",
+      "No 3D reconstruction test was performed for this sheet."
+    ]
+  },
+  "workflow": "../../workflow/README.md",
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt",
+  "preview": {
+    "file": "generated/draft-sheet.png",
+    "version": 2,
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2585133,
+      "sha256": "51b53e4723278918616a774f06c7a030304edb87669ad42e92343c4d12e12ae9"
+    },
+    "review_record": "review.json",
+    "latest_prompt": "generation.prompt.txt",
+    "generation_strategy": "direct_from_real_photos",
+    "generated_inputs": 0,
+    "view_count": 5
+  }
+}

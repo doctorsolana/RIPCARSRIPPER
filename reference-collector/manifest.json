@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "updated_on": "2026-10-12",
+  "cars": [
+    {
+      "id": "porsche-911-gt3-rs",
+      "name": "Porsche 911 GT3 RS — orange NFT Garage",
+      "product_code": "HRX26",
+      "manifest": "cars/porsche-911-gt3-rs/manifest.json",
+      "selected": "cars/porsche-911-gt3-rs/generated/reference-sheet.png",
+      "reference_photos": 6,
+      "view_count": 5
+    },
+    {
+      "id": "porsche-964-gdf88",
+      "name": "Porsche 964 — Magnus Walker / Urban Outlaw",
+      "product_code": "GDF88",
+      "manifest": "cars/porsche-964-gdf88/manifest.json",
+      "selected": "cars/porsche-964-gdf88/generated/reference-sheet.png",
+      "reference_photos": 11,
+      "view_count": 5
+    },
+    {
+      "id": "chevy-impala-jkb99",
+      "name": "1964 Chevy Impala — Dallas dinner car",
+      "product_code": "JKB99",
+      "manifest": "cars/chevy-impala-jkb99/manifest.json",
+      "selected": "cars/chevy-impala-jkb99/generated/reference-sheet.png",
+      "reference_photos": 10,
+      "view_count": 5
+    },
+    {
+      "id": "skyline-hck01",
+      "name": "LB-ER34 Super Silhouette Nissan Skyline",
+      "product_code": "HCK01",
+      "manifest": "cars/skyline-hck01/manifest.json",
+      "selected": "cars/skyline-hck01/generated/reference-sheet.png",
+      "reference_photos": 13,
+      "view_count": 5
+    },
+    {
+      "id": "roxy-porsche-hrv96",
+      "name": "“Roxy” Porsche 911 GT3 R (992)",
+      "product_code": "HRV96",
+      "manifest": "cars/roxy-porsche-hrv96/manifest.json",
+      "selected": "cars/roxy-porsche-hrv96/generated/reference-sheet.png",
+      "reference_photos": 14,
+      "view_count": 5
+    },
+    {
+      "id": "beach-bomb-too-k3370",
+      "name": "Beach Bomb Too — purple RLC club car",
+      "product_code": "K3370",
+      "manifest": "cars/beach-bomb-too-k3370/manifest.json",
+      "selected": "cars/beach-bomb-too-k3370/generated/reference-sheet.png",
+      "reference_photos": 8,
+      "view_count": 5
+    }
+  ],
+  "workflow": "workflow/README.md",
+  "prompt_template": "skills/hot-wheels-reference/references/five-view-prompt.txt",
+  "drafts": [
+    {
+      "id": "pontiac-firebird-htf40",
+      "name": "'77 Pontiac Firebird T/A — black Super Treasure Hunt",
+      "product_code": "HTF40",
+      "manifest": "cars/pontiac-firebird-htf40/manifest.json",
+      "preview": "cars/pontiac-firebird-htf40/generated/draft-sheet.png",
+      "reference_photos": 6,
+      "view_count": 5,
+      "status": "needs_correction"
+    },
+    {
+      "id": "mustang-cobra-r-hgk61",
+      "name": "1993 Ford Mustang Cobra R — turquoise Nationals dinner car",
+      "product_code": "HGK61",
+      "manifest": "cars/mustang-cobra-r-hgk61/manifest.json",
+      "preview": "cars/mustang-cobra-r-hgk61/generated/draft-sheet.png",
+      "reference_photos": 7,
+      "view_count": 5,
+      "status": "needs_correction"
+    },
+    {
+      "id": "skyline-jkf36",
+      "name": "LB-ER34 Super Silhouette Nissan Skyline — gold chase",
+      "product_code": "JKF36",
+      "manifest": "cars/skyline-jkf36/manifest.json",
+      "preview": "cars/skyline-jkf36/generated/draft-sheet.png",
+      "reference_photos": 6,
+      "view_count": 5,
+      "status": "needs_correction"
+    },
+    {
+      "id": "godzilla-skyline-jhw90",
+      "name": "Nissan Skyline GT-R (BNR34) — Godzilla",
+      "product_code": "JHW90",
+      "manifest": "cars/godzilla-skyline-jhw90/manifest.json",
+      "preview": "cars/godzilla-skyline-jhw90/generated/draft-sheet.png",
+      "reference_photos": 6,
+      "view_count": 5,
+      "status": "needs_correction"
+    },
+    {
+      "id": "civic-type-r-hcy12",
+      "name": "'99 Honda Civic Type R (EK9) — gold Super Treasure Hunt",
+      "product_code": "HCY12",
+      "manifest": "cars/civic-type-r-hcy12/manifest.json",
+      "preview": "cars/civic-type-r-hcy12/generated/draft-sheet.png",
+      "reference_photos": 8,
+      "view_count": 5,
+      "status": "needs_correction"
+    }
+  ],
+  "cars_directory": "cars"
+}

@@ -1,0 +1,164 @@
+{
+  "schema_version": 2,
+  "version": 2,
+  "status": "needs_correction",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "direct_from_real_photos",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "5314495fa784a3383c1a1ae35023d3af5ffed1841800c7088e7559d743ef712c",
+  "saved_output": "generated/draft-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2525524,
+    "sha256": "fbb9f054d7e158487830a152054b2e3257565d8f3e4ed5bd58698fb3925e25c4"
+  },
+  "real_inputs": [
+    {
+      "file": "reference/ebay-01.webp",
+      "role": "Near-level vehicle-right side; no fuel flap",
+      "sha256": "7765da79b1602cf9386b029e849b6096873cfbbdd39eba56bb2771d88592fc7d"
+    },
+    {
+      "file": "reference/ebay-03.webp",
+      "role": "Near-level vehicle-left side; fuel flap on rear quarter",
+      "sha256": "d7eeda22cd7aaf6bff7037a8cbc7ab856ee63b5c1ed5814baa37ebda361bc161"
+    },
+    {
+      "file": "reference/ebay-02.webp",
+      "role": "Front-quarter; headlights, red Honda badge and bumper",
+      "sha256": "f868edc7dbed9f679d2861d632ce5fde0a26ef0bb652b1faadf67a3c3dde642d"
+    },
+    {
+      "file": "reference/ebay-06.webp",
+      "role": "Rear; red/white lamps, TH, RYU plate and exhaust",
+      "sha256": "ff21c5296e408b83794a0c67c37b03fb02a7cf5248cbda3fca83e25bc5b93a76"
+    },
+    {
+      "file": "reference/ebay-05.webp",
+      "role": "Elevated top-quarter; plain roof, hood and spoiler",
+      "sha256": "2921b35fb17bf4084e55fe1349bd29a8d1d12e3f07f91e9eb07b58564f00dad9"
+    }
+  ],
+  "review": {
+    "level_side_camera": {
+      "result": "fail",
+      "observation": "Right broad hood and roof top sliver; front lamp face visible. Left broad hood top/cowl and front lamp face remain, plus mild downward cabin view."
+    },
+    "top_planes_hidden": {
+      "result": "fail",
+      "observation": "Right broad hood and roof top sliver; front lamp face visible. Left broad hood top/cowl and front lamp face remain, plus mild downward cabin view."
+    },
+    "front_rear_faces_hidden": {
+      "result": "fail",
+      "observation": "Right shows broad hood top and thin roof top plus headlight face. Left exposes broad gray-reflecting hood top and roof surface."
+    },
+    "interior_at_side_height": {
+      "result": "uncertain",
+      "observation": "Right shows broad hood top and thin roof top plus headlight face. Left exposes broad gray-reflecting hood top and roof surface."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Right shows broad hood top and thin roof top plus headlight face. Left exposes broad gray-reflecting hood top and roof surface."
+    },
+    "shape_and_stance_preserved": {
+      "result": "uncertain",
+      "observation": "Right shows broad hood top and thin roof top plus headlight face. Left exposes broad gray-reflecting hood top and roof surface."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Right broad hood and roof top sliver; front lamp face visible."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Right broad hood and roof top sliver; front lamp face visible."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "Gold six-spoke wheels, red cabin, left-only fuel flap and right exhaust preserved."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Left broad hood top/cowl and front lamp face remain, plus mild downward cabin view."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Left broad hood top/cowl and front lamp face remain, plus mild downward cabin view."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "Gold six-spoke wheels, red cabin, left-only fuel flap and right exhaust preserved."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Five complete views in four rows with requested orientations."
+    },
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Pure-white exterior to silhouettes; no visible floor pools or ground reflections in all five panels."
+    },
+    "material_depth": {
+      "result": "pass",
+      "observation": "Curved metallic highlights, spoke recesses, tire and cabin shading preserve photographic volume."
+    },
+    "identity_and_graphics": {
+      "result": "uncertain",
+      "observation": "Gold six-spoke wheels, red cabin, left-only fuel flap and right exhaust preserved."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Separate side details and graphics provided, no whole-side pixel mirroring."
+    },
+    "readable_not_mirrored_text": {
+      "result": "uncertain",
+      "observation": "Main text orientation normal; exact tiny marks not reliable."
+    },
+    "cross_view_consistency": {
+      "result": "uncertain",
+      "observation": "Gold six-spoke wheels, red cabin, left-only fuel flap and right exhaust preserved."
+    },
+    "front_rear_cameras": {
+      "result": "fail",
+      "observation": "Bottom cameras expose broad hood or upper rear/roof surfaces."
+    },
+    "limitations": [
+      "True overhead is inferred from elevated original photographs.",
+      "Fine printing and reconstructed dimensions are synthetic approximations."
+    ],
+    "selection_rationale": "Reject: both profiles remain elevated/oblique. White background and material depth now pass. Final source-only retry focuses on literal lateral projection."
+  }
+}

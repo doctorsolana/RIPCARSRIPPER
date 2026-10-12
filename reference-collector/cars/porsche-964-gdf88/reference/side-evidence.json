@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-12",
+  "id": "porsche-964-gdf88",
+  "product_code": "GDF88",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right-side profile faces image-right; left-side profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "HWRLC gallery identifies this as GDF88 and shows opposite-side front/rear quarter photos.",
+    "Opposite-side images are 600px wide; tiny lettering/relief remain uncertain.",
+    "Urban Outlaw badge stays near the front of each door; fifteen52 stays low toward the rear, not reversed text."
+  ],
+  "inferred_details": [
+    "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+    "Subpixel lettering, reflections and texture detail remain generative approximations."
+  ],
+  "source_pages_checked": [
+    "https://hwrlc.com/porsche-964/"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-02.jpg",
+          "sha256": "178dfc8b14f8309fe2471cac7f879713464df664fa4a89ff05b4ebc3346371e6",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7b38fc30-2cc4-46dc-bea7-a866520d6292",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20964-15193-c10d48de.jpg",
+          "width": 1823,
+          "height": 765
+        },
+        {
+          "file": "reference/supporting/19-Porsche-964-Right.jpg",
+          "sha256": "3d7aaf3e42ee5f5a5a53a1aa348b3b6b138fbf92ccc0c0152efe134ac4f02b94",
+          "source_page": "https://hwrlc.com/porsche-964/",
+          "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Right.jpg",
+          "width": 600,
+          "height": 349
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/supporting/19-Porsche-964-Left.jpg",
+          "sha256": "cf0c733365bcc87c94118eb4b9130102c50be92507b28aed6f81af54d6edd78c",
+          "source_page": "https://hwrlc.com/porsche-964/",
+          "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Left.jpg",
+          "width": 600,
+          "height": 345
+        },
+        {
+          "file": "reference/supporting/19-Porsche-964-Left-Rear.jpg",
+          "sha256": "9a89c35d047cf5ec1e92bd431b5db81fee3153c53efeaabf03d9159d21776768",
+          "source_page": "https://hwrlc.com/porsche-964/",
+          "image_url": "https://hwrlc.com/wp-content/uploads/2022/06/19-Porsche-964-Left-Rear.jpg",
+          "width": 600,
+          "height": 359
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    }
+  }
+}

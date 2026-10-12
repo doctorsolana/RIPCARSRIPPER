@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-12",
+  "id": "skyline-hck01",
+  "product_code": "HCK01",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right-side profile faces image-right; left-side profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Both sides have legible LBWK and number 5; keep text reading correctly in both views.",
+    "Small round side-exit protrusion visible under vehicle-left sill; not seen on vehicle-right.",
+    "Hood number 5 and its placement are visible on opposite-quarter/front photographs; earlier generated overhead distorted it."
+  ],
+  "inferred_details": [
+    "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+    "Subpixel lettering, reflections and texture detail remain generative approximations."
+  ],
+  "source_pages_checked": [
+    "https://www.hwtreasure.com/lb-er34-super-silhouette-nissan-skyline/"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "6c6abee06a60b4bda4d12432c39eff09fc0da40e3e46646157f097c2954617e4",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-20843-8e192ab4.jpg",
+          "width": 2134,
+          "height": 947
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "6cb4857a581d7fd4343e2902a43351f4922057973c57112cec7ee0cde2937a8b",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/3a54f6ab-ff47-4cbf-a41d-06689b1b0cda",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-20843-dbf8a72b.jpg",
+          "width": 2151,
+          "height": 963
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    }
+  }
+}

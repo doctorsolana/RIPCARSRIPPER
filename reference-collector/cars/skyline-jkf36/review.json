@@ -1,0 +1,159 @@
+{
+  "schema_version": 2,
+  "version": 2,
+  "status": "needs_correction",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "direct_from_real_photos",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "53b953649b17bb2410f64b9a011e494a8b13a44d8023deaf3ad31b4a871e3571",
+  "saved_output": "generated/draft-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2568190,
+    "sha256": "60a83a0208e03856face6c2e68c9416108aaa2c1b13177279ea0456ed32b4fec"
+  },
+  "real_inputs": [
+    {
+      "file": "reference/catalog-01.jpg",
+      "role": "Vehicle-right front-quarter; door badge and gold body",
+      "sha256": "c60ba02aee5badfd8b10c69681e3e614754f9ab85ec661e8bb7e4beda380d985"
+    },
+    {
+      "file": "reference/catalog-03.jpg",
+      "role": "Vehicle-left front-quarter; left sill exhaust",
+      "sha256": "d4d43166d80f58a3292c82e8fabe241f4cfe7283948f765fc65529ac0186d15a"
+    },
+    {
+      "file": "reference/catalog-02.jpg",
+      "role": "Elevated front; bumper, splitter, hood vent and roof evidence",
+      "sha256": "c8b30a9b846bf2825b84ef115447868d94177acbb4ad8df7d0d13eeea8cc8398"
+    },
+    {
+      "file": "reference/catalog-04.jpg",
+      "role": "Elevated rear; wing, lamps and diffuser",
+      "sha256": "7ae5ccb4701327b7c6d53c830f40177d4fab8be3d3284330455dbb41912e31e7"
+    }
+  ],
+  "review": {
+    "level_side_camera": {
+      "result": "fail",
+      "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports. Left shows broad hood top, frontal headlight face and wing top."
+    },
+    "top_planes_hidden": {
+      "result": "fail",
+      "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports. Left shows broad hood top, frontal headlight face and wing top."
+    },
+    "front_rear_faces_hidden": {
+      "result": "fail",
+      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
+    },
+    "interior_at_side_height": {
+      "result": "uncertain",
+      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
+    },
+    "shape_and_stance_preserved": {
+      "result": "uncertain",
+      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Left shows broad hood top, frontal headlight face and wing top."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Left shows broad hood top, frontal headlight face and wing top."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Five complete views in four rows with requested orientations."
+    },
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Pure-white exterior to silhouettes; no visible floor pools or ground reflections in all five panels."
+    },
+    "material_depth": {
+      "result": "pass",
+      "observation": "Curved metallic highlights, spoke recesses, tire and cabin shading preserve photographic volume."
+    },
+    "identity_and_graphics": {
+      "result": "uncertain",
+      "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Separate side details and graphics provided, no whole-side pixel mirroring."
+    },
+    "readable_not_mirrored_text": {
+      "result": "uncertain",
+      "observation": "Main text orientation normal; exact tiny marks not reliable."
+    },
+    "cross_view_consistency": {
+      "result": "uncertain",
+      "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+    },
+    "front_rear_cameras": {
+      "result": "fail",
+      "observation": "Bottom cameras expose broad hood or upper rear/roof surfaces."
+    },
+    "limitations": [
+      "True overhead is inferred from elevated original photographs.",
+      "Fine printing and reconstructed dimensions are synthetic approximations."
+    ],
+    "selection_rationale": "Reject: both profiles remain elevated/oblique. White background and material depth now pass. Final source-only retry focuses on literal lateral projection."
+  }
+}

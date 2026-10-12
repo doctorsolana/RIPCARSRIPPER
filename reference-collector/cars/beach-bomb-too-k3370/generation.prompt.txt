@@ -1,0 +1,32 @@
+PRIORITY CAMERA TEST — FRESH GENERATION FROM REAL PHOTOS ONLY.
+Create the toy as a volumetric object under orthographic cameras. The source camera angles must NOT be retained in the final sheet.
+The TOP TWO ROWS must be exact SIDE ELEVATIONS at 0 degrees pitch and 0 degrees yaw: camera perpendicular to the side, lens axis horizontal at center-door height. A vertical flat image plane is parallel to the car's longitudinal axis. Do not see across the roof, hood, trunk or nose. Preserve material shading to show the object's real volume without tilting the camera.
+In BOTH side rows, the round front headlight disks and front ventilation panel MUST NOT be visible; they face straight forward and should be edge-on. No exposed front bumper FACE. Show only the side outline of the rounded snout. The white roof stripes must not appear as broad bands in either side row. Keep van height, chrome cabin recess, surfboard depth and rounded purple body shading.
+The bottom front/rear views are level elevations too: hide broad hood/roof/deck top planes. Only the overhead row displays the broad roof and hood graphics. Keep the five-view layout, bright photographic metallic shading and white exterior background specified below.
+
+Use case: product-mockup
+Target: Hot Wheels Beach Bomb Too, K3370, purple 2006 RLC membership club car.
+Input 1: real right front-quarter photo, nose right, SILVER-CHROME surfboard.
+Input 2: real left front-quarter photo, nose left, ORANGE-CHROME surfboard.
+Input 3: real elevated FRONT photo: fascia and roof evidence, not a target camera.
+Input 4: real elevated REAR photo: back, engine and roof evidence, not a target camera.
+
+TOY IDENTITY: rounded chopped purple Spectraflame van, projecting side-loading surfboard pods, shiny chrome base and cabin/interior. Saturated reflective purple paint. Large HWC flame / COLLECTORS .COM side emblem, small Club/Champion/Goodyear marks on each front door, readable normally from that side. Retain source wheel design: chrome deep-dish wheels and black tires with thin redlines. Wide unsplit windshield, narrow horizontal front vent details, two round silver headlamps, tiny amber indicators, chrome front bumper. Twin long white roof stripes with central rectangular open sunroof and purple roof between them.
+ASYMMETRY: vehicle RIGHT has the silver-chrome surfboard; vehicle LEFT has the orange-chrome surfboard. They ride in the SIDE PODS, with the photographed tapered shapes and slopes; do not put them on a roof rack or through the rear window. Keep associated chrome/orange-chrome molded pod details. In top view with nose RIGHT, vehicle-right/silver board is at the BOTTOM and vehicle-left/orange board at the TOP. Rear: yellow plate with black 'BCHCLB', purple tailgate, small vertical rear lamps and chrome engine/exhaust casting projecting at lower center with chrome bumper. Use the miniature photos over packaging artwork. Do not add VW front emblem, roof luggage, yellow boards or a pickup bed.
+
+Create one complete, photographic five-view reference sheet directly from these REAL TOY PHOTOGRAPHS. No generated image or prior sheet is supplied. Reconstruct the same physical miniature consistently, preserving its real die-cast proportions and molded simplifications.
+
+LAYOUT: portrait approximately 2:3. Exactly five complete car views in four separated rows on opaque pure white (#FFFFFF).
+Row 1: large full-width VEHICLE-RIGHT profile, nose RIGHT.
+Row 2: large full-width VEHICLE-LEFT profile, nose LEFT.
+Row 3: full-width true vertical OVERHEAD, nose RIGHT.
+Row 4: centered straight FRONT at lower LEFT, straight REAR at lower RIGHT.
+Vehicle sides mean left/right as seated looking forward. Both profiles and top use matching longitudinal scale, ample white gutters, no clipping. Same closed-panel pose and suspension throughout. No labels, borders, packaging, dimensions, sixth view or added watermark.
+
+CAMERAS: both side rows are exact level orthographic-style side elevations. Place the camera at mid-door height, perpendicular to length, with zero pitch, yaw and roll. Do not copy the source photographs' elevated three-quarter cameras. Hide broad roof, hood and rear-deck TOP planes and their top-facing artwork in BOTH profiles; only thin curved silhouette edges may show. No front grille face or rear lamp-panel face. No looking down into seat cushions. Wheel faces circular, near/far wheels overlap, axle baseline level. Preserve full roof height, fender curvature, wheelbase, tire size and real stance; do not squash the toy to conceal top planes. Top camera looks vertically down. Front and rear cameras are straight level elevations, without a broad view down over the roof or hood.
+
+PHOTOGRAPHIC MATERIALS AND DEPTH: make it look like a detailed physical 3D die-cast miniature photographed with broad studio softboxes, rendered under orthographic cameras. Preserve rounded highlight gradients around fenders and body panels, metallic paint reflections, curved chrome highlights, tire sidewall volume, recessed wheel spokes, dark wheel wells, window thickness and cabin depth. The side camera is orthographic but the object is volumetric. Use soft directional form shading ON THE OBJECT, including authentic self-shading and occlusion inside cavities. Avoid flat color fills, traced outlines, vector art, cel shading, unlit sprites or sticker-like wheels. Keep controlled high-quality reflections; do not wash dark paint into flat gray.
+
+BACKGROUND ONLY: no receiving floor plane; pure-white empty background right up to the object boundary. No external ground cast shadow, contact-shadow pool, gray halo or floor reflection in ANY panel. This restriction concerns shadows OUTSIDE the car; retain natural surface shading and dark recesses INSIDE the silhouette. Do not remove dimensional shading to achieve the clean background.
+
+Fidelity: use the photographed miniature, not a full-size road car or another Hot Wheels recolor. Readable graphics belong in their physical positions on each independently reconstructed side; never horizontally mirror an image to obtain the other side. Do not invent tiny lettering when evidence cannot resolve it. Both sides have real photographic evidence; precise orthographic geometry, tiny lettering and unobserved surface details still require conservative synthesis. The overhead is inferred from elevated real front/rear/side photos, not a supplied calibrated top photograph.

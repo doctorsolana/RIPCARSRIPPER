@@ -1,0 +1,40 @@
+Use case: product-mockup
+Asset type: Five-view Hot Wheels toy reference sheet for textured 3D modeling.
+Target: [EXACT CASTING, PRODUCT CODE, RELEASE, COLOR AND LIVERY]
+
+INPUT ROLES AND EVIDENCE
+[NUMBER ACTUAL INPUTS IN SUBMISSION ORDER; STATE WHICH PHYSICAL SIDE EACH SHOWS.]
+[RIGHT SIDE: real_reference / partially_inferred / inferred; observed details and unknowns.]
+[LEFT SIDE: real_reference / partially_inferred / inferred; observed details and unknowns.]
+Generate the complete final sheet directly from these real toy photographs only. No previous generated sheet is an input, including as a layout example. Real toy photos govern identity and side-specific details. Oblique photos are detail evidence, not output camera targets. State missing top/front/rear coverage and conservatively synthesize it.
+
+LAYOUT — FIVE VIEWS, FOUR ROWS
+Tall portrait approximately 2:3, white background, complete silhouettes and generous gutters.
+Row 1: full-width VEHICLE-RIGHT side elevation, nose RIGHT.
+Row 2: full-width VEHICLE-LEFT side elevation, nose LEFT.
+Row 3: full-width true vertical OVERHEAD, nose RIGHT.
+Row 4: level straight FRONT at LEFT and REAR at RIGHT.
+Both side profiles and the overhead have matching longitudinal scale. One fixed mechanical pose, all panels closed unless requested. No sixth view, labels, borders, dimensions or packaging.
+
+MANDATORY STRICT PROFILE — BOTH SIDE ROWS
+Camera at mid-door height, horizontal and exactly perpendicular to the car length; zero pitch/yaw/roll, orthographic-style projection.
+No broad roof, hood or trunk upper plane or its top-facing artwork. Only thin curved contour edges may show.
+No front grille/headlight face, rear lamp-panel face or view down into seat cushions. Wheel faces are circular; axle baseline matches the fixed level pose; near/far wheels and wing supports align in projection.
+Preserve real roof height, curvature, wheelbase, tire size, fender occlusion, ride height and wing shape. Change the camera, never squash or flatten the toy. Do not erase or fade top-facing artwork to hide an elevated camera; reduce the actual top-plane projection.
+
+SIDE-SPECIFIC IDENTITY
+[OBSERVED COLORS, WHEELS, MATERIALS, BODYKIT, LIVERY AND MECHANICAL POSE.]
+[RIGHT-SIDE DETAILS: normal readable text, fuel doors, intakes, exhausts and decal positions.]
+[LEFT-SIDE DETAILS: independently observed text/language, features and positions.]
+Never horizontally flip the first side to make the second. Keep numbers and words readable from each viewing side. Repeated paint patterns are allowed where supported; do not assume all decoration is symmetric.
+When a side is inferred, retain known geometry and color, use restrained plausible continuity and avoid invented tiny sponsors. Evidence labels belong in metadata, not on image pixels.
+Rotate opposing top-view orientation rather than mirroring its asymmetric artwork. Preserve actual miniature simplifications rather than full-size-car detail.
+
+PHOTOGRAPHIC MATERIALS AND WHITE BACKGROUND
+Detailed physical 3D die-cast miniature photographed with broad softboxes under the specified orthographic cameras. Preserve rounded body highlight gradients, metallic paint and chrome reflections, tire sidewall volume, recessed spokes, dark wheel wells, glazing thickness and cabin depth. Keep controlled photographic form shading and self-occlusion on the object; do not flatten its materials. No traced outlines, vector fills, cel shading, unlit sprite appearance or sticker-like wheels. Camera angle and dimensional shading are separate requirements.
+Opaque pure-white background (#FFFFFF) with no receiving floor, external cast/contact shadow, gray halo or floor reflection in any panel. White right up to the car boundary. This restriction applies OUTSIDE the silhouette; preserve natural shading and genuine dark cavities INSIDE the object. Do not erase real tires, splitters or recesses.
+Request high native detail; measure actual output dimensions afterward. No routine shadow-removal pass: solve lighting and background in this source-to-final generation.
+
+ACCEPTANCE AND RETRIES
+Inspect both side rows independently, all five panels for external ground shadows, and photographic material depth. Broad upper surfaces or three-quarter faces fail the camera gate. Flat sprite-like rendering fails the dimensionality gate even with correct cameras. Review each temporary attempt; a partial improvement is not a pass. Retain the current accepted sheet or best clearly labeled draft with its exact final prompt and review.
+If needed, revise the prompt and retry directly from the real photographs; do not feed a generated sheet into the next new-car attempt. Use a generated sheet as input only when the user specifically requests an edit. Synthetic references are not calibrated CAD or neutral albedo maps.

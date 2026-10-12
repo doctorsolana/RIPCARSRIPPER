@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-12",
+  "id": "beach-bomb-too-k3370",
+  "product_code": "K3370",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right profile faces image-right; left profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Silver-chrome board on vehicle-right; orange-chrome board on vehicle-left. Catalog photos and HW Collectors News casting description agree; HWRLC prose calls the latter red. Photographed color governs."
+  ],
+  "inferred_details": [
+    "Precise orthographic reprojection is synthesized from oblique photographs.",
+    "No direct vertical top photograph; overhead arrangement uses elevated front/rear/quarter evidence.",
+    "Fine printing, tiny relief and reflections are approximations, not calibrated or pixel-exact texture transfers."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/Variation/Details/f2d6d02d-ecf3-48e2-841c-b87c0460f9b9",
+    "https://hwrlc.com/beach-bomb-too-purple/"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "290c5a91943019d4286bcab22141986f7350b044b8c7793e043d7f1288ea3a54",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f2d6d02d-ecf3-48e2-841c-b87c0460f9b9",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Beach%20Bomb%20Too-29512-a46a5787.jpg?v=",
+          "width": 1804,
+          "height": 1006
+        },
+        {
+          "file": "reference/catalog-02.jpg",
+          "sha256": "05952562f1d45332ace6e5c0017b022aa0a743cb487f2999dd1d24df168f0e7c",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f2d6d02d-ecf3-48e2-841c-b87c0460f9b9",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Beach%20Bomb%20Too-29512-d4ed9328.jpg?v=",
+          "width": 1754,
+          "height": 1032
+        }
+      ],
+      "inferred_details": [
+        "Precise orthographic reprojection is synthesized from oblique photographs.",
+        "No direct vertical top photograph; overhead arrangement uses elevated front/rear/quarter evidence.",
+        "Fine printing, tiny relief and reflections are approximations, not calibrated or pixel-exact texture transfers."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-04.jpg",
+          "sha256": "127660c76daee441be7dc76edd0ae19a6ac0c466702734d9c7727380939c50d5",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f2d6d02d-ecf3-48e2-841c-b87c0460f9b9",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Beach%20Bomb%20Too-29512-bca1ed36.jpg?v=",
+          "width": 1770,
+          "height": 1089
+        },
+        {
+          "file": "reference/catalog-05.jpg",
+          "sha256": "97ff84cce9995983dc5ea311a73c38ae6847331e3f1019bb066518e97d55e856",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f2d6d02d-ecf3-48e2-841c-b87c0460f9b9",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Beach%20Bomb%20Too-29512-a7d4b8b3.jpg?v=",
+          "width": 1846,
+          "height": 1049
+        }
+      ],
+      "inferred_details": [
+        "Precise orthographic reprojection is synthesized from oblique photographs.",
+        "No direct vertical top photograph; overhead arrangement uses elevated front/rear/quarter evidence.",
+        "Fine printing, tiny relief and reflections are approximations, not calibrated or pixel-exact texture transfers."
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "photo": "../../../../reference-collector/cars/roxy-porsche-hrv96/reference/pack-photo.webp",
+  "segModel": "birefnet-general",
+  "carBox": [
+    100,
+    476,
+    296,
+    88
+  ]
+}

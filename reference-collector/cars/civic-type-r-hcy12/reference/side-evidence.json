@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-12",
+  "id": "civic-type-r-hcy12",
+  "product_code": "HCY12",
+  "physical_side_convention": "Vehicle left/right as seated facing forward; right-side nose-right, left-side nose-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Square fuel flap only on vehicle-left rear quarter; exhaust at vehicle-right. Both sides have real seller photographs; source set includes lower-resolution 700px images, preserved without upscaling."
+  ],
+  "inferred_details": [
+    "No calibrated true overhead photo; top is inferred from elevated original photos.",
+    "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+  ],
+  "source_pages_checked": [
+    "https://www.ebay.com/itm/177101398338",
+    "https://www.hwtreasure.com/2022-super/99-honda-civic-type-r-ek9/"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/ebay-01.webp",
+          "sha256": "7765da79b1602cf9386b029e849b6096873cfbbdd39eba56bb2771d88592fc7d",
+          "source_page": "https://www.ebay.com/itm/177101398338",
+          "image_url": "https://i.ebayimg.com/images/g/SbAAAeSw8AFo9ddS/s-l1600.webp",
+          "width": 1600,
+          "height": 1600
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/ebay-03.webp",
+          "sha256": "d7eeda22cd7aaf6bff7037a8cbc7ab856ee63b5c1ed5814baa37ebda361bc161",
+          "source_page": "https://www.ebay.com/itm/177101398338",
+          "image_url": "https://i.ebayimg.com/images/g/DikAAeSwXEVo9ddS/s-l1600.webp",
+          "width": 700,
+          "height": 700
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    }
+  }
+}

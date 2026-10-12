@@ -1,0 +1,138 @@
+{
+  "schema_version": 2,
+  "version": 4,
+  "status": "accepted",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "edit_existing_sheet",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "e6d298125796590a1a5a69c075b8fa8c12eff54e9f0e2f09155bfbaf4e05a2f6",
+  "saved_output": "generated/reference-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2085441,
+    "sha256": "cfa138502bb1eafad6445142618b2a7a403730b51226a313c6c6222bf892b94e"
+  },
+  "real_inputs": [],
+  "review": {
+    "level_side_camera": {
+      "result": "pass",
+      "observation": "Both upper rows are visually level side elevations, with opposite nose directions."
+    },
+    "top_planes_hidden": {
+      "result": "pass",
+      "observation": "Neither profile reveals a broad roof, hood or rear-deck plane; only curved contour edges remain."
+    },
+    "front_rear_faces_hidden": {
+      "result": "pass",
+      "observation": "No front grille or rear lamp-panel face in either profile."
+    },
+    "interior_at_side_height": {
+      "result": "pass",
+      "observation": "Seat backs are seen through side windows, without looking down into the cushions."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Both near wheel pairs are circular with level baselines."
+    },
+    "shape_and_stance_preserved": {
+      "result": "pass",
+      "observation": "Both profiles retain the matching roof arc, wheelbase, orange wing and black wheels/tires, with the fuel flap only on the right."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked the final cleanup: row 1 faces right and remains level/perpendicular, without an upper-plane or three-quarter reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "Roof/hood/deck top planes hidden."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "Nose and tail are edge-on."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Seat backs at side height."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Roof, wheelbase and wing retained; right front-fender fuel flap visible."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked the final cleanup: row 2 faces left and remains level/perpendicular, without an upper-plane or three-quarter reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad upper body planes."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "No three-quarter nose/tail face."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "No downward view of seats."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Opposite-side silhouette matches; circular right-side fuel flap is correctly absent."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Right, left, overhead, front and rear; five complete silhouettes, four rows."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Left side preserves rear checker placement, readable front-door markings and lacks the right-side fuel flap."
+    },
+    "readable_not_mirrored_text": {
+      "result": "pass",
+      "observation": "NFTH/Hot Wheels motifs read in their own side directions rather than a bitmap mirror; small stylized lettering remains approximate."
+    },
+    "cross_view_consistency": {
+      "result": "pass",
+      "observation": "Orange paint, black wheels, wing and black stripe remain consistent; no external ground shadows remain."
+    },
+    "limitations": [
+      "Fine printed graphics and metallic surface appearance remain synthesized approximations.",
+      "Front/rear may retain some elevation; no numerical camera calibration or 3D reconstruction test."
+    ],
+    "selection_rationale": "Select this five-view version after independent review of both physical side profiles and removal of ground shadows in all five panels.",
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Visually inspected all five panels: white background reaches the tires/body edges; no external gray ground pool, blurred halo or floor reflection remains. Actual black tires, lower aero and recesses are retained.",
+      "panels": {
+        "right": "pass",
+        "left": "pass",
+        "top": "pass",
+        "front": "pass",
+        "rear": "pass"
+      }
+    },
+    "background_cleanup_preserves_subject": {
+      "result": "pass",
+      "observation": "Both side silhouettes, wheel positions, roof height and distinctive livery remain intact after removal of external shadows."
+    }
+  },
+  "provenance_note": "The retained sheet was finalized by editing a previous generated sheet. Its final exact prompt is retained; superseded generated inputs and attempt history were removed during repository cleanup. Original toy photographs remain in reference/. This is not a source-only generation."
+}

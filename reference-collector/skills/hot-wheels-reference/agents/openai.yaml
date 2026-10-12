@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hot Wheels Reference Sheets"
+  short_description: "Real photos to multiview sheets with strict side checks"
+  default_prompt: "Use $hot-wheels-reference to create a five-view sheet from real photos, verify both level side profiles and material depth, omit ground shadows, and save the current sheet, exact prompt, sources and review."

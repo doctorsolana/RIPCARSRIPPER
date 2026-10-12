@@ -1,0 +1,29 @@
+{
+  "photo": "../../../../reference-collector/cars/beach-bomb-too-k3370/reference/pack-photo.webp",
+  "segModel": "birefnet-general",
+  "carBox": [
+    74,
+    444,
+    254,
+    112
+  ],
+  "wheels": [
+    {
+      "cx": 132,
+      "cy": 534,
+      "r": 18
+    },
+    {
+      "cx": 275,
+      "cy": 533,
+      "r": 18
+    }
+  ],
+  "notes": [
+    "side_iou gate (0.966 < 0.97) accepted: the sheet draws the rear wheel ~13 px above the ground line; the pack photo shows both tyres on the ground, so the model stands them on one ground line on purpose",
+    "landing.pitch_deg 12 (seed, not locked): the boxy van fits the pack photo almost equally well from 7 to 18 deg, so the free fit drifted between rebuilds; 12 deg matches how much roof the pack photo shows"
+  ],
+  "landing": {
+    "pitch_deg": 12
+  }
+}

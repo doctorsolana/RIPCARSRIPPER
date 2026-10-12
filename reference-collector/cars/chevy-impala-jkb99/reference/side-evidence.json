@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-12",
+  "id": "chevy-impala-jkb99",
+  "product_code": "JKB99",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right-side profile faces image-right; left-side profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Both physical sides photographed in the lowered suspension pose.",
+    "Vehicle-right rear-quarter slogan: ARMADO CON GANAS Y CORAZON.",
+    "Vehicle-left rear-quarter slogan: ARMED WITH DESIRE AND HEART.",
+    "Both doors read VIVIR ES LUCHAR; graphic layout is similar but language differs."
+  ],
+  "inferred_details": [
+    "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+    "Subpixel lettering, reflections and texture detail remain generative approximations."
+  ],
+  "source_pages_checked": [
+    "https://164custom.com/hotwheels/1964-chevy-impala/JKB99/spectraflame-teal-with-ivory-roof.html"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "0661deffe81857a69f09451d962b9c82537623b256ac37718b3909411920019e",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/cab544b5-f8b8-4b32-86fd-f8f821d43788",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1964%20Chevrolet%20Impala%20SS-31847-d1130b92.jpg",
+          "width": 2125,
+          "height": 777
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "a7fc1313d546b70424abf63650852542d096bc13b5bf83ab24e44344b8945914",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/cab544b5-f8b8-4b32-86fd-f8f821d43788",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1964%20Chevrolet%20Impala%20SS-31847-aca0b28a.jpg",
+          "width": 2090,
+          "height": 754
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "type": "multiview_to_model",
+  "status": "success",
+  "progress": 100,
+  "input": {
+    "pbr": true,
+    "quad": true,
+    "files": [
+      {
+        "object": {
+          "key": "tcli_e2f8d61f42b8436988648557842dcbf7/20261012/61e2d3ef-47b9-4538-b0c9-a7e90461fa1a/file.png",
+          "bucket": "tripo-data"
+        }
+      },
+      {
+        "object": {
+          "key": "tcli_e2f8d61f42b8436988648557842dcbf7/20261012/ba8d1c71-a874-4f79-a97b-82ac19111685/file.png",
+          "bucket": "tripo-data"
+        }
+      },
+      {
+        "object": {
+          "key": "tcli_e2f8d61f42b8436988648557842dcbf7/20261012/d89644ab-8306-437b-86b5-4be5ce682e65/file.png",
+          "bucket": "tripo-data"
+        }
+      },
+      {
+        "object": {
+          "key": "tcli_e2f8d61f42b8436988648557842dcbf7/20261012/d372e2be-f5a9-4248-8d0f-e581a19cc306/file.png",
+          "bucket": "tripo-data"
+        }
+      }
+    ],
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 8000,
+    "model_version": "P2-20260801",
+    "texture_quality": "standard"
+  },
+  "output": {
+    "model_url": "model_url.fbx",
+    "rendered_image_url": "rendered_image_url.webp"
+  },
+  "task_id": "fa056646-a06d-41dd-ab81-090a3288bbc8",
+  "created_at": "2026-10-12T16:00:37.350406Z",
+  "completed_at": "2026-10-12T16:02:56.792887Z",
+  "credits_consumed": 110.0,
+  "output_note": "Temporary signed download URLs replaced by the downloaded local filenames for the GitHub snapshot."
+}

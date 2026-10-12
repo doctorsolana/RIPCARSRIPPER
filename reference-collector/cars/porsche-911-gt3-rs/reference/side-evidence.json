@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-12",
+  "id": "porsche-911-gt3-rs",
+  "product_code": "HRX26",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right-side profile faces image-right; left-side profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Physical toy photographed from both sides, 2052px and 1926px originals.",
+    "Fuel flap is on vehicle-right front fender; do not duplicate onto vehicle-left.",
+    "Checker motif repeats by physical placement but NFTH/Hot Wheels text is readable on each side."
+  ],
+  "inferred_details": [
+    "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+    "Subpixel lettering, reflections and texture detail remain generative approximations."
+  ],
+  "source_pages_checked": [
+    "https://164custom.com/hotwheels/porsche-911-gt3-rs/HRX26/spectraflame-orange.html"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "398eb628060fff0606cec1ef5a1f028dd72e8e51d127bf217693f40b763bae86",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20911%20GT3%20RS-22746-d64b6b34.jpg",
+          "width": 2052,
+          "height": 913
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "040a673e8549e331376d4dee8d2725c78a3c830361bcbd3f399fa86fe0aca817",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20911%20GT3%20RS-22746-bacc08ba.jpg",
+          "width": 1926,
+          "height": 842
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    }
+  }
+}

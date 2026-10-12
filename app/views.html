@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sheet vs Model</title>
+    <style>
+      :root { --bg: #f4f5f7; --card: #fff; --text: #16171d; --muted: #6b7080; --line: #dfe1e6; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Inter, system-ui, sans-serif; padding: 16px; }
+      header { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 12px; }
+      h1 { font-size: 18px; margin: 0; }
+      header span { color: var(--muted); }
+      .row { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+      .row h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center; }
+      .pair figure { margin: 0; }
+      .pair img, .pair canvas { width: 100%; height: auto; display: block; background: #fff; }
+      figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+      .lit { display: inline-flex; gap: 6px; align-items: center; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Sheet vs model</h1>
+      <span>Left: ChatGPT reference view · Right: the 3D model from the same angle (orthographic)</span>
+      <label class="lit"><input type="checkbox" id="lit" /> lit (as in the reveal) instead of raw texture</label>
+    </header>
+    <div id="rows"></div>
+    <script type="module" src="/src/views.ts"></script>
+  </body>
+</html>

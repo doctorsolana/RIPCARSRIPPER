@@ -1,0 +1,16 @@
+{
+  "photo": "../../../../reference-collector/cars/porsche-964-gdf88/reference/pack-photo.webp",
+  "segModel": "birefnet-general",
+  "carBox": [
+    380,
+    2680,
+    1660,
+    490
+  ],
+  "model": {
+    "wing": "solid"
+  },
+  "notes": [
+    "model.wing = solid: the 964's ducktail is part of the engine lid; the side view's thin lip over the tail lights looks like a free-standing wing to the automatic test"
+  ]
+}

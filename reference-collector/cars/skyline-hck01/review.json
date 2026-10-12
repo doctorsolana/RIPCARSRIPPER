@@ -1,0 +1,138 @@
+{
+  "schema_version": 2,
+  "version": 6,
+  "status": "accepted",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "edit_existing_sheet",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "2dd06a4e6527d289185606407a91d6452b45b47ad33e1a25e4cf3da1f0283160",
+  "saved_output": "generated/reference-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 1886095,
+    "sha256": "abd79a21bf914f11d7bea361ced5b15b1de93835ed0f2522aa691ab7d33fa044"
+  },
+  "real_inputs": [],
+  "review": {
+    "level_side_camera": {
+      "result": "pass",
+      "observation": "Both upper rows are visually level side elevations, with opposite nose directions."
+    },
+    "top_planes_hidden": {
+      "result": "pass",
+      "observation": "Neither profile reveals a broad roof, hood or rear-deck plane; only curved contour edges remain."
+    },
+    "front_rear_faces_hidden": {
+      "result": "pass",
+      "observation": "No front grille or rear lamp-panel face in either profile."
+    },
+    "interior_at_side_height": {
+      "result": "pass",
+      "observation": "Seat backs are seen through side windows, without looking down into the cushions."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Both near wheel pairs are circular with level baselines."
+    },
+    "shape_and_stance_preserved": {
+      "result": "pass",
+      "observation": "Both side rows retain wide black silhouette body, long splitter, five-spoke wheels, high rear wing and red roll cage."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked final cleanup row 1: nose right, level perpendicular camera, no three-quarter face or broad upper-plane reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "Roof/hood/deck top planes hidden."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "Nose and tail are edge-on."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Seat backs at side height."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Tall wing and extended splitter keep the source proportions; right sill lacks the left-side round exhaust protrusion."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked final cleanup row 2: nose left, level perpendicular camera, no three-quarter face or broad upper-plane reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad upper body planes."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "No three-quarter nose/tail face."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "No downward view of seats."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Left side keeps widebody/wing shape and the small round exhaust opening below the sill."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Right, left, overhead, front and rear; five complete silhouettes, four rows."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "LBWK and numeral 5 read normally on both sides; small sill exhaust appears only in the left profile, matching its real photo."
+    },
+    "readable_not_mirrored_text": {
+      "result": "pass",
+      "observation": "Side LBWK and 5 remain normally readable; the overhead hood patch is now a recognizable white outlined 5, oriented with the nose-right car."
+    },
+    "cross_view_consistency": {
+      "result": "pass",
+      "observation": "Black body, wheels, red cage and aero remain consistent; front and overhead both have a readable outlined hood 5 in the vehicle-left hood area."
+    },
+    "limitations": [
+      "Fine sponsor lettering, exact decal scale/rotation and highlights remain synthesized approximations.",
+      "Front/rear retain some camera elevation; no numerical calibration or 3D reconstruction test."
+    ],
+    "selection_rationale": "Select the final five-view sheet after separate passing side-camera reviews and removal of external ground shadows in every panel. Real both-side evidence and remaining fine-texture limitations are retained.",
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Inspected right, left, overhead, front and rear: external gray floor pools/halos are removed; white reaches the silhouettes. Real tires, black aero and recessed body surfaces remain.",
+      "panels": {
+        "right": "pass",
+        "left": "pass",
+        "top": "pass",
+        "front": "pass",
+        "rear": "pass"
+      }
+    },
+    "background_cleanup_preserves_subject": {
+      "result": "pass",
+      "observation": "Both level profiles, left-only sill exhaust, tall wing, long splitter and repaired outlined overhead hood 5 are retained; no floor shadows remain."
+    }
+  },
+  "provenance_note": "The retained sheet was finalized by editing a previous generated sheet. Its final exact prompt is retained; superseded generated inputs and attempt history were removed during repository cleanup. Original toy photographs remain in reference/. This is not a source-only generation."
+}

@@ -1,0 +1,103 @@
+{
+  "schema_version": 2,
+  "id": "porsche-964-gdf88",
+  "name": "Porsche 964 — Magnus Walker / Urban Outlaw",
+  "product_code": "GDF88",
+  "edition": "2019 RLC, dark grey carded release",
+  "updated_on": "2026-10-12",
+  "selected": {
+    "file": "generated/reference-sheet.png",
+    "version": 4,
+    "view_count": 5,
+    "background": {
+      "color": "#FFFFFF",
+      "cast_shadow": "none",
+      "contact_shadow": "none"
+    },
+    "layout": [
+      {
+        "id": "right",
+        "row": 1,
+        "nose_direction": "right",
+        "physical_side": "vehicle-right"
+      },
+      {
+        "id": "left",
+        "row": 2,
+        "nose_direction": "left",
+        "physical_side": "vehicle-left"
+      },
+      {
+        "id": "top",
+        "row": 3,
+        "nose_direction": "right"
+      },
+      {
+        "id": "front",
+        "row": 4,
+        "column": "left"
+      },
+      {
+        "id": "rear",
+        "row": 4,
+        "column": "right"
+      }
+    ],
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2151155,
+      "sha256": "51d6dcee2b8a29613bd15e2e5d88a82510ae10c9bd7cbbcae11be3543ecb38d7"
+    },
+    "latest_prompt": "generation.prompt.txt",
+    "review_record": "review.json",
+    "tool": "image_gen.imagegen (built-in)",
+    "generation_strategy": "edit_existing_sheet"
+  },
+  "reference": {
+    "directory": "reference",
+    "pack_photo": "reference/pack-photo.webp",
+    "sources": "reference/sources.json",
+    "photo_count": 11,
+    "side_evidence": "reference/side-evidence.json"
+  },
+  "prompts": [
+    "generation.prompt.txt"
+  ],
+  "review": {
+    "side_profile": "visual_pass",
+    "ground_shadows": "visual_pass",
+    "sides": {
+      "right": {
+        "side_profile": "visual_pass",
+        "evidence_status": "real_reference",
+        "review_record": "review.json",
+        "source_files": [
+          "reference/catalog-02.jpg",
+          "reference/supporting/19-Porsche-964-Right.jpg"
+        ]
+      },
+      "left": {
+        "side_profile": "visual_pass",
+        "evidence_status": "real_reference",
+        "review_record": "review.json",
+        "source_files": [
+          "reference/supporting/19-Porsche-964-Left.jpg",
+          "reference/supporting/19-Porsche-964-Left-Rear.jpg"
+        ]
+      }
+    },
+    "notes": [
+      "Both physical side profiles independently pass the strict level-camera visual check.",
+      "Both physical sides have real exact-release photo evidence; generated reprojection remains synthetic.",
+      "All five panels pass the visual check for a white background without external ground shadows.",
+      "Left panel reproduces the photo-backed placement: Urban Outlaw shield high at front of door, fifteen52 low at rear.",
+      "Small left-side sponsor details rely on lower-resolution real photos; microlettering and metallic reflections remain approximate.",
+      "Front/rear panels retain some elevation; no numerical camera calibration or 3D reconstruction test."
+    ]
+  },
+  "workflow": "../../workflow/README.md",
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt",
+  "status": "accepted"
+}

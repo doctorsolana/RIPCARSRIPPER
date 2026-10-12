@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-12",
+  "id": "mustang-cobra-r-hgk61",
+  "product_code": "HGK61",
+  "physical_side_convention": "Vehicle left/right as seated facing forward; right-side nose-right, left-side nose-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Fuel flap appears only on the vehicle-right rear quarter. Hood fixed closed; opening-engine photo retained but excluded from inputs."
+  ],
+  "inferred_details": [
+    "No calibrated true overhead photo; top is inferred from elevated original photos.",
+    "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "9037d22c7a945acbaded9413cf890042d2c969b5fca8d8fa1b73435d5629e983",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-47c986ce.jpg?v=",
+          "width": 1769,
+          "height": 806
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-04.jpg",
+          "sha256": "0f41335fafadbbd03f055b60ab78aecfdee6dad211d52c7f98467479638af7e7",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7361faa5-55dc-49c5-bf7e-45acac852ffa",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/1993%20Ford%20Mustang%20Cobra%20R-19868-02b4541a.jpg?v=",
+          "width": 1808,
+          "height": 908
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    }
+  }
+}

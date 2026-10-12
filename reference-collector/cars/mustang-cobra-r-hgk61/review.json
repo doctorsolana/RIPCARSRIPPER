@@ -1,0 +1,159 @@
+{
+  "schema_version": 2,
+  "version": 2,
+  "status": "needs_correction",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "direct_from_real_photos",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "37c89692e02eb33a9f2fdd8c8bebb1bdc3fd78356dff4338346dd7bebf05eaf6",
+  "saved_output": "generated/draft-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2585133,
+    "sha256": "51b53e4723278918616a774f06c7a030304edb87669ad42e92343c4d12e12ae9"
+  },
+  "real_inputs": [
+    {
+      "file": "reference/catalog-01.jpg",
+      "role": "Vehicle-right front-quarter; right fuel flap, wheels and cabin",
+      "sha256": "9037d22c7a945acbaded9413cf890042d2c969b5fca8d8fa1b73435d5629e983"
+    },
+    {
+      "file": "reference/catalog-04.jpg",
+      "role": "Vehicle-left front-quarter; left details, Cobra badge",
+      "sha256": "0f41335fafadbbd03f055b60ab78aecfdee6dad211d52c7f98467479638af7e7"
+    },
+    {
+      "file": "reference/catalog-02.jpg",
+      "role": "Elevated front with closed hood; lights, hood and roof evidence",
+      "sha256": "92b7729134ead6d2c6356bbeb7350a84f5e72c5e31a2965e57041b1d0a995f46"
+    },
+    {
+      "file": "reference/catalog-05.jpg",
+      "role": "Elevated rear; KOIBRA plate, lamps, spoiler and exhaust",
+      "sha256": "8ac0dc72b29bf474190d4ebd1aa4e694f7d1d2ee92a3c1f49edae5d0dd3693f6"
+    }
+  ],
+  "review": {
+    "level_side_camera": {
+      "result": "fail",
+      "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface. Left side still reveals hood top, cowl grid and spoiler surface."
+    },
+    "top_planes_hidden": {
+      "result": "fail",
+      "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface. Left side still reveals hood top, cowl grid and spoiler surface."
+    },
+    "front_rear_faces_hidden": {
+      "result": "uncertain",
+      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
+    },
+    "interior_at_side_height": {
+      "result": "uncertain",
+      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
+    },
+    "shape_and_stance_preserved": {
+      "result": "uncertain",
+      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface."
+        },
+        "front_rear_faces_hidden": {
+          "result": "uncertain",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Left side still reveals hood top, cowl grid and spoiler surface."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Left side still reveals hood top, cowl grid and spoiler surface."
+        },
+        "front_rear_faces_hidden": {
+          "result": "uncertain",
+          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheel faces approximately circular and axle baseline level."
+        },
+        "shape_and_stance_preserved": {
+          "result": "uncertain",
+          "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Five complete views in four rows with requested orientations."
+    },
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Pure-white exterior to silhouettes; no visible floor pools or ground reflections in all five panels."
+    },
+    "material_depth": {
+      "result": "pass",
+      "observation": "Curved metallic highlights, spoke recesses, tire and cabin shading preserve photographic volume."
+    },
+    "identity_and_graphics": {
+      "result": "uncertain",
+      "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Separate side details and graphics provided, no whole-side pixel mirroring."
+    },
+    "readable_not_mirrored_text": {
+      "result": "uncertain",
+      "observation": "Main text orientation normal; exact tiny marks not reliable."
+    },
+    "cross_view_consistency": {
+      "result": "uncertain",
+      "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+    },
+    "front_rear_cameras": {
+      "result": "fail",
+      "observation": "Bottom cameras expose broad hood or upper rear/roof surfaces."
+    },
+    "limitations": [
+      "True overhead is inferred from elevated original photographs.",
+      "Fine printing and reconstructed dimensions are synthetic approximations."
+    ],
+    "selection_rationale": "Reject: both profiles remain elevated/oblique. White background and material depth now pass. Final source-only retry focuses on literal lateral projection."
+  }
+}

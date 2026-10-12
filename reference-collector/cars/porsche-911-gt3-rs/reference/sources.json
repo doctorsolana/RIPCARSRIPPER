@@ -1,0 +1,85 @@
+{
+  "id": "01-orange-porsche-gt3-rs-hrx26",
+  "name": "Porsche 911 GT3 RS — orange NFT Garage",
+  "code": "HRX26",
+  "edition": "2023 NFT Garage Series 5",
+  "notes": "Orange body, black wheels and NFTH/checkered graphics match the saved pack photo. The 2011 text refers to the car model, not the release year.",
+  "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+  "catalog_count": 5,
+  "reference_count": 5,
+  "largest_width": 2212,
+  "files": [
+    {
+      "file": "pack-photo.webp",
+      "width": 2324,
+      "height": 3531,
+      "bytes": 706568,
+      "sha256": "57561e986409e86befe87a7c461ddd69a0aedcf244c66cfb4824525ffe89050b",
+      "source_page": null,
+      "image_url": null,
+      "kind": "user-saved-pack-photo",
+      "watermark": "as supplied"
+    },
+    {
+      "file": "catalog-01.jpg",
+      "width": 2052,
+      "height": 913,
+      "bytes": 242279,
+      "sha256": "398eb628060fff0606cec1ef5a1f028dd72e8e51d127bf217693f40b763bae86",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20911%20GT3%20RS-22746-d64b6b34.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 1
+    },
+    {
+      "file": "catalog-02.jpg",
+      "width": 1080,
+      "height": 1085,
+      "bytes": 165651,
+      "sha256": "1a4b5c288d6d0da8b23f81a3f79611bcb1c546a97f90880b30332b376e1d0ef2",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20911%20GT3%20RS-22746-0fa2d8bf.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 2
+    },
+    {
+      "file": "catalog-03.jpg",
+      "width": 1926,
+      "height": 842,
+      "bytes": 209067,
+      "sha256": "040a673e8549e331376d4dee8d2725c78a3c830361bcbd3f399fa86fe0aca817",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20911%20GT3%20RS-22746-bacc08ba.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 3
+    },
+    {
+      "file": "catalog-04.jpg",
+      "width": 1058,
+      "height": 927,
+      "bytes": 143509,
+      "sha256": "54545e7f81b3323cddc1df70e20c43329e7467da1b2344eb977dcd92e1438dd0",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20911%20GT3%20RS-22746-53b5c446.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 4
+    },
+    {
+      "file": "catalog-05.jpg",
+      "width": 2212,
+      "height": 1054,
+      "bytes": 292511,
+      "sha256": "15329484288ca894a321bc1d38641f9db183fd2757fc6034ef300d4aa87f82fa",
+      "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/f56a1f00-692c-43dd-827e-d179751f080a",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Porsche%20911%20GT3%20RS-22746-9443facb.jpg",
+      "kind": "catalog-loose-car-photo",
+      "watermark": "Hot Wheels Newsletter watermark retained",
+      "view_number": 5
+    }
+  ],
+  "note": "Original source bytes copied unchanged. Canonical paths are relative to this reference/ directory. Photography watermarks retained."
+}

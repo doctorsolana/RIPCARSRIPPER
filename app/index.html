@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>RIPCARS Reveal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="flash"></div>
+    <div id="tear"></div>
+    <div id="steps"><i></i><i></i><i></i></div>
+    <div id="stage-text">
+      <div class="block" id="b-era"><div class="label">Model year</div><div class="value" id="year"></div></div>
+      <div class="block" id="b-make">
+        <div class="label">Make</div>
+        <div class="value" id="make"></div>
+        <div class="badge" id="badge"></div>
+      </div>
+      <div class="block" id="b-model"><div class="label">Model</div><div class="value" id="model"></div></div>
+    </div>
+    <div id="panel">
+      <div class="chip" id="p-rarity"></div>
+      <div class="p-name" id="p-name"></div>
+      <div class="p-sub" id="p-sub"></div>
+      <div class="p-sub2" id="p-sub2"></div>
+      <button id="replay">Rip again</button>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

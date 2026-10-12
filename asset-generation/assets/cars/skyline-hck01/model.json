@@ -1,0 +1,54 @@
+{
+  "car": "skyline-hck01",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      1.0172,
+      1.021,
+      0.9866
+    ],
+    "offset_xy": [
+      -0.0396,
+      0.0279
+    ],
+    "side+top_iou": 1.8347
+  },
+  "glass_source": "traced (hints.json model.rebake.glass)",
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.0686,
+    "height": 1.1859,
+    "width": 1.5016
+  },
+  "wheels": [],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9494,
+    "top": 0.9152,
+    "left": 0.9215,
+    "front": 0.9324,
+    "rear": 0.9383
+  },
+  "glb": {
+    "bytes": 1165504,
+    "triangles": 15821
+  }
+}

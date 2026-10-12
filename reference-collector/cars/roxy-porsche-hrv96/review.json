@@ -1,0 +1,138 @@
+{
+  "schema_version": 2,
+  "version": 5,
+  "status": "accepted",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "edit_existing_sheet",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "e6aaf6aec1399f995f750c1bad714319c45ede42f9d107d4b3a5ef38e16f7508",
+  "saved_output": "generated/reference-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 1819458,
+    "sha256": "2c53de56289cf258a6bdd5fea40dde225a13e4c2f155c1b73b75ab6c8a92afd5"
+  },
+  "real_inputs": [],
+  "review": {
+    "level_side_camera": {
+      "result": "pass",
+      "observation": "Both upper rows are visually level side elevations, with opposite nose directions."
+    },
+    "top_planes_hidden": {
+      "result": "pass",
+      "observation": "Neither profile reveals a broad roof, hood or rear-deck plane; only curved contour edges remain."
+    },
+    "front_rear_faces_hidden": {
+      "result": "pass",
+      "observation": "No front grille or rear lamp-panel face in either profile."
+    },
+    "interior_at_side_height": {
+      "result": "pass",
+      "observation": "Seat backs are seen through side windows, without looking down into the cushions."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Both near wheel pairs are circular with level baselines."
+    },
+    "shape_and_stance_preserved": {
+      "result": "pass",
+      "observation": "Both profiles retain the 992 race-car roof, rounded fenders, tall pink wing, pink wheels and black lower aero."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked final cleanup row 1: nose right, level perpendicular camera, no three-quarter face or broad upper-plane reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "Roof/hood/deck top planes hidden."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "Nose and tail are edge-on."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Seat backs at side height."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Right profile retains the broad fenders, rear intake, pink wing and wheels, with white 80 and forward-reaching dinosaur arm."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked final cleanup row 2: nose left, level perpendicular camera, no three-quarter face or broad upper-plane reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad upper body planes."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "No three-quarter nose/tail face."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "No downward view of seats."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Left profile retains matching wheelbase/roof/wing, source-backed livery positions and a forward-reaching claw."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Right, left, overhead, front and rear; five complete silhouettes, four rows."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Both physical sides keep white 80, normally oriented sponsors, pink spot pattern and arm/claw pointing toward the physical nose; no bitmap flip."
+    },
+    "readable_not_mirrored_text": {
+      "result": "pass",
+      "observation": "Both door numbers read 80 rather than mirrored digits; Michelin/AO motifs remain normally oriented, while tiny Hot Wheels/sponsor lettering is approximate."
+    },
+    "cross_view_consistency": {
+      "result": "pass",
+      "observation": "Pink paint and wheels, tall rear wing, black intakes and toothed nose remain consistent across all five panels."
+    },
+    "limitations": [
+      "Tiny sponsors, spot pattern and dinosaur linework are generative approximations, not exact texture transfers.",
+      "Front/rear retain some camera elevation; no numerical camera calibration or 3D reconstruction test."
+    ],
+    "selection_rationale": "Select the final five-view sheet after separate passing side-camera reviews and removal of external ground shadows in every panel. Real both-side evidence and remaining fine-texture limitations are retained.",
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Inspected right, left, overhead, front and rear: external gray floor pools/halos are removed; white reaches the silhouettes. Real tires, black aero and recessed body surfaces remain.",
+      "panels": {
+        "right": "pass",
+        "left": "pass",
+        "top": "pass",
+        "front": "pass",
+        "rear": "pass"
+      }
+    },
+    "background_cleanup_preserves_subject": {
+      "result": "pass",
+      "observation": "Both level pink profiles retain white 80, pink wheels, forward claws, rear wing and toothed nose; background is clear beneath every panel."
+    }
+  },
+  "provenance_note": "The retained sheet was finalized by editing a previous generated sheet. Its final exact prompt is retained; superseded generated inputs and attempt history were removed during repository cleanup. Original toy photographs remain in reference/. This is not a source-only generation."
+}

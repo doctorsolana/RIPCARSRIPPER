@@ -1,0 +1,21 @@
+[project]
+name = "ripcars-assets"
+version = "0.1.0"
+description = "RIPCARS stage 2: multiview reference sheets + pack photos -> reveal-ready 3D cars"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "numpy>=1.26",
+  "opencv-python-headless>=4.9",
+  "pillow>=10",
+  "scipy>=1.11",
+  "scikit-image>=0.22",
+  "trimesh>=4.0",
+  "xatlas>=0.0.9",
+  "fast-simplification>=0.1.7",
+  "rembg[cpu]>=2.0.59",
+  "shapely>=2.2.0",
+  "mapbox-earcut>=2.1.0",
+]
+
+[tool.uv]
+package = false

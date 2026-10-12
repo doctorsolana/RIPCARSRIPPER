@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-12",
+  "id": "pontiac-firebird-htf40",
+  "product_code": "HTF40",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right profile faces image-right; left profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Both sides photographed with normally readable TH at the rear of each door and small Hot Wheels above. Rear lamp relief is largely unpainted metallic chrome, unlike full-size-car assumptions."
+  ],
+  "inferred_details": [
+    "Precise orthographic reprojection is synthesized from oblique photographs.",
+    "No direct vertical top photograph; overhead arrangement uses elevated front/rear/quarter evidence.",
+    "Fine printing, tiny relief and reflections are approximations, not calibrated or pixel-exact texture transfers."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+    "https://www.hwtreasure.com/2024-super/77-pontiac-firebird/"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "3211100b4a76f49f9cb43099f13a9dc122e8aacc4586849e508b02517a763125",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/%2777%20Pontiac%20Firebird-24485-677ce92d.jpg?v=",
+          "width": 2073,
+          "height": 884
+        }
+      ],
+      "inferred_details": [
+        "Precise orthographic reprojection is synthesized from oblique photographs.",
+        "No direct vertical top photograph; overhead arrangement uses elevated front/rear/quarter evidence.",
+        "Fine printing, tiny relief and reflections are approximations, not calibrated or pixel-exact texture transfers."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "fe4ce2308231931b63dfd9be54228d2a626e7fdc100014905793287252ed029a",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/7d8c7c41-de65-4bb0-b220-63b2a7c28ab6",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/%2777%20Pontiac%20Firebird-24485-a4afcb68.jpg?v=",
+          "width": 2003,
+          "height": 872
+        }
+      ],
+      "inferred_details": [
+        "Precise orthographic reprojection is synthesized from oblique photographs.",
+        "No direct vertical top photograph; overhead arrangement uses elevated front/rear/quarter evidence.",
+        "Fine printing, tiny relief and reflections are approximations, not calibrated or pixel-exact texture transfers."
+      ]
+    }
+  }
+}

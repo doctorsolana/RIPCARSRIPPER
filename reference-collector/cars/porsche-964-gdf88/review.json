@@ -1,0 +1,138 @@
+{
+  "schema_version": 2,
+  "version": 4,
+  "status": "accepted",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "edit_existing_sheet",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "bab328be19886c1d1a56c1029efa33f50db70000d95fdda9eec90f008131897a",
+  "saved_output": "generated/reference-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2151155,
+    "sha256": "51d6dcee2b8a29613bd15e2e5d88a82510ae10c9bd7cbbcae11be3543ecb38d7"
+  },
+  "real_inputs": [],
+  "review": {
+    "level_side_camera": {
+      "result": "pass",
+      "observation": "Both upper rows are visually level side elevations, with opposite nose directions."
+    },
+    "top_planes_hidden": {
+      "result": "pass",
+      "observation": "Neither profile reveals a broad roof, hood or rear-deck plane; only curved contour edges remain."
+    },
+    "front_rear_faces_hidden": {
+      "result": "pass",
+      "observation": "No front grille or rear lamp-panel face in either profile."
+    },
+    "interior_at_side_height": {
+      "result": "pass",
+      "observation": "Seat backs are seen through side windows, without looking down into the cushions."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Both near wheel pairs are circular with level baselines."
+    },
+    "shape_and_stance_preserved": {
+      "result": "pass",
+      "observation": "Both profiles retain the low charcoal 964 body, roof arc, rear spoiler, fender louvers and circular silver wheels."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked the final cleanup: row 1 faces right and remains level/perpendicular, without an upper-plane or three-quarter reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "Roof/hood/deck top planes hidden."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "Nose and tail are edge-on."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Seat backs at side height."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Right silhouette retains wheelbase, roof and spoiler; door shield is high/front and fifteen52 low/rear."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "pass",
+          "observation": "Rechecked the final cleanup: row 2 faces left and remains level/perpendicular, without an upper-plane or three-quarter reveal."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad upper body planes."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "No three-quarter nose/tail face."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "No downward view of seats."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular wheel faces and level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Opposite silhouette retains the 964 shape, louvered quarter glazing and matching silver wheels; source-backed logos keep physical front/rear positions."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Right, left, overhead, front and rear; five complete silhouettes, four rows."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Left panel reproduces the photo-backed placement: Urban Outlaw shield high at front of door, fifteen52 low at rear."
+    },
+    "readable_not_mirrored_text": {
+      "result": "pass",
+      "observation": "fifteen52 lettering reads normally on both sides; shield lettering is very small and remains approximate."
+    },
+    "cross_view_consistency": {
+      "result": "pass",
+      "observation": "Charcoal paint, silver wheels, rear spoiler and black seats remain consistent across the five panels."
+    },
+    "limitations": [
+      "Small left-side sponsor details rely on lower-resolution real photos; microlettering and metallic reflections remain approximate.",
+      "Front/rear panels retain some elevation; no numerical camera calibration or 3D reconstruction test."
+    ],
+    "selection_rationale": "Select this five-view version after independent review of both physical side profiles and removal of ground shadows in all five panels.",
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "Visually inspected all five panels: white background reaches the tires/body edges; no external gray ground pool, blurred halo or floor reflection remains. Actual black tires, lower aero and recesses are retained.",
+      "panels": {
+        "right": "pass",
+        "left": "pass",
+        "top": "pass",
+        "front": "pass",
+        "rear": "pass"
+      }
+    },
+    "background_cleanup_preserves_subject": {
+      "result": "pass",
+      "observation": "Both side silhouettes, wheel positions, roof height and distinctive livery remain intact after removal of external shadows."
+    }
+  },
+  "provenance_note": "The retained sheet was finalized by editing a previous generated sheet. Its final exact prompt is retained; superseded generated inputs and attempt history were removed during repository cleanup. Original toy photographs remain in reference/. This is not a source-only generation."
+}

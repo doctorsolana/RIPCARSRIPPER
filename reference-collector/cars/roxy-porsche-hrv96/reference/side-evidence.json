@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-12",
+  "id": "roxy-porsche-hrv96",
+  "product_code": "HRV96",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right-side profile faces image-right; left-side profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Physical pink HRV96 photos show both sides at over 2600px native width.",
+    "Both doors carry readable white 80 and sponsors; dinosaur arms/claws point toward the actual front on each side.",
+    "Do not borrow green Rexy or Mini GT/full-size Roxy details."
+  ],
+  "inferred_details": [
+    "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+    "Subpixel lettering, reflections and texture detail remain generative approximations."
+  ],
+  "source_pages_checked": [
+    "https://www.hwtreasure.com/roxy-porsche-911-gt3-r-992/"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "e977c4a93162fa83b59b304077bb52d1155c5d5f023f85823cf753b79908ee13",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/66b7abfa-6953-4125-ba28-e8eb451f41c9",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/_REXY_%20Porsche%20911%20GT3%20R%20%28992%29-26014-ecaff7ee.jpg",
+          "width": 2628,
+          "height": 1228
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "010cf4e368d59ef3bba32fada1b225ef112c455e08cdc415858ace9c1c5d896c",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/66b7abfa-6953-4125-ba28-e8eb451f41c9",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/_REXY_%20Porsche%20911%20GT3%20R%20%28992%29-26014-92bdb279.jpg",
+          "width": 2603,
+          "height": 1162
+        }
+      ],
+      "inferred_details": [
+        "Exact orthographic reprojection and unseen small surface relief are synthesized.",
+        "Subpixel lettering, reflections and texture detail remain generative approximations."
+      ]
+    }
+  }
+}

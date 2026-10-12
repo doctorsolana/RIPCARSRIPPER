@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "id": "godzilla-skyline-jhw90",
+  "name": "Nissan Skyline GT-R (BNR34) — Godzilla",
+  "product_code": "JHW90",
+  "edition": "2026 Pop Culture Mix A, Godzilla, cream/burgundy",
+  "updated_on": "2026-10-12",
+  "status": "needs_correction",
+  "selected": null,
+  "reference": {
+    "directory": "reference",
+    "pack_photo": "reference/pack-photo.png",
+    "sources": "reference/sources.json",
+    "photo_count": 6,
+    "side_evidence": "reference/side-evidence.json"
+  },
+  "prompts": [
+    "generation.prompt.txt"
+  ],
+  "review": {
+    "side_profile": "visual_fail",
+    "ground_shadows": "visual_pass",
+    "material_depth": "visual_pass",
+    "sides": {
+      "right": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      },
+      "left": {
+        "side_profile": "visual_fail",
+        "evidence_status": "real_reference",
+        "review_record": "review.json"
+      }
+    },
+    "notes": [
+      "Both profiles expose roof/hood top surfaces and forward headlight faces.",
+      "All three attempts depict four roof claw marks; real release has three.",
+      "Small Hot Wheels flame lettering below the left ゴジラ is garbled/reversed-looking; artwork is not an exact texture transfer.",
+      "True vertical top photo unavailable; overhead is inferred from elevated real photos.",
+      "Fine printing, reflections and reconstructed geometry are approximate, not a neutral albedo map or calibrated CAD.",
+      "No 3D reconstruction test was performed for this sheet."
+    ]
+  },
+  "workflow": "../../workflow/README.md",
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt",
+  "preview": {
+    "file": "generated/draft-sheet.png",
+    "version": 2,
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2520422,
+      "sha256": "744c2de548489ec36cdd4af4d6f83cb2ae5a671e3242db11f748f46a101380e7"
+    },
+    "review_record": "review.json",
+    "latest_prompt": "generation.prompt.txt",
+    "generation_strategy": "direct_from_real_photos",
+    "generated_inputs": 0,
+    "view_count": 5
+  }
+}

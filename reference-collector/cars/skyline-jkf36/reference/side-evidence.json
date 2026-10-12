@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-12",
+  "id": "skyline-jkf36",
+  "product_code": "JKF36",
+  "physical_side_convention": "Vehicle left/right as seated facing forward; right-side nose-right, left-side nose-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Gold sill exhaust protrudes on vehicle-left only. Door anniversary badges are independently readable on both sides. Pack FRY86 is the assortment code; exact gold chase is JKF36."
+  ],
+  "inferred_details": [
+    "No calibrated true overhead photo; top is inferred from elevated original photos.",
+    "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "c60ba02aee5badfd8b10c69681e3e614754f9ab85ec661e8bb7e4beda380d985",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-33182-653b1463.jpg?v=",
+          "width": 1868,
+          "height": 863
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "d4d43166d80f58a3292c82e8fabe241f4cfe7283948f765fc65529ac0186d15a",
+          "source_page": "https://catalog.hwcollectorsnews.com/Variation/Details/188fce1a-cdf2-4632-af83-eeee9ee85606",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-33182-10cd883e.jpg?v=",
+          "width": 1851,
+          "height": 887
+        }
+      ],
+      "inferred_details": [
+        "No calibrated true overhead photo; top is inferred from elevated original photos.",
+        "Reprojected exact geometry, very small printing and hidden surfaces remain synthesized."
+      ]
+    }
+  }
+}

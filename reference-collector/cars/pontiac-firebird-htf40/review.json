@@ -1,0 +1,161 @@
+{
+  "schema_version": 2,
+  "version": 3,
+  "status": "needs_correction",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "direct_from_real_photos",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "a84459279d8a7333d65b4cd1ba378cb7ba74f9439b4675e443aca17aa5c3bc9b",
+  "saved_output": "generated/draft-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2797311,
+    "sha256": "35757d3d5f7f8b93610729a9719eaefdc64c3b1e0ac4bc38cb9323cbf5eb82ad"
+  },
+  "real_inputs": [
+    {
+      "file": "reference/catalog-01.jpg",
+      "role": "Vehicle-right front-quarter; right TH/Hot Wheels placement and wheels",
+      "sha256": "3211100b4a76f49f9cb43099f13a9dc122e8aacc4586849e508b02517a763125"
+    },
+    {
+      "file": "reference/catalog-03.jpg",
+      "role": "Vehicle-left front-quarter; left TH/Hot Wheels placement and wheels",
+      "sha256": "fe4ce2308231931b63dfd9be54228d2a626e7fdc100014905793287252ed029a"
+    },
+    {
+      "file": "reference/catalog-02.jpg",
+      "role": "Elevated front; miniature grille, hood phoenix, scoop and T-top evidence",
+      "sha256": "6d5adce67f1517b92a2fd8c51ffd6c261236f1d8ceac6dbfce157b8a61ece340"
+    },
+    {
+      "file": "reference/catalog-04.jpg",
+      "role": "Elevated rear; unpainted metallic rear relief, spoiler and T-top evidence",
+      "sha256": "4cb524e742775b5f80a4fba2f09e74dbcac2dc7fe3f258e95dc5d2f153d95450"
+    }
+  ],
+  "review": {
+    "level_side_camera": {
+      "result": "fail",
+      "observation": "Right profile retains elevated camera: broad hood surface with bird and rear deck are visible."
+    },
+    "top_planes_hidden": {
+      "result": "fail",
+      "observation": "Hood/deck top planes and wide windshield surface remain exposed."
+    },
+    "front_rear_faces_hidden": {
+      "result": "pass",
+      "observation": "Front/rear fascia faces are largely edge-on."
+    },
+    "interior_at_side_height": {
+      "result": "uncertain",
+      "observation": "Tan cabin and rear shelf retain downward exposure; not a confirmed strict side-height view."
+    },
+    "wheel_projection": {
+      "result": "pass",
+      "observation": "Near wheels are circular on a level axle baseline."
+    },
+    "shape_and_stance_preserved": {
+      "result": "pass",
+      "observation": "Main coupe, scoop, spoiler and wheels retain recognizable casting proportions."
+    },
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Right profile retains elevated camera: broad hood surface with bird and rear deck are visible."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Hood/deck top planes and wide windshield surface remain exposed."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "Front/rear fascia faces are largely edge-on."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Tan cabin and rear shelf retain downward exposure; not a confirmed strict side-height view."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Near wheels are circular on a level axle baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Main coupe, scoop, spoiler and wheels retain recognizable casting proportions."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Left profile retains downward pitch across the hood and rear deck."
+        },
+        "top_planes_hidden": {
+          "result": "fail",
+          "observation": "Broad hood top and top-facing red bird visible above front fender."
+        },
+        "front_rear_faces_hidden": {
+          "result": "pass",
+          "observation": "No broad front grille/rear lamp-panel face."
+        },
+        "interior_at_side_height": {
+          "result": "uncertain",
+          "observation": "Cabin is improved but still has downward exposure, not a confirmed pass."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Circular near wheel faces with level baseline."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Main roof/scoop/spoiler silhouette and wheelbase retained."
+        }
+      }
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Five complete panels with specified side/nose directions and four-row placement."
+    },
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "White background without visible exterior ground-shadow pools."
+    },
+    "material_depth": {
+      "result": "pass",
+      "observation": "Glossy fender gradients, bronze wheel-spoke recesses, round tires and tan cabin preserve physical toy depth."
+    },
+    "identity_and_graphics": {
+      "result": "pass",
+      "observation": "Black HTF40 identity, lower stripes/TH, pillar birds, tan cabin and red-rim bronze wheels retained; micrographics approximate."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Both sides use their real evidence with TH at the rear of each door."
+    },
+    "readable_not_mirrored_text": {
+      "result": "pass",
+      "observation": "TH reads normally both sides; tiny Hot Wheels marks remain approximate."
+    },
+    "cross_view_consistency": {
+      "result": "uncertain",
+      "observation": "Main livery/pose consistent but overhead wheel projection and roof geometry remain synthesized."
+    },
+    "front_rear_cameras": {
+      "result": "fail",
+      "observation": "Bottom rows look down across hood or rear-deck surface."
+    },
+    "limitations": [
+      "Both side rows fail the strict camera gate: broad hood and rear-deck top planes remain visible.",
+      "Front and rear panels also retain elevated cameras.",
+      "Overhead geometry is synthesized; exposed wheel-face projections may not be consistent with a true vertical view.",
+      "Tiny logos/lettering and exact textures are generative approximations."
+    ],
+    "selection_rationale": "Do not select: source-only material depth improved, but two source-only retries did not resolve side-camera failure. Retain as draft; no generated/reference-sheet.png published."
+  }
+}
