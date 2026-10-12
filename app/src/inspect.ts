@@ -135,19 +135,27 @@ function setTab(t: string) {
   syncUrl();
   resize();
 }
-function loadFrames() {
+// snapshots are local working files (git-ignored): a fresh clone only has each car's current model
+const exists = (url: string) =>
+  fetch(url, { method: 'HEAD' }).then((r) => r.ok && !(r.headers.get('content-type') ?? '').includes('html')).catch(() => false);
+
+async function loadFrames() {
   const frame = (pane: string, src: string) => {
     const f = $(pane).querySelector('iframe')!;
     if (tab === pane && f.dataset.src !== src) f.src = f.dataset.src = src; // load lazily, once per car
   };
-  const entry = cars.find((c) => c.id === current);
-  // every version of this car side by side: scripts' current model, older snapshots, Tripo outputs + references
-  // (minus the snapshot that was promoted to model.glb: that one is "current")
-  const promoted = entry?.source?.replace(/^snapshots\/|\.glb$/g, '');
-  const versions = ['current', ...(entry?.versions ?? []).filter((v) => v !== promoted)];
-  frame('pcompare', `/compare.html?car=${current}&m=${versions.join(',')}&refs=1`);
   frame('pviews', `/views.html?car=${current}`);
   frame('preveal', `/index.html?car=${current}`);
+  const car = current;
+  const entry = cars.find((c) => c.id === car);
+  // every version of this car side by side: the current model, then the snapshots this checkout has
+  // (minus the one that was promoted to model.glb: that one is "current")
+  const promoted = entry?.source?.replace(/^snapshots\/|\.glb$/g, '');
+  const named = (entry?.versions ?? []).filter((v) => v !== promoted);
+  const found = await Promise.all(named.map(async (v) => (await exists(`/cars/${car}/snapshots/${v}.glb`)) || (await exists(`/cars/${car}/snapshots/${v}.fbx`))));
+  if (car !== current) return; // another car was picked meanwhile
+  const versions = ['current', ...named.filter((_, i) => found[i])];
+  frame('pcompare', `/compare.html?car=${car}&m=${versions.join(',')}&refs=1`);
 }
 function syncUrl() {
   history.replaceState(null, '', `?car=${current}&tab=${tab}`);

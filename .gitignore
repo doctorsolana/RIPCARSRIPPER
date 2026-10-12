@@ -14,7 +14,7 @@ reference-collector/.work/
 asset-generation/.cache/
 asset-generation/qa/
 
-# before/after model snapshots for the app compare page (local review only)
+# before/after model snapshots for the app compare page (local review only; rebuilt by clean/rebake)
+# - the sheet crops in review/ are kept: the inspector's "vs sheet" tab needs them on a fresh clone
 asset-generation/assets/cars/*/snapshots/
-asset-generation/assets/cars/*/review/
 asset-generation/assets/cars/*/tripo/*/views/
