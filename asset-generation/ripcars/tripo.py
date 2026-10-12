@@ -90,9 +90,12 @@ def default_sheet(car: str) -> Path:
 def multiview_images(sheet_path: Path, car: str, out: Path, size: int = 1024) -> dict[str, Path]:
     """Front, left, rear and right cut out (matte) onto white, centred in squares, all four at the
     same scale (the car's length fills 88% of the side views) so Tripo sees one consistent object."""
+    from .__main__ import _layout
     from .views import calibrate
 
-    panels = sheet.load(sheet_path, cache_dir=paths.cache_dir(car))
+    # the selected sheet's manifest says where each view is (views that touch can't be found by gutters)
+    layout = _layout(car) if Path(sheet_path).resolve() == paths.sheet(car).resolve() else None
+    panels = sheet.load(sheet_path, cache_dir=paths.cache_dir(car), layout=layout)
     cal = calibrate(panels)
     px_per_unit = 0.88 * size / cal.L
     out.mkdir(parents=True, exist_ok=True)
@@ -130,6 +133,11 @@ def prepare(car: str, sheet_path: str | None = None) -> dict:
     plan = {"car": car, "mode": mode, "source": rel(src), "endpoint": BASE + endpoint,
             "files": {k: rel(v) for k, v in files.items()}, "body": body}
     (out / "request.json").write_text(json.dumps(plan, indent=2) + "\n")
+    # one image to review before anything is sent: the four inputs side by side
+    tiles = [cv2.resize(cv2.imread(str(p)), (400, 400), interpolation=cv2.INTER_AREA) for p in files.values()]
+    for t, view in zip(tiles, files):
+        cv2.putText(t, view, (8, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1, cv2.LINE_AA)
+    cv2.imwrite(str(paths.qa_dir(car) / "tripo-inputs.jpg"), np.hstack(tiles), [cv2.IMWRITE_JPEG_QUALITY, 90])
     return plan
 
 

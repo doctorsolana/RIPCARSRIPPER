@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { splitGlass } from './glass';
+import { mountNav } from './nav';
 import { tierOf } from './rarity';
 
 // /inspect.html[?car=<id>&tab=p3d|pviews|preveal|pinfo] - every car the pipeline built, one place.
@@ -10,6 +11,7 @@ interface Entry { id: string; make: string; model: string; year: number | null; 
 
 const $ = (id: string) => document.getElementById(id)!;
 const q = new URLSearchParams(location.search);
+const nav = await mountNav('inspect');
 const { cars } = (await fetch('/cars/index.json').then((r) => r.json())) as { cars: Entry[] };
 
 // ---- 3D viewer ----
@@ -155,6 +157,7 @@ document.querySelectorAll<HTMLButtonElement>('.tabs button').forEach((b) => b.ad
 function select(id: string) {
   const c = cars.find((x) => x.id === id) ?? cars[0];
   current = c.id;
+  nav.setCar(c.id);
   document.querySelectorAll('.car').forEach((b) => b.classList.toggle('on', (b as HTMLElement).dataset.id === c.id));
   $('name').textContent = `${c.make} ${c.model}${c.year ? ` · ${c.year}` : ''}`;
   show3d(c.id, c.modelled);
@@ -174,5 +177,6 @@ for (const c of cars) {
   b.addEventListener('click', () => select(c.id));
   $('list').append(b);
 }
-select(q.get('car') ?? cars[0].id);
+select(q.get('car') ?? (cars.find((c) => c.modelled) ?? cars[0]).id); // default: the first car with a model
 setTab(tab);
+(window as any).__ready = true; // for scripts/shoot.mjs

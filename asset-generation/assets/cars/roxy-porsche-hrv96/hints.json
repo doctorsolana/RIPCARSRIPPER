@@ -6,5 +6,152 @@
     476,
     296,
     88
+  ],
+  "model": {
+    "glass": {
+      "remove": {
+        "front": [
+          [
+            [
+              90,
+              1185
+            ],
+            [
+              410,
+              1185
+            ],
+            [
+              410,
+              1223
+            ],
+            [
+              90,
+              1223
+            ]
+          ]
+        ],
+        "top": [
+          [
+            [
+              535,
+              805
+            ],
+            [
+              563,
+              805
+            ],
+            [
+              567,
+              850
+            ],
+            [
+              570,
+              935
+            ],
+            [
+              567,
+              1010
+            ],
+            [
+              563,
+              1032
+            ],
+            [
+              535,
+              1032
+            ]
+          ]
+        ]
+      }
+    },
+    "rebake": {
+      "glass": {
+        "side": "sheet",
+        "left": "sheet",
+        "front": "sheet",
+        "rear": "sheet",
+        "top": [
+          [
+            [
+              193,
+              934
+            ],
+            [
+              193,
+              888
+            ],
+            [
+              200,
+              855
+            ],
+            [
+              210,
+              851
+            ],
+            [
+              300,
+              848
+            ],
+            [
+              372,
+              848
+            ],
+            [
+              372,
+              934
+            ]
+          ],
+          [
+            [
+              572,
+              934
+            ],
+            [
+              582,
+              898
+            ],
+            [
+              571,
+              826
+            ],
+            [
+              595,
+              817
+            ],
+            [
+              647,
+              805
+            ],
+            [
+              658,
+              807
+            ],
+            [
+              670,
+              835
+            ],
+            [
+              683,
+              897
+            ],
+            [
+              685,
+              922
+            ],
+            [
+              685,
+              934
+            ]
+          ]
+        ]
+      },
+      "glass_mirror": [
+        "top"
+      ]
+    }
+  },
+  "notes": [
+    "model.glass.remove: the sheet's window finder took the white PORSCHE sun strip above the windscreen for glass (front view x 149-364, y 1201-1222; top view x 542-569); it stays opaque",
+    "model.rebake.glass: side/left/front/rear use the sheet's own window masks (Tripo was given those views, so mesh and drawing agree). Top: Tripo never saw it and put the rear window ~40 px further forward than the drawing, so both windows are traced on the mesh (qa trace-top.png, starting from the dark window paint of Tripo's own texture), one half mirrored. The rear window includes the strip at x 348-372 where Tripo painted an invented mirrored PORSCHE banner on the glass"
   ]
 }

@@ -6,8 +6,8 @@
       "model": "Beach Bomb Too",
       "year": 2006,
       "rarity": "legendary",
-      "modelled": true,
-      "passed": false,
+      "modelled": false,
+      "passed": null,
       "versions": [],
       "source": null
     },
@@ -19,8 +19,11 @@
       "rarity": "legendary",
       "modelled": true,
       "passed": true,
-      "versions": [],
-      "source": null
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
       "id": "porsche-911-gt3-rs",
@@ -28,8 +31,8 @@
       "model": "911 GT3 RS",
       "year": 2011,
       "rarity": "rare",
-      "modelled": true,
-      "passed": true,
+      "modelled": false,
+      "passed": null,
       "versions": [],
       "source": null
     },
@@ -39,8 +42,8 @@
       "model": "964",
       "year": 1989,
       "rarity": "epic",
-      "modelled": true,
-      "passed": true,
+      "modelled": false,
+      "passed": null,
       "versions": [],
       "source": null
     },
@@ -52,8 +55,11 @@
       "rarity": "chase",
       "modelled": true,
       "passed": true,
-      "versions": [],
-      "source": null
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
       "id": "skyline-hck01",
@@ -64,8 +70,6 @@
       "modelled": true,
       "passed": true,
       "versions": [
-        "scripted",
-        "tripo-multiview",
         "tripo-multiview-clean",
         "tripo-multiview-guided"
       ],

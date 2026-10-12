@@ -1,0 +1,134 @@
+{
+  "id": "skyline-fyg14",
+  "name": "Nissan Skyline GT-R (BNR34) \u2014 green Super Treasure Hunt",
+  "code": "FYG14",
+  "edition": "2019 Super Treasure Hunt, Nissan 2/5, 45/250",
+  "identification_sources": [
+    "https://www.hwtreasure.com/2019-super/nissan-skyline-gt-r-r34/",
+    "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+    "https://www.ebay.com/itm/335949256120"
+  ],
+  "notes": [
+    "Chrome-lipped black Real Rider wheels, Spectraflame green paint and TH hood marks distinguish this release from the regular olive-green mainline.",
+    "Source photos show unprinted body-color front headlamp relief; do not transfer illustrated card-art headlights.",
+    "Roof and hood stripes are confirmed in real elevated photos; no full vertical overhead photograph found. Exact orthographic reprojection and concealed relief remain inferred."
+  ],
+  "files": [
+    {
+      "file": "pack-photo.png",
+      "kind": "user-supplied-pack-photo",
+      "source_page": null,
+      "image_url": null,
+      "view_notes": "Supplied 45/250 Nissan 2/5 card and actual miniature; printed illustration is not a geometry/detail reference.",
+      "width": 2328,
+      "height": 3542,
+      "bytes": 7436646,
+      "sha256": "5cbeb51e1d5bc81d66917d57a12767436325e9b69045b430db5abe7675fa665d"
+    },
+    {
+      "file": "lamley-01.jpg",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+      "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3839.jpeg?fit=6000%2C2849&ssl=1",
+      "view_notes": "Right-rear quarter: fuel flap, tail lamps, rear bumper and wing",
+      "watermark": "Original photo bytes retained without retouching.",
+      "width": 6000,
+      "height": 2849,
+      "bytes": 2232387,
+      "sha256": "7bb1828819eac08b7a9ffa648038ee095fe255c6424daa83b2acd1e35eecc288"
+    },
+    {
+      "file": "lamley-02.jpg",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+      "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3836.jpeg?fit=5603%2C2712&ssl=1",
+      "view_notes": "Right-front quarter: unpainted headlights, front grille and hood",
+      "watermark": "Original photo bytes retained without retouching.",
+      "width": 5603,
+      "height": 2712,
+      "bytes": 1868338,
+      "sha256": "68655b762136ef58504b792a7763c0b85883d299b7dda172c3cabbebcba868f5"
+    },
+    {
+      "file": "lamley-03.jpg",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+      "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3837.jpeg?fit=5987%2C2689&ssl=1",
+      "view_notes": "Nearly level right profile: silhouette, right fuel flap and wheels",
+      "watermark": "Original photo bytes retained without retouching.",
+      "width": 5987,
+      "height": 2689,
+      "bytes": 2249072,
+      "sha256": "02f7cce5c5a727debd0da2a389094a7282ba8deaeb534c5c14b65c83e0cf822d"
+    },
+    {
+      "file": "lamley-04.jpg",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+      "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3840.jpeg?fit=6000%2C2972&ssl=1",
+      "view_notes": "Low right-front quarter: molded side and front shape",
+      "watermark": "Original photo bytes retained without retouching.",
+      "width": 6000,
+      "height": 2972,
+      "bytes": 2300636,
+      "sha256": "6af7f384a22f9a16871fb8784ae038fc09f618f6fd8f704f89af2838cc952fbf"
+    },
+    {
+      "file": "lamley-05.jpg",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+      "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3841.jpeg?fit=5646%2C2548&ssl=1",
+      "view_notes": "Left-front quarter: plain left side, front mesh, hood logo and stripes",
+      "watermark": "Original photo bytes retained without retouching.",
+      "width": 5646,
+      "height": 2548,
+      "bytes": 1735614,
+      "sha256": "dbb9cda95f56de2ea79d12a2c237d7582dc47adb9c40de40dec02025f2d450ec"
+    },
+    {
+      "file": "lamley-06.jpg",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+      "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3842.jpeg?fit=5813%2C2536&ssl=1",
+      "view_notes": "Left-rear quarter: no left fuel flap, rear lamps, left exhaust and spoiler",
+      "watermark": "Original photo bytes retained without retouching.",
+      "width": 5813,
+      "height": 2536,
+      "bytes": 2082819,
+      "sha256": "daa0dab54bd334e3d9f969e38473e01c1171d13bc8dcb6f716abe74b3418fb5a"
+    },
+    {
+      "file": "ebay-04.webp",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://www.ebay.com/itm/335949256120",
+      "image_url": "https://i.ebayimg.com/images/g/6kMAAOSw3BRoGr55/s-l1600.webp",
+      "view_notes": "Elevated front: physical green headlamp relief, two straight hood/roof stripes and front mesh.",
+      "width": 1200,
+      "height": 1185,
+      "bytes": 117248,
+      "sha256": "8a31588b990e86d7afdc8887f4e35ccf969d0f075369137eb96105e0197ce318"
+    },
+    {
+      "file": "ebay-05.webp",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://www.ebay.com/itm/335949256120",
+      "image_url": "https://i.ebayimg.com/images/g/V78AAOSwBlZoGr6D/s-l1600.webp",
+      "view_notes": "Elevated rear: roof stripes, plain green wing/deck, tail printing and vehicle-left exhaust.",
+      "width": 1200,
+      "height": 1153,
+      "bytes": 118144,
+      "sha256": "95d41846f93778b982324397bcba462ed65e1b9ba50eaac4e5d2bed95fb5a2d6"
+    },
+    {
+      "file": "ebay-07.webp",
+      "kind": "original-loose-toy-photo",
+      "source_page": "https://www.ebay.com/itm/335949256120",
+      "image_url": "https://i.ebayimg.com/images/g/9C8AAOSwFutoGr6L/s-l1600.webp",
+      "view_notes": "Near-top hood detail: straight black stripes over transverse molded louvers; small Hot Wheels, J-Liu and TH logos on vehicle-left hood.",
+      "width": 1200,
+      "height": 1167,
+      "bytes": 221604,
+      "sha256": "fb97dd97e9cf480a2a9fd7fcf473bf1baea61083a4bef7edc6d2cca8112c8d36"
+    }
+  ]
+}

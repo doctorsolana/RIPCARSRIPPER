@@ -36,6 +36,7 @@ body.debug > :not(canvas) { display: none !important; }
   position: fixed; top: max(20px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
   display: flex; gap: 10px;
 }
+body.nav-on #steps { top: max(64px, calc(env(safe-area-inset-top) + 48px)); } /* below the top bar */
 #steps i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
 
 #stage-text {
@@ -86,3 +87,8 @@ body.debug > :not(canvas) { display: none !important; }
   color: #0b0b0d; background: #fff;
 }
 #replay:hover { background: color-mix(in srgb, var(--tier) 25%, #fff); }
+
+.missing {
+  position: fixed; inset: 0; display: grid; place-items: center; margin: 0; padding: 0 16px; text-align: center;
+  font: 600 15px/1.4 Inter, system-ui, sans-serif; letter-spacing: 0.04em; color: var(--muted);
+}

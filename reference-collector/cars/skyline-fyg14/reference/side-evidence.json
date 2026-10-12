@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-12",
+  "id": "skyline-fyg14",
+  "product_code": "FYG14",
+  "physical_side_convention": "Vehicle left/right as seated looking forward. Right profile faces image-right; left profile faces image-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Plain green flanks without side sponsors.",
+    "Square fuel flap only on vehicle-right rear quarter.",
+    "Molded exhaust at vehicle-left rear bumper; do not mirror to the right."
+  ],
+  "inferred_details": [
+    "True vertical overhead projection and concealed relief are inferred; real elevated photos confirm straight roof/hood stripes, hood markings and the plain green wing.",
+    "Tiny hood lettering and rear badges may remain approximate."
+  ],
+  "source_pages_checked": [
+    "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+    "https://www.hwtreasure.com/2019-super/nissan-skyline-gt-r-r34/",
+    "https://catalog.hwcollectorsnews.com/SeriesDefinitions/Details/748",
+    "https://www.ebay.com/itm/335949256120",
+    "https://www.ebay.com/itm/188437253673"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/lamley-01.jpg",
+          "sha256": "7bb1828819eac08b7a9ffa648038ee095fe255c6424daa83b2acd1e35eecc288",
+          "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+          "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3839.jpeg?fit=6000%2C2849&ssl=1",
+          "width": 6000,
+          "height": 2849
+        },
+        {
+          "file": "reference/lamley-03.jpg",
+          "sha256": "02f7cce5c5a727debd0da2a389094a7282ba8deaeb534c5c14b65c83e0cf822d",
+          "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+          "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3837.jpeg?fit=5987%2C2689&ssl=1",
+          "width": 5987,
+          "height": 2689
+        }
+      ],
+      "inferred_details": [
+        "Orthographic reprojection and tiny shaded surface details remain synthesized."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/lamley-05.jpg",
+          "sha256": "dbb9cda95f56de2ea79d12a2c237d7582dc47adb9c40de40dec02025f2d450ec",
+          "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+          "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3841.jpeg?fit=5646%2C2548&ssl=1",
+          "width": 5646,
+          "height": 2548
+        },
+        {
+          "file": "reference/lamley-06.jpg",
+          "sha256": "daa0dab54bd334e3d9f969e38473e01c1171d13bc8dcb6f716abe74b3418fb5a",
+          "source_page": "https://lamleygroup.com/2018/12/17/super-showcase-hot-wheels-nissan-skyline-r34-super-th/",
+          "image_url": "https://i0.wp.com/lamleygroup.com/wp-content/uploads/2018/12/IMG_3842.jpeg?fit=5813%2C2536&ssl=1",
+          "width": 5813,
+          "height": 2536
+        }
+      ],
+      "inferred_details": [
+        "Orthographic reprojection and tiny shaded surface details remain synthesized."
+      ]
+    }
+  },
+  "top_evidence": {
+    "status": "partially_inferred",
+    "files": [
+      "reference/ebay-04.webp",
+      "reference/ebay-05.webp",
+      "reference/ebay-07.webp"
+    ],
+    "notes": "Real top-facing details photographed obliquely; no complete calibrated vertical overhead source."
+  }
+}

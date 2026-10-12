@@ -3,12 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Car Inspector</title>
+    <title>RIPCARS · Inspect cars</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700&display=swap" rel="stylesheet" />
     <style>
       :root { --bg: #0d0e12; --panel: #16171d; --panel2: #1d1f27; --text: #eef0f3; --muted: #8b90a0; --line: #2a2c35; --accent: #ff3d6e; --ok: #3ddc84; --warn: #ffb020; }
       * { box-sizing: border-box; }
       html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 Inter, system-ui, sans-serif; }
-      #app { display: grid; grid-template-columns: 260px 1fr; height: 100%; }
+      #app { display: grid; grid-template-columns: 260px 1fr; height: 100%; padding-top: 48px; /* the top bar */ }
       @media (max-width: 760px) { #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } #list { max-height: 30vh; } }
       #list { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; }
       #list h1 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px; }

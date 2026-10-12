@@ -1,195 +1,45 @@
 {
   "car": "chevy-impala-jkb99",
-  "calibration": {
-    "L": 4.0,
-    "H": 0.9516,
-    "W": 1.5334,
-    "W_body": 1.5334,
-    "W/L": 0.3834,
-    "H/L": 0.2379,
-    "top_scale_vs_side": 1.0195,
-    "left_height_vs_right": -0.0052,
-    "front_aspect_mismatch": -0.1368,
-    "rear_aspect_mismatch": -0.1787
-  },
-  "registration": {
-    "top": "no landmarks - left as drawn",
-    "left": {
-      "axle_shift_pct": [
-        -0.08,
-        0.22
-      ]
-    }
-  },
-  "wing": null,
-  "end_registration": {
-    "front": {
-      "applied": true,
-      "edge_match": [
-        0.275,
-        0.391
-      ],
-      "scale": [
-        0.94,
-        0.88
-      ],
-      "shift_px": [
-        14.0,
-        -16.5
-      ]
-    },
-    "rear": {
-      "applied": true,
-      "edge_match": [
-        0.158,
-        0.565
-      ],
-      "scale": [
-        0.92,
-        0.88
-      ],
-      "shift_px": [
-        -4.6,
-        6.7
-      ]
-    }
-  },
-  "texture_share": {
-    "side": 0.186,
-    "left": 0.186,
-    "top": 0.489,
-    "front": 0.073,
-    "rear": 0.066
-  },
-  "left_source": "left",
-  "colour_gains": {
-    "side": [
-      1.0,
-      1.0,
-      1.0
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      0.9956,
+      1.0125,
+      0.9945
     ],
-    "top": [
-      0.855,
-      1.025,
-      1.054
+    "offset_xy": [
+      -0.0178,
+      0.0078
     ],
-    "left": [
-      0.922,
-      1.006,
-      1.012
-    ],
-    "front": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "rear": [
-      1.0,
-      1.0,
-      1.0
-    ]
+    "side+top_iou": 1.8848
   },
-  "glass_share": 0.079,
-  "greenhouse": {
-    "belt": 0.5986,
-    "roof": 0.9535,
-    "x0": -1.2679,
-    "x1": 0.9196
-  },
-  "cabin_from_glass": null,
-  "view_match": {
-    "side": {
-      "colour_dE": 45.21,
-      "iou": 0.99
-    },
-    "top": {
-      "colour_dE": 46.07,
-      "iou": 0.9682
-    },
-    "left": {
-      "colour_dE": 46.51,
-      "iou": 0.9744
-    },
-    "front": {
-      "colour_dE": 50.59,
-      "iou": 0.8126
-    },
-    "rear": {
-      "colour_dE": 60.92,
-      "iou": 0.7939
-    }
+  "glass_source": {
+    "front": "traced",
+    "rear": "traced",
+    "top": "traced"
   },
   "checks": {
-    "side_iou>=0.97": true,
-    "top_iou>=0.94": true,
-    "left_iou>=0.92": true,
-    "front_iou>=0.82": true,
-    "rear_iou>=0.82": true,
-    "every_view_paints_the_texture": true,
-    "body_outward": true
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
   },
   "passed": true,
   "model": "model.glb",
   "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
   "dimensions": {
-    "length": 4.0,
-    "height": 0.9516,
-    "width": 1.5334
+    "length": 3.9824,
+    "height": 0.9527,
+    "width": 1.5251
   },
-  "wheels": [
-    {
-      "x": -0.9012,
-      "y": 0.2385,
-      "r": 0.2344,
-      "fit_err_px": 1.1658,
-      "width_source": "rear",
-      "z_outer": 0.5464,
-      "z_inner": 0.3555,
-      "rim_symmetry": 0.346,
-      "covered": true,
-      "name": "wheel_rear_right",
-      "side": 1
-    },
-    {
-      "x": -0.9012,
-      "y": 0.2385,
-      "r": 0.2344,
-      "fit_err_px": 1.1658,
-      "width_source": "rear",
-      "z_outer": 0.5464,
-      "z_inner": 0.3555,
-      "rim_symmetry": 0.346,
-      "covered": true,
-      "name": "wheel_rear_left",
-      "side": -1
-    },
-    {
-      "x": 1.3669,
-      "y": 0.2606,
-      "r": 0.2566,
-      "fit_err_px": 0.9624,
-      "width_source": "front",
-      "z_outer": 0.6924,
-      "z_inner": 0.5003,
-      "rim_symmetry": 0.655,
-      "covered": false,
-      "name": "wheel_front_right",
-      "side": 1
-    },
-    {
-      "x": 1.3669,
-      "y": 0.2606,
-      "r": 0.2566,
-      "fit_err_px": 0.9624,
-      "width_source": "front",
-      "z_outer": 0.6924,
-      "z_inner": 0.5003,
-      "rim_symmetry": 0.655,
-      "covered": false,
-      "name": "wheel_front_left",
-      "side": -1
-    }
-  ],
+  "wheels": [],
+  "wing": null,
+  "cabin_from_glass": null,
   "views": [
     "front",
     "left",
@@ -198,15 +48,19 @@
     "top"
   ],
   "silhouette_iou": {
-    "side": 0.9904,
-    "top": 0.9681,
-    "left": 0.9745,
-    "front": 0.9538,
-    "rear": 0.9489
+    "side": 0.9393,
+    "top": 0.9851,
+    "left": 0.933,
+    "front": 0.908,
+    "rear": 0.9002
+  },
+  "proportions_vs_sheet": {
+    "length": 1.0,
+    "width": 0.997,
+    "height": 0.99
   },
   "glb": {
-    "bytes": 1001412,
-    "triangles": 14576
-  },
-  "seconds": 14.2
+    "bytes": 1468560,
+    "triangles": 16793
+  }
 }

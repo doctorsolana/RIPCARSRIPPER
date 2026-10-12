@@ -4,31 +4,38 @@
   "made_from": "snapshots/tripo-multiview-clean.glb",
   "sheet_fit": {
     "scale_xyz": [
-      1.0172,
-      1.021,
-      0.9866
+      1.0175,
+      1.0244,
+      1.0087
     ],
     "offset_xy": [
-      -0.0396,
-      0.0279
+      -0.0397,
+      0.0274
     ],
-    "side+top_iou": 1.8347
+    "side+top_iou": 1.8342
   },
-  "glass_source": "traced (hints.json model.rebake.glass)",
+  "glass_source": {
+    "front": "traced",
+    "rear": "traced",
+    "top": "traced"
+  },
   "checks": {
     "side_iou>=0.93": true,
     "top_iou>=0.9": true,
     "left_iou>=0.9": true,
     "front_iou>=0.8": true,
-    "rear_iou>=0.8": true
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
   },
   "passed": true,
   "model": "model.glb",
   "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
   "dimensions": {
-    "length": 4.0686,
-    "height": 1.1859,
-    "width": 1.5016
+    "length": 4.0702,
+    "height": 1.1858,
+    "width": 1.5083
   },
   "wheels": [],
   "wing": null,
@@ -41,14 +48,19 @@
     "top"
   ],
   "silhouette_iou": {
-    "side": 0.9494,
-    "top": 0.9152,
-    "left": 0.9215,
-    "front": 0.9324,
-    "rear": 0.9383
+    "side": 0.9496,
+    "top": 0.9146,
+    "left": 0.9214,
+    "front": 0.9336,
+    "rear": 0.9392
+  },
+  "proportions_vs_sheet": {
+    "length": 1.0,
+    "width": 0.986,
+    "height": 1.008
   },
   "glb": {
-    "bytes": 1165504,
+    "bytes": 1178272,
     "triangles": 15821
   }
 }

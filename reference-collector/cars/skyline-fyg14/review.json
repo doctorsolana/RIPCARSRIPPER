@@ -1,0 +1,139 @@
+{
+  "schema_version": 2,
+  "version": 2,
+  "status": "needs_correction",
+  "view_count": 5,
+  "tool": "image_gen.imagegen (built-in)",
+  "generation_strategy": "direct_from_real_photos",
+  "prompt_file": "generation.prompt.txt",
+  "prompt_sha256": "935d3160f357243c28c823bc920fbc48afe2624b76fa22dad5a70bf7b9443fd2",
+  "saved_output": "generated/draft-sheet.png",
+  "output_metadata": {
+    "width": 1024,
+    "height": 1536,
+    "format": "PNG",
+    "bytes": 2544263,
+    "sha256": "bdc02aa88767c1463dcfb0e6fff86774b53c55bf5065bd22ea152e5d81a4a694"
+  },
+  "real_inputs": [
+    {
+      "file": "reference/lamley-03.jpg",
+      "sha256": "02f7cce5c5a727debd0da2a389094a7282ba8deaeb534c5c14b65c83e0cf822d",
+      "role": "Right profile: silhouette, stance, wheels and right fuel flap"
+    },
+    {
+      "file": "reference/lamley-05.jpg",
+      "sha256": "dbb9cda95f56de2ea79d12a2c237d7582dc47adb9c40de40dec02025f2d450ec",
+      "role": "Left-front quarter: independently observed left side and front casting detail"
+    },
+    {
+      "file": "reference/ebay-07.webp",
+      "sha256": "fb97dd97e9cf480a2a9fd7fcf473bf1baea61083a4bef7edc6d2cca8112c8d36",
+      "role": "Hood detail: straight stripes, molded louvers and exact-release logos"
+    },
+    {
+      "file": "reference/ebay-04.webp",
+      "sha256": "8a31588b990e86d7afdc8887f4e35ccf969d0f075369137eb96105e0197ce318",
+      "role": "Elevated front: unprinted green headlights, grille and roof stripes"
+    },
+    {
+      "file": "reference/ebay-05.webp",
+      "sha256": "95d41846f93778b982324397bcba462ed65e1b9ba50eaac4e5d2bed95fb5a2d6",
+      "role": "Elevated rear: rear lamps, plain green wing, roof stripes and left exhaust"
+    }
+  ],
+  "review": {
+    "sides": {
+      "right": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Right side is near level but has residual yaw: part of the front bumper face is visible."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad roof, hood or deck plane; upper contours remain narrow."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front auxiliary-lamp relief and lower outer mesh face are visible; fascia does not collapse to its silhouette."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Seat back is seen horizontally through the side-window opening without looking down onto a cushion."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Wheel faces are visually circular and axle centers level, without a separated far wheel pair."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Two-door roofline, wheelbase, low stance, fender overlap and green wing broadly follow the toy; dimensions are synthesized rather than measured."
+        }
+      },
+      "left": {
+        "evidence_status": "real_reference",
+        "level_side_camera": {
+          "result": "fail",
+          "observation": "Left side is near level but has residual yaw: part of the front bumper face is visible."
+        },
+        "top_planes_hidden": {
+          "result": "pass",
+          "observation": "No broad roof, hood or deck plane; upper contours remain narrow."
+        },
+        "front_rear_faces_hidden": {
+          "result": "fail",
+          "observation": "Front auxiliary-lamp relief and lower outer mesh face are visible; fascia does not collapse to its silhouette."
+        },
+        "interior_at_side_height": {
+          "result": "pass",
+          "observation": "Seat back is seen horizontally through the side-window opening without looking down onto a cushion."
+        },
+        "wheel_projection": {
+          "result": "pass",
+          "observation": "Wheel faces are visually circular and axle centers level, without a separated far wheel pair."
+        },
+        "shape_and_stance_preserved": {
+          "result": "pass",
+          "observation": "Two-door roofline, wheelbase, low stance, fender overlap and green wing broadly follow the toy; dimensions are synthesized rather than measured."
+        }
+      }
+    },
+    "ground_shadows": {
+      "result": "pass",
+      "observation": "White exterior around all five silhouettes; no visible contact/cast shadow pool or floor reflection."
+    },
+    "material_depth": {
+      "result": "pass",
+      "observation": "Curved Spectraflame highlights, tire volume, recessed spokes, glazing and cabin depth remain photographic."
+    },
+    "five_view_layout": {
+      "result": "pass",
+      "observation": "Exactly five complete views in four rows: right, left, top, front and rear, with white gutters."
+    },
+    "identity_and_graphics": {
+      "result": "pass",
+      "observation": "Green FYG14 identity, black chrome-lipped wheels, straight twin stripes, green molded headlights and printed rear lamps are recognizable; fine-marking limitations are recorded."
+    },
+    "opposite_side_identity": {
+      "result": "pass",
+      "observation": "Fuel flap appears only on the right side, no left fuel flap; rear exhaust is at vehicle-left."
+    },
+    "front_rear_cameras": {
+      "result": "fail",
+      "observation": "Front panel exposes a broad hood surface; camera must be reviewed/corrected before production use."
+    },
+    "cross_view_consistency": {
+      "result": "partial",
+      "observation": "Same general casting, color and livery across five panels, but camera projection and fine logo orientation are not exact."
+    },
+    "limitations": [
+      "Both side rows retain visible front-bumper faces and fail the strict perpendicular-camera requirement.",
+      "The bottom front view shows a broad hood surface; it is not accepted as a strict level frontal projection.",
+      "No complete vertical overhead source: top projection and concealed relief are inferred from real oblique photos; visible hood/roof markings are documented.",
+      "Tiny hood/rear logo geometry, lettering orientation and reflections are approximate, not an exact texture transfer.",
+      "This is synthetic photographic reference with baked lighting, not calibrated CAD or neutral albedo. No Tripo submission or 3D reconstruction test was performed."
+    ],
+    "selection_rationale": "Retain attempt 2 of three source-only generations as the best draft: correct side-specific fuel flap and good materials/background. Attempt 3 still failed the camera gate and added an incorrect left fuel flap and rear-deck stripes. No generated sheet was used as an input; discarded attempts are not retained in the clean repository."
+  }
+}

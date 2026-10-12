@@ -11,15 +11,33 @@ def _project(view: View, verts: np.ndarray) -> np.ndarray:
     return np.stack([u, v], axis=1)
 
 
-def silhouette(view: View, meshes: list) -> np.ndarray:
-    """Orthographic silhouette of the meshes in `view`'s panel pixels (bool, panel-sized)."""
+def silhouette(view: View, meshes: list, pad: int = 0) -> np.ndarray:
+    """Orthographic silhouette of the meshes in `view`'s panel pixels (bool, panel-sized, plus `pad`
+    px on every side)."""
     h, w = view.panel.mask.shape
-    out = np.zeros((h, w), np.uint8)
+    out = np.zeros((h + 2 * pad, w + 2 * pad), np.uint8)
     for m in meshes:
-        uv = np.round(_project(view, m.vertices) * 16).astype(np.int32)
+        uv = np.round((_project(view, m.vertices) + pad) * 16).astype(np.int32)
         for tri in m.faces:
             cv2.fillConvexPoly(out, uv[tri], 1, lineType=cv2.LINE_8, shift=4)
     return out.astype(bool)
+
+
+def match(view: View, meshes: list) -> tuple[np.ndarray, np.ndarray]:
+    """The model's silhouette and the drawing's, on a canvas well beyond the drawing's crop. A model
+    wider or taller than the crop must count against it: clipped to the crop, the excess vanished and
+    the sheet fit made the Impala's Tripo mesh 9% wider instead of 21% narrower."""
+    pad = max(view.panel.mask.shape) // 2
+    return silhouette(view, meshes, pad), np.pad(view.panel.mask, pad)
+
+
+def extent(mask: np.ndarray, body: float = 0.25) -> tuple[int, int]:
+    """Width and height in px of the body: only rows/columns at least `body` x as full as the fullest
+    count, so a wing plate, mirrors or an antenna don't make the car look taller or wider."""
+    def span(counts):
+        idx = np.nonzero(counts >= body * counts.max())[0]
+        return int(idx[-1] - idx[0] + 1) if len(idx) else 0
+    return (span(mask.sum(axis=0)), span(mask.sum(axis=1))) if mask.any() else (0, 0)
 
 
 def iou(a: np.ndarray, b: np.ndarray) -> float:

@@ -28,7 +28,7 @@ reference-collector/           → asset-generation/                 → app/
 | 1 | Collect the release's photos, then generate and review its five-view sheet | Codex with image generation | `$hot-wheels-reference` ([skill](reference-collector/skills/hot-wheels-reference/SKILL.md)) |
 | 2 | Car folder: pack-photo crop (`hints.json`) and the reveal's text (`meta.json`) | Claude or you | [`retouch-car`](.claude/skills/retouch-car/SKILL.md) step 1 |
 | 3 | Mesh from the sheet's four side views: Tripo P2 multiview, **spends API credits** | `ripcars tripo <id>` (dry run), then `--send` after approval | [`tripo-car`](.claude/skills/tripo-car/SKILL.md) |
-| 4 | Clean the mesh in Blender and fit it to the sheet | `ripcars clean <id>` | |
+| 4 | Clean the mesh in Blender, fit it to the sheet and check its size against the sheet | `ripcars clean <id>` | |
 | 5 | Repaint it from the sheet and trace the windows | `ripcars rebake <id>` + `hints.json` | |
 | 6 | Make it the app's model and fit the landing on the pack photo | `ripcars promote <id>` | |
 | 7 | Review against the sheet and in the reveal; you say what to adjust | the app's `/inspect.html` | |
@@ -62,6 +62,6 @@ cd app && npm install && npm run dev -- --port 5199     # http://localhost:5199/
 
 ## The reference library
 
-Every car has one folder in the reference library. Use `cars/<car-id>/generated/reference-sheet.png` for its current reviewed sheet and `manifest.json` for the selected version, prompt and review. The library currently contains six accepted sheets plus five drafts requiring camera correction, with 95 original photos across 11 releases.
+Every car has one folder in the reference library. Use `cars/<car-id>/generated/reference-sheet.png` for its current reviewed sheet and `manifest.json` for the selected version, prompt and review. The library currently contains six accepted sheets plus six drafts requiring camera correction, with 105 original photos across 12 releases.
 
 The current sheets provide right and left profiles, overhead, front and rear views. Both side profiles must pass a separate level-camera review. Both sides of the catalogued releases have real photo evidence; the source files and uncertain details are recorded per car. These remain synthetic references: geometry is not calibrated and fine graphics can drift, which is why stage 2 fits every model to the sheet and checks it view by view. Only the current sheet is kept in each folder; use the manifest's `view_count`, `layout` and review status when reading it. Per-car experiment archives and standalone Tripo image tests have been removed.

@@ -13,6 +13,8 @@
     uv run python -m ripcars clean   <car...>       Tripo FBX -> cleaned web GLB fitted to the sheet (Blender)
     uv run python -m ripcars rebake  <car...> [--src snapshots/x.glb]   repaint it from the sheet
     uv run python -m ripcars promote <car...> [--src snapshots/x.glb]   make it the car's model.glb + align
+    uv run python -m ripcars outline <car> --view top [--dark 110]     window outlines from the generator's
+                                                    own dark window paint (after rebake), for model.rebake.glass
 
 Outputs land in assets/cars/<id>/ (served by the app); review images in qa/<id>/.
 """
@@ -43,6 +45,16 @@ def _layout(car: str):
         return None
     data = json.loads(m.read_text())
     return data.get("layout") or (data.get("selected") or {}).get("layout")
+
+
+def write_review_crops(car: str, cal) -> None:
+    """The sheet's views, cropped to the car, for the app's views/compare pages (dev review only)."""
+    review = paths.asset_dir(car) / "review"
+    review.mkdir(exist_ok=True)
+    for name, v in cal.views.items():
+        x0, y0, x1, y1 = v.panel.bbox
+        cv2.imwrite(str(review / f"{name}.jpg"), cv2.cvtColor(v.panel.rgb[y0:y1, x0:x1], cv2.COLOR_RGB2BGR),
+                    [cv2.IMWRITE_JPEG_QUALITY, 90])
 
 
 def build_model(car: str, target_faces: int | None = None, texture: int | None = None, nx: int = 448) -> dict:
@@ -129,10 +141,10 @@ def build_model(car: str, target_faces: int | None = None, texture: int | None =
     ious = {}
     for name, v in cal.views.items():
         post, v.post = v.post, None  # the shape is judged against the sheet as drawn
-        sil = qa.silhouette(v, [surf] + tyres)
+        sil, ref = qa.match(v, [surf] + tyres)
         v.post = post
-        ious[name] = round(qa.iou(sil, v.panel.mask), 4)
-        cv2.imwrite(str(qadir / f"silhouette-{name}.png"), qa.overlay(v.panel.mask, sil))
+        ious[name] = round(qa.iou(sil, ref), 4)
+        cv2.imwrite(str(qadir / f"silhouette-{name}.png"), qa.overlay(ref, sil))
     # the textured model with each sheet view's own camera, beside the reference: what to tune against
     tiles, view_scores = [], {}
     for name, v in cal.views.items():
@@ -146,13 +158,7 @@ def build_model(car: str, target_faces: int | None = None, texture: int | None =
         view_scores[name] = sc
         cv2.imwrite(str(qadir / f"compare-{name}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 88])
     report["view_match"] = view_scores
-    # the sheet's views, cropped to the car, for the app's views.html side-by-side (dev review only)
-    review = out / "review"
-    review.mkdir(exist_ok=True)
-    for name, v in cal.views.items():
-        x0, y0, x1, y1 = v.panel.bbox
-        cv2.imwrite(str(review / f"{name}.jpg"), cv2.cvtColor(v.panel.rgb[y0:y1, x0:x1], cv2.COLOR_RGB2BGR),
-                    [cv2.IMWRITE_JPEG_QUALITY, 90])
+    write_review_crops(car, cal)
     cols = [(205, 205, 205)] + [(60, 60, 60)] * len(tyres)
     shots = [qa.shaded([surf] + tyres, y, p, colours=cols) for y, p in ((0, 0.15), (0.7, 0.3), (-0.8, 0.25), (2.6, 0.3))]
     cv2.imwrite(str(qadir / "shape.jpg"), np.vstack([np.hstack(shots[:2]), np.hstack(shots[2:])]))
@@ -186,6 +192,15 @@ def build_model(car: str, target_faces: int | None = None, texture: int | None =
 GATES_GENERATED = {"side": 0.93, "top": 0.90, "left": 0.90, "front": 0.80, "rear": 0.80}
 
 
+def proportions(cal, meshes: list) -> dict:
+    """The model's body size against the drawings' (model / sheet, 1.0 = same): length and height from
+    the side view, width from the top. Thin parts (wing plate, mirrors) don't count. A generated mesh
+    is only as wide as the fit makes it - Tripo never sees the top."""
+    (sw, sh), (qw, qh) = (qa.extent(m) for m in qa.match(cal.views["side"], meshes))
+    (_, th), (_, rh) = (qa.extent(m) for m in qa.match(cal.views["top"], meshes))
+    return {"length": round(sw / qw, 3), "width": round(th / rh, 3), "height": round(sh / qh, 3)}
+
+
 def promote_model(car: str, src: str | None = None) -> dict:
     """Make a repainted generated mesh (default snapshots/tripo-multiview-guided.glb) the car's
     model.glb, with a model.json in the scripts' format (dimensions, silhouette IoU per view, checks),
@@ -210,12 +225,15 @@ def promote_model(car: str, src: str | None = None) -> dict:
     qadir = paths.qa_dir(car)
     ious = {}
     for name, v in cal.views.items():
-        sil = qa.solid(qa.silhouette(v, [mesh_]), v.panel.mask)  # open side windows don't count
-        ious[name] = round(qa.iou(sil, v.panel.mask), 4)
-        cv2.imwrite(str(qadir / f"silhouette-{name}.png"), qa.overlay(v.panel.mask, sil))
+        sil, ref = qa.match(v, [mesh_])
+        sil = qa.solid(sil, ref)  # open side windows don't count
+        ious[name] = round(qa.iou(sil, ref), 4)
+        cv2.imwrite(str(qadir / f"silhouette-{name}.png"), qa.overlay(ref, sil))
+    size = proportions(cal, [mesh_])
     made = src_path.with_suffix(".json")
     made = json.loads(made.read_text()) if made.is_file() else {}
     checks = {f"{k}_iou>={g}": ious[k] >= g for k, g in GATES_GENERATED.items() if k in ious}
+    checks.update({f"{k}_within_5%_of_sheet": abs(r - 1) <= 0.05 for k, r in size.items()})
     V = mesh_.vertices
     report = {
         "car": car,
@@ -234,6 +252,7 @@ def promote_model(car: str, src: str | None = None) -> dict:
         "cabin_from_glass": None,
         "views": sorted(cal.views),
         "silhouette_iou": ious,
+        "proportions_vs_sheet": size,
         "glb": {"bytes": (out / "model.glb").stat().st_size, "triangles": int(n_tris)},
     }
     (out / "model.json").write_text(json.dumps(report, indent=2) + "\n")
@@ -261,7 +280,8 @@ def status(only: list[str] | None = None) -> list[dict]:
                      ("dry run" if any((a / "tripo").glob("*/request.json")) else "-"),
             "clean": "yes" if snap("tripo-multiview-clean.glb") else "-",
             "rebake": "yes" if snap("tripo-multiview-guided.glb") else "-",
-            "glass": "traced" if hints.get("model", {}).get("rebake", {}).get("glass") else "auto",
+            "glass": "+".join(sorted({"sheet" if g == "sheet" else "traced" for g in
+                                      (hints.get("model", {}).get("rebake", {}).get("glass") or {}).values()})) or "auto",
             "model": "-" if not model else ("tripo" if model.get("source") else "scripts"),
             "checks": "-" if not model else ("pass" if model.get("passed") else "FAIL"),
             "landing": f"{landing['iou']:.3f}" if landing else "-",
@@ -305,7 +325,9 @@ def write_index():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="ripcars")
-    ap.add_argument("command", choices=["extract", "model", "align", "build", "status", "tripo", "clean", "rebake", "promote"])
+    ap.add_argument("command", choices=["extract", "model", "align", "build", "status", "tripo", "clean", "rebake", "promote", "outline"])
+    ap.add_argument("--view", choices=["side", "left", "top", "front", "rear"], help="outline: which sheet view")
+    ap.add_argument("--dark", type=int, default=110, help="outline: brightest channel below this counts as window paint")
     ap.add_argument("--src", help="rebake/promote: mesh, relative to the car folder")
     ap.add_argument("--mode", choices=["multiview"], default="multiview", help="tripo/clean: input mode")
     ap.add_argument("--force", action="store_true", help="model/build: rebuild from the scripts even if a generated mesh was "
@@ -335,12 +357,24 @@ def main(argv=None):
                 r = rebake.rebake(car, args.src)
                 print(f"{car}: rebaked {r['source']} - fit {r['fit']}, {r['glb']}, glass {r['glass_source']}")
                 continue
+            if args.command == "outline":
+                from . import trace
+
+                panels = sheet.load(paths.sheet(car), cache_dir=paths.cache_dir(car), layout=_layout(car))
+                v = views.calibrate(panels).views[args.view or "top"]
+                ox, oy = v.panel.origin
+                x0, y0, x1, y1 = trace.window_region(v, v.panel.glass) or v.panel.bbox  # around the drawing's windows
+                img = cv2.cvtColor(cv2.imread(str(paths.qa_dir(car) / "tripo-sheet.png")), cv2.COLOR_BGR2RGB)
+                found = trace.dark_outlines(img, (ox + x0, oy + y0, ox + x1, oy + y1), args.dark)
+                print(json.dumps(found[:6], indent=None))
+                continue
             if args.command == "promote":
                 if not (paths.asset_dir(car) / "extract.json").is_file():  # the landing fit needs the pack-photo cut-out
                     extract.run(car)
                 r = promote_model(car, args.src)
                 print(f"{car}: model.glb <- {r['source']}, {r['glb']['triangles']} tris, "
-                      f"{r['glb']['bytes'] / 1e6:.2f} MB, IoU {r['silhouette_iou']}")
+                      f"{r['glb']['bytes'] / 1e6:.2f} MB, IoU {r['silhouette_iou']}, "
+                      f"size vs sheet {r['proportions_vs_sheet']}")
                 for name, ok in r["checks"].items():
                     if not ok:
                         print(f"  WARN {car}: check failed: {name} - review qa/{car}/silhouette-*.png", file=sys.stderr)
@@ -364,7 +398,9 @@ def main(argv=None):
                 from . import rebake
 
                 panels = sheet.load(paths.sheet(car), cache_dir=paths.cache_dir(car), layout=_layout(car))
-                _, fitted = rebake.fit(rebake.load_mesh(dst), views.calibrate(panels))
+                first = trimesh.load(dst, force="mesh", process=False)
+                adjust = json.loads((d / "hints.json").read_text()).get("model", {}).get("fit") if (d / "hints.json").is_file() else None
+                _, fitted = rebake.fit(np.asarray(first.vertices, float), np.asarray(first.faces), views.calibrate(panels), adjust)
                 f = fitted["scale_xyz"] + fitted["offset_xy"]
                 subprocess.run([blender, "-b", "--python", script, "--", str(src), str(dst), str(rep), "1024", "0", "0",
                                 ",".join(str(v) for v in f)], check=True, capture_output=True)
@@ -372,6 +408,14 @@ def main(argv=None):
                 print(f"{car}: {r['before']['triangles']} -> {r['after']['triangles']} triangles, "
                       f"{src.stat().st_size / 1e6:.2f} MB FBX -> {dst.stat().st_size / 1e6:.2f} MB GLB, "
                       f"fitted to the sheet {fitted}: {dst}")
+                cleaned = trimesh.load(dst, force="mesh", process=False)
+                cleaned.merge_vertices()
+                size = proportions(views.calibrate(panels), [cleaned])
+                print(f"{car}: size vs sheet {size}")
+                for k, ratio in size.items():
+                    if abs(ratio - 1) > 0.05:
+                        print(f"  WARN {car}: {k} is {ratio:.2f}x the sheet's - check qa/{car}/silhouette-*.png after "
+                              f"promote; hints.json model.fit {{\"{k}\": {1 / ratio:.3f}}} rescales it", file=sys.stderr)
                 continue
             if args.command == "tripo":
                 from . import tripo

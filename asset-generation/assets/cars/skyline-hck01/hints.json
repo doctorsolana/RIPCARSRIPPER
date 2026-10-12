@@ -321,9 +321,6 @@
         ]
       }
     },
-    "wing": "parts",
-    "wing_plate": 0.2,
-    "wing_upright_z": 0.0,
     "rebake": {
       "glass": {
         "front": [
@@ -449,11 +446,8 @@
     }
   },
   "notes": [
-    "model.glass: all five views hand-traced (replace). The side windows show a red roll cage through clear glass, so the automatic finder only caught fragments; on the rear view it took the LIBERTY WALK wing plate for glass; on top/front it spilled onto the black pillars.",
+    "model.glass: the sheet's window masks, all five views hand-traced (replace); the repaint uses them to tell which drawn pixels are cabin seen through glass. The side windows show a red roll cage through clear glass, so the automatic finder only caught fragments; on the rear view it took the LIBERTY WALK wing plate for glass; on top/front it spilled onto the black pillars.",
     "glass: the NISSAN SKYLINE sun strip (front y<1212, top x530-565) stays opaque so the tint doesn't wash it out",
-    "wing: LB swan-neck wing - thin plate (side view ~5 px of the 314 px car height -> wing_plate 0.2) on tall LBWK endplates, one central mount (rear view x735-760 -> wing_upright_z 0)",
-    "checked, no change: the solid nose wedge is right - the front view shows the full-width LBWK chin lip as one sloped surface",
-    "roof: the dome look was a pipeline flaw (fixed for every car, not a per-car override) - roof corners were rounded by the body width, and the cabin sides copied the front view's elevated outline; flanks are now straight to a flat roof, roof/body width 0.54 vs the sheet's ~0.5-0.57",
     "model.rebake.glass: windows traced on the Tripo model itself (qa/skyline-hck01/trace-<view>.png: its own paint above, clay shading below). Tripo modelled the side windows as open holes with a real cage/seat behind, so only the windscreen and rear window are glass. Top view: the whole rear-window panel (x 241-343, incl. the strip where Tripo invented lettering) and the windscreen from the NISSAN SKYLINE banner to its curved front edge, traced on one half and mirrored (glass_mirror). Front view below the banner; rear view either side of the wing mount. Each spot takes its outline from whichever traced view sees it best (the wing hides part of the rear window from behind)"
   ]
 }

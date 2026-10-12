@@ -9,6 +9,8 @@ npm run dev -- --port 5199     # http://localhost:5199/?car=skyline-hck01
 npm run build                  # static site in dist/
 ```
 
+A top bar on every page links the two user-facing pages: **Rip a pack** (the reveal, with a car picker and *Random pack*) and **Inspect cars** (`/inspect.html`). Following a link keeps the car you are on. The bar hides itself in the `mode=` screenshot views and inside the inspector's embedded reveal.
+
 The app serves `asset-generation/assets/` directly (`vite.config.ts` → `publicDir`), so `/cars/<id>/…` is whatever stage 2 last built. `npm run build` copies that whole folder into `dist/`, including the review files and Tripo's FBX downloads. Prune them before deploying anywhere public.
 
 ## Two kinds of car
@@ -20,7 +22,7 @@ The app serves `asset-generation/assets/` directly (`vite.config.ts` → `public
 
 | Query | Does |
 | --- | --- |
-| `car=<id>` | which car (default `porsche-911-gt3-rs`) |
+| `car=<id>` | which car (default `skyline-hck01`). A car with no `model.glb` and no `params.json` shows a "no 3D model yet" note |
 | `rarity=<common\|rare\|epic\|legendary\|chase>` | override the tier (placeholders until RIPCARS publishes theirs) |
 | `reveal=profile` | use the procedural car |
 | `t=<seconds>` | seek the reveal and pause |
@@ -59,6 +61,7 @@ Each shot is `name:target`. The target is either a reveal query or a review page
 - `src/stage.ts`: scene, lights, particles, the card.
 - `src/model.ts`: modelled cars (GLB).
 - `src/glass.ts`: see-through windows (splits the body into paint and glass passes).
+- `src/nav.ts`: the top bar (pages, car picker, random pack).
 - `src/inspect.ts`, `src/compare.ts`, `src/views.ts`: the review pages.
 - `src/car.ts`: shared reveal material, the photo↔world frame, and the procedural fallback car.
 - `src/rarity.ts`: placeholder rarity tiers.

@@ -17,3 +17,4 @@ One folder per exact release. Each contains its current sheet, original photos a
 | [LB-ER34 Super Silhouette Nissan Skyline — gold chase](skyline-jkf36/README.md) | JKF36 | Draft — correction needed |
 | [Nissan Skyline GT-R (BNR34) — Godzilla](godzilla-skyline-jhw90/README.md) | JHW90 | Draft — correction needed |
 | ['99 Honda Civic Type R (EK9) — gold Super Treasure Hunt](civic-type-r-hcy12/README.md) | HCY12 | Draft — correction needed |
+| [Nissan Skyline GT-R (BNR34) — green Super Treasure Hunt](skyline-fyg14/README.md) | FYG14 | Draft — correction needed |

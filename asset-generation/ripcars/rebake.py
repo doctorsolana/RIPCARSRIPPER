@@ -61,23 +61,48 @@ class Textured:
         key = np.round(V / (np.ptp(V, axis=0).max() * 1e-6)).astype(np.int64)
         _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
         inv = inv.ravel()
+        self._merge = (first, inv)
         merged = trimesh.Trimesh(V[first], inv[F], process=False)
         before = merged.face_normals.copy()
         merged.fix_normals(multibody=True)
         fn = merged.face_normals
         if len(fn) != len(F):  # degenerate faces dropped: fall back to raw normals
             fn = before
+        return fn, self._vertex_normals(fn)
+
+    def _vertex_normals(self, fn: np.ndarray) -> np.ndarray:
+        """Area-weighted, across UV seams (vertices merged by position)."""
+        first, inv = self._merge
+        tri = self.V[self.F]
+        area = 0.5 * np.linalg.norm(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]), axis=1)[:, None]
         acc = np.zeros((len(first), 3))
-        area = merged.area_faces[:, None] if len(merged.area_faces) == len(F) else 1.0
         for k in range(3):
-            np.add.at(acc, inv[F][:, k], fn * area)
+            np.add.at(acc, inv[self.F][:, k], fn * area)
         vn = acc[inv]
-        vn /= np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
-        return fn, vn
+        return vn / np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
+
+    def orient(self, cal, rasters: dict) -> int:
+        """Face the cameras. Whatever a sheet view sees front-most is on the outside, so it must face that
+        view: flip the faces the views see from behind (winding repair can't settle every inside-out
+        patch of a generated mesh - the Roxy's roof shell came out 76% inverted), and recompute the
+        normals for the fitted shape. Returns how many faces were flipped."""
+        tri = self.V[self.F]
+        fn = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+        fn /= np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12)
+        fn *= np.where(np.sum(fn * self.normals_face, axis=1, keepdims=True) < 0, -1.0, 1.0)  # winding repair's choice
+        votes = np.zeros(len(self.F))
+        for name, r in rasters.items():
+            seen = np.bincount(r.face[r.cover], minlength=len(self.F))
+            votes += seen * (fn @ cal.views[name].direction)  # edge-on faces barely count
+        flip = votes < 0
+        fn[flip] *= -1
+        self.normals_face, self.normals_vert = fn, self._vertex_normals(fn)
+        return int(flip.sum())
 
 
-def fit(V: np.ndarray, F: np.ndarray, cal) -> tuple[np.ndarray, dict]:
-    """Per-axis scale + offset so the mesh's side and top silhouettes match the sheet's."""
+def fit(V: np.ndarray, F: np.ndarray, cal, adjust: dict | None = None) -> tuple[np.ndarray, dict]:
+    """Per-axis scale + offset so the mesh's side and top silhouettes match the sheet's. `adjust`
+    (hints.json model.fit, e.g. {"width": 0.97}) scales the result further by hand, per axis."""
     side, top = cal.views["side"], cal.views["top"]
     lo, hi = V.min(0), V.max(0)
     s0 = cal.L / (hi[0] - lo[0])
@@ -93,15 +118,17 @@ def fit(V: np.ndarray, F: np.ndarray, cal) -> tuple[np.ndarray, dict]:
     def loss(p):
         sx, sy, sz, tx, ty = p
         m = trimesh.Trimesh(probe.vertices * [sx, sy, sz] + [tx, ty, 0], probe.faces, process=False)
-        return -(qa.iou(qa.silhouette(side, [m]), side.panel.mask) + qa.iou(qa.silhouette(top, [m]), top.panel.mask))
+        return -(qa.iou(*qa.match(side, [m])) + qa.iou(*qa.match(top, [m])))
 
     x0 = np.array([1.0, 1.0, 1.0, 0.0, 0.0])
     init = np.vstack([x0] + [x0 + np.eye(5)[i] * d for i, d in enumerate((0.03, 0.03, 0.03, 0.02, 0.01))])
     r = minimize(loss, x0, method="Nelder-Mead", options={"initial_simplex": init, "maxfev": 160, "xatol": 1e-3, "fatol": 1e-4})
     sx, sy, sz, tx, ty = r.x
+    adjust = adjust or {}
+    sx, sy, sz = sx * adjust.get("length", 1.0), sy * adjust.get("height", 1.0), sz * adjust.get("width", 1.0)
     return base * [sx, sy, sz] + [tx, ty, 0], {
-        "scale_xyz": [round(float(v), 4) for v in r.x[:3]], "offset_xy": [round(float(v), 4) for v in r.x[3:]],
-        "side+top_iou": round(-float(r.fun), 4)}
+        "scale_xyz": [round(float(v), 4) for v in (sx, sy, sz)], "offset_xy": [round(float(v), 4) for v in (tx, ty)],
+        "side+top_iou": round(-float(r.fun), 4), **({"by_hand": adjust} if adjust else {})}
 
 
 # ---- alignment --------------------------------------------------------------------------------------
@@ -221,15 +248,19 @@ def _views_at(cal, flows, P, N, grid, maps, power=4.0, tol_cells=2.5, vis_by_vie
 # ---- the bake ---------------------------------------------------------------------------------------
 
 def _hand_glass(vs: dict, masks: dict) -> np.ndarray:
-    """Glass from outlines traced on the generated model's own renders (qa trace-<view>.png): projected
-    straight through each view's camera, no alignment - so they sit exactly on the model's windows.
-    The best-placed view that has an outline decides."""
+    """Glass from the views listed in model.rebake.glass: outlines traced on the generated model's own
+    renders (qa trace-<view>.png) are projected straight through the view's camera, so they sit exactly
+    on the model's windows; "sheet" masks are aligned like the paint. The best-placed listed view decides."""
     names = [n for n in vs if vs[n]["view"].name in masks]
     if not names:
         return np.zeros(len(next(iter(vs.values()))["w"]), bool)
     W = np.stack([vs[n]["w_raw"] for n in names])
-    G = np.stack([render.sample(masks[vs[n]["view"].name].astype(np.float32), vs[n]["u0"] - 0.5, vs[n]["v0"] - 0.5,
-                                cv2.BORDER_CONSTANT)[:, 0] > 0.5 for n in names])
+    G = []
+    for n in names:
+        m, aligned = masks[vs[n]["view"].name]
+        u, v = (vs[n]["u"], vs[n]["v"]) if aligned else (vs[n]["u0"], vs[n]["v0"])  # sheet masks move with the paint
+        G.append(render.sample(m.astype(np.float32), u - 0.5, v - 0.5, cv2.BORDER_CONSTANT)[:, 0] > 0.5)
+    G = np.stack(G)
     best = np.argmax(W, axis=0)
     i = np.arange(W.shape[1])
     return G[best, i] & (W[best, i] > 1e-3)
@@ -286,8 +317,9 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
         s_b = render.sample(blur[src], e["u"] - 0.5, e["v"] - 0.5)
         r_b = render.sample(rblur[src], e["u0"] - 0.5, e["v0"] - 0.5)
         agree = np.exp(-(np.linalg.norm(s_b - r_b, axis=1) / agree_sigma) ** 2)
-        # trusted as drawn: what's seen through glass and the glass itself
-        agree = np.where(seen_through | is_glass, 1.0, agree)
+        # trusted as drawn: what's seen through glass and the glass itself - and everything a view the
+        # generator never got paints (its paint there is a guess: a roof banner twice, invented lettering)
+        agree = np.where(seen_through | is_glass | (src in unseen), 1.0, agree)
         # a view only paints glass where its own drawing shows glass there (not a wing drawn in front of
         # the rear window), and only paints bodywork where it doesn't show glass (no cabin on the pillars)
         g = e["view"].panel.glass
@@ -362,7 +394,7 @@ def _glass_prior(gl, P, N, cal):
 # ---- driver -----------------------------------------------------------------------------------------
 
 def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
-    from .__main__ import _layout
+    from .__main__ import _layout, write_review_crops
 
     out = paths.asset_dir(car)
     qadir = paths.qa_dir(car)
@@ -378,7 +410,7 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
     glass.find_all(cal, grid, pr, tune.get("glass"))
 
     mesh = Textured(src_path)
-    mesh.V, fit_report = fit(mesh.V, mesh.F, cal)
+    mesh.V, fit_report = fit(mesh.V, mesh.F, cal, tune.get("fit"))
     report = {"source": str(src_path.relative_to(out)), "fit": fit_report, "alignment": {}}
 
     renders, flows, rasters = {}, {}, {}
@@ -391,16 +423,25 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
         if name in unseen:
             report["alignment"][name]["note"] = "generator never saw this view: aligned for paint only, not trusted for glass"
         _debug(qadir / f"align-{name}.jpg", v, renders[name], flows[name])
+    report["faces_turned_outward"] = mesh.orient(cal, rasters)
 
     rb = tune.get("rebake", {})
+    write_review_crops(car, cal)
+    # the sheet's own window masks (model.glass): they decide where the drawings show glass and cabin
+    sheet_rgb = cv2.cvtColor(cv2.imread(str(paths.sheet(car))), cv2.COLOR_BGR2RGB)
+    cv2.imwrite(str(qadir / "glass.jpg"), glass.debug_image(cal, sheet_rgb))
     traced = _traced_masks(cal, rb.get("glass"), mirror=tuple(rb.get("glass_mirror", ())))
     clays = {name: trace.clay(v, rasters[name], mesh.normals_face) for name, v in cal.views.items()}
     _write(qadir / "tripo-sheet.png", trace.canvas(cal, renders))
     _write(qadir / "tripo-clay.png", trace.canvas(cal, clays))
     for name, v in cal.views.items():
-        _write(qadir / f"trace-{name}.png", trace.ruler(v, renders[name], clays[name], traced.get(name),
-                                                        (rb.get("glass") or {}).get(name)))
-    report["glass_source"] = "traced (hints.json model.rebake.glass)" if traced else "sheet masks, aligned"
+        mask = traced[name][0] if name in traced else None
+        polys = (rb.get("glass") or {}).get(name)
+        _write(qadir / f"trace-{name}.png", trace.ruler(
+            v, renders[name], clays[name], mask, polys if isinstance(polys, list) else None,
+            region=trace.window_region(v, v.panel.glass, mask), sheet_glass=v.panel.glass))
+    report["glass_source"] = ({n: "sheet mask" if aligned else "traced" for n, (_, aligned) in traced.items()}
+                              if traced else "sheet masks, aligned")
     tex, mr, glass_uv = guided_bake(mesh, cal, grid, flows, renders, size=texture, hand_glass="replace" in tune.get("glass", {}),
                           report=report, unseen=unseen, power=rb.get("power", 4.0), agree_sigma=rb.get("agree", 55.0),
                           traced=traced)
@@ -418,7 +459,10 @@ def _write(path, rgb: np.ndarray) -> None:
 
 
 def _traced_masks(cal, polys: dict | None, mirror=()) -> dict:
-    """hints.json model.rebake.glass: {view: [polygon [[x, y], ...] in sheet px, ...]} -> panel masks.
+    """hints.json model.rebake.glass: {view: [polygon [[x, y], ...] in sheet px, ...] | "sheet"} ->
+    {view: (panel mask, aligned)}. Polygons are traced on the generated model's own render and projected
+    as they are; "sheet" takes the drawing's own window mask (model.glass, qa glass.jpg) and aligns it
+    like the paint - right for views the generator was given, where mesh and drawing agree.
     Views listed in model.rebake.glass_mirror are mirrored across the car's centre line (top: about
     the long axis; front/rear: left-right), so a window traced on one half comes out symmetric."""
     masks = {}
@@ -427,6 +471,10 @@ def _traced_masks(cal, polys: dict | None, mirror=()) -> dict:
             continue
         v = cal.views[name]
         p = v.panel
+        if plist == "sheet":
+            if p.glass is not None:
+                masks[name] = (p.glass.astype(bool), True)
+            continue
         m = np.zeros(p.mask.shape, np.uint8)
         for poly in plist:
             cv2.fillPoly(m, [np.round(np.array(poly, float) - p.origin).astype(np.int32)], 1)
@@ -438,7 +486,7 @@ def _traced_masks(cal, polys: dict | None, mirror=()) -> dict:
             elif name in ("front", "rear"):  # mirror columns about the centre line
                 src = np.clip(np.round(2 * v.uc - np.arange(w)).astype(int), 0, w - 1)
                 m = m | m[:, src]
-        masks[name] = m.astype(bool)
+        masks[name] = (m.astype(bool), False)
     return masks
 
 
@@ -470,13 +518,20 @@ def _export(mesh: Textured, tex: np.ndarray, mr: np.ndarray, dst, glass_uv: np.n
                       normalTexture=normal, metallicFactor=1.0, roughnessFactor=1.0)
     uv = mesh.uv.copy()
     uv[:, 1] = 1.0 - uv[:, 1]
-    m = trimesh.Trimesh(mesh.V, mesh.F, vertex_normals=mesh.trimesh.vertex_normals, process=False,
-                        visual=TextureVisuals(uv=uv, material=mat))
+    # wind every face outward (orient()): the app draws back faces as dark cabin and culls glass seen
+    # from behind, so an inside-out patch would show as a black hole; turn the vertex normals to match
+    F = mesh.F.copy()
+    tri = mesh.V[F]
+    inside_out = np.sum(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]) * mesh.normals_face, axis=1) < 0
+    F[inside_out] = F[inside_out][:, ::-1]
+    vn = np.asarray(mesh.trimesh.vertex_normals, float).copy()
+    vn *= np.where(np.sum(vn * mesh.normals_vert, axis=1, keepdims=True) < 0, -1.0, 1.0)
+    m = trimesh.Trimesh(mesh.V, F, vertex_normals=vn, process=False, visual=TextureVisuals(uv=uv, material=mat))
     scene = trimesh.Scene()
     scene.add_geometry(m, node_name="body", geom_name="body")  # "body": the app's glass split applies
     data = scene.export(file_type="glb", include_normals=True)
     dst.write_bytes(data)
-    return {"bytes": len(data), "triangles": int(len(mesh.F))}
+    return {"bytes": len(data), "triangles": int(len(mesh.F)), "faces_rewound": int(inside_out.sum())}
 
 
 def _debug(path, view, rendered, flow):

@@ -3,6 +3,7 @@ import './style.css';
 import { type RevealMethod, buildCar, loadCar, setLevel, setOpacity } from './car';
 import { createDirector, type Dom } from './director';
 import { buildModelRig, loadModel } from './model';
+import { mountNav } from './nav';
 import { tierOf } from './rarity';
 import { createStage } from './stage';
 
@@ -16,10 +17,18 @@ const mode = q.get('mode');
 const $ = (id: string) => document.getElementById(id)!;
 
 async function main() {
-  const car = await loadCar(q.get('car') ?? 'porsche-911-gt3-rs');
+  const nav = mountNav('rip');
+  const car = await loadCar(q.get('car') ?? 'skyline-hck01');
+  nav.then((n) => n.setCar(car.id));
   // A car modelled from its reference sheet gets the full 360 reveal. Without a model (or with
   // ?reveal=profile) the car is built from the pack photo alone and shown near side-on.
   const model = q.get('reveal') === 'profile' && car.params ? null : await loadModel(car);
+  if (!model && !car.params) {
+    // nothing to reveal yet: the car hasn't been through asset-generation (`ripcars status`)
+    $('panel').insertAdjacentHTML('beforebegin', `<p class="missing">No 3D model for ${car.meta.make} ${car.meta.model} yet.</p>`);
+    (window as any).__ready = true;
+    return;
+  }
   const rig = model ? buildModelRig(car, model) : buildCar(car, q.get('reveal') as RevealMethod | null);
   const tier = tierOf(q.get('rarity') ?? car.meta.rarity);
   const canvas = $('c') as HTMLCanvasElement;
