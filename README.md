@@ -62,10 +62,10 @@ cd app && npm install && npm run dev -- --port 5199     # http://localhost:5199/
 
 ## Deploy (Vercel)
 
-The app deploys as a static site. `vercel.json` installs and builds `app/` and serves `app/dist`. The build takes each car's served files (models, pack photos, sheet crops) and leaves out what the site never loads: Tripo downloads, snapshots and masks. That's about 12 MB.
+The app deploys as a static site, built from `app/` with `app/vercel.json`: `npm ci`, `npm run build`, serving `dist`. The build reads the cars from `../asset-generation/assets`. It keeps each car's served files (models, pack photos, sheet crops) and leaves out what the site never loads: Tripo downloads, snapshots and masks. That's about 12 MB.
 
 1. On vercel.com: **Add New → Project**, import `doctorsolana/RIPCARSRIPPER` from GitHub.
-2. Keep the root directory at the repo root and the framework preset at **Other**; `vercel.json` sets the commands.
+2. Set **Root Directory** to `app`; Vercel suggests it, since it finds the Vite app there. Under it, keep **Include files outside the root directory in the Build Step** enabled (the default): the build needs `asset-generation/assets`. No build overrides are needed.
 3. Deploy. Production comes from `main`. Other branches get preview URLs, which Vercel's default deployment protection only shows to team members, so share the production URL.
 
 The site has two pages: `/` rips a pack (car picker, random pack) and `/inspect.html` inspects every car. Check a build locally with `cd app && npm run build && npx vite preview`.
