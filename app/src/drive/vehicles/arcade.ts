@@ -15,10 +15,10 @@ import type { CarSpec, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, V
 // the slide is then the driving's own - the steering yaws the car, the loose rear lets the travel lag behind the nose
 // (the tail steps out), counter-steer swings the nose back, the throttle loosens the rear a little more, a lift tucks
 // it in, and past ~35 deg the rear bites (a soft limit). Nothing sets the slip angle. It's over by itself once the car
-// is straight again (or too slow, spun, into a wall), the grip easing back over 0.3 s; another tap never cancels it -
-// it keeps it going and flicks it toward the wheel, so S-bends link. On dirt a
-// hard steer at speed loosens the rear a little by itself. Sparks charge through three tiers while it really slides,
-// cashed in as a mini-turbo when it ends clean.
+// has settled straight again - not while it swings through straight into the other side - (or too slow, spun, into a
+// wall), the grip easing back over 0.3 s; another tap never cancels it - it keeps it going and flicks it toward the
+// wheel, so S-bends link. On dirt a hard steer at speed loosens the rear a little by itself. Sparks charge through
+// three tiers while it really slides, cashed in as a mini-turbo when it ends clean.
 // Surfaces scale grip, turn and top speed - plastic fast, asphalt grippiest, dirt loose and bumpy, the grass verge past
 // a road's edge slow and slippery - blended as the wheels cross from one to the next.
 // Walls (rails, tyre walls, hay bales, the soft end of a verge) push back at the corner that touches: an impulse with
@@ -66,8 +66,10 @@ const K = {
   looseLag: 0.12, // ... and the nose answers this slowly (s; the car's weight swinging)
   limitSlip: 34, // deg: past this the rear bites - the nose is held back by limitYaw per s of the excess: a soft
   limitYaw: 20, // limit (no spin from steering alone), fading out past 60 deg (a big over-rotation still spins)
-  straightSlip: 5, // deg: under this for straightTime (s) the car is straight again - the drift is over and the
-  straightTime: 0.35, // sparks cash in ...
+  straightSlip: 8, // deg: the slip under this (the sparks have stopped), swinging slower than straightRate (deg/s) and
+  straightRate: 30, // the nose turning for no more slip than straightSlip either way, for straightTime (s): the car has
+  straightTime: 0.12, // settled straight - the drift is over and the sparks cash in (a swing through straight into the
+  // other side never counts: it swings too fast, and the nose turns for the other side) ...
   looseIdle: 0.8, // ... and one that never slid is over after this (s)
   spinSlip: 75, // deg: past this it has spun (no boost, no help coming round)
   driftHit: 6, // u/s into a wall ends a drift (no boost)
@@ -679,14 +681,13 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const steer = inp.steer, thr = inp.throttle, brk = inp.brake;
     const av = Math.abs(v);
 
-    // ---- drift: a fresh press of Space (held or not) at speed makes the car loose. It's over once the car is straight
-    // again (the sparks cash in) - or one that never slid, after looseIdle - or too slow or spun. A press mid-drift
-    // keeps it going (reFlick), so tapping for each bend of an S never cancels the slide.
+    // ---- drift: a fresh press of Space (held or not) at speed makes the car loose. It's over once the car has settled
+    // straight again (straightT, below: the sparks cash in) - or one that never slid, after looseIdle - or too slow or
+    // spun. A press mid-drift keeps it going (reFlick), so tapping for each bend of an S never cancels the slide.
     if (drifting) {
       const ab = Math.abs(beta);
       looseT += h;
-      if (ab > (K.straightSlip + 3) * DEG) slid = true;
-      straightT = ab < K.straightSlip * DEG && slide >= 1 ? straightT + h : 0;
+      if (ab > K.straightSlip * DEG) slid = true;
       if (ab > 0.02) dir = beta > 0 ? 1 : -1;
       if (v < K.driftEnd) endDrift(false);
       else if (ab > K.spinSlip * DEG) {
@@ -754,6 +755,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (sm > 0 && v > 0 && hayT <= 0) {
       wT -= Math.sign(beta) * Math.max(0, ab - K.limitSlip * DEG) * (1 - smooth(60 * DEG, 80 * DEG, ab)) * K.limitYaw * sm;
     }
+    const b0 = beta; // (the slip before this step: how fast it swings, below)
     if (settleT > 0 && !drifting && v > 0 && hayT <= 0) {
       // settling after a drift: toward the slip this much grip holds with this steering (bN)
       const bN = wT / Math.max(k, 0.5), ex = Math.abs(beta - bN);
@@ -830,6 +832,16 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
         tier = nt as 1 | 2 | 3;
         ev.tierUp = tier;
       }
+    }
+    // ---- straight again? Once the slide has settled - the slip small, no longer swinging (a swing through straight
+    // into the other side is quick) and the nose not turning for a slide either way (the slip its yaw would hold: a
+    // wheel held into the other side turns it there, a quick tap of a key to correct the line hardly does) - for
+    // straightTime, the drift is over
+    if (drifting) {
+      const lim = K.straightSlip * DEG;
+      const heading = Math.abs(omega + kick - gTurn) / Math.max(k, 0.5);
+      const settled = slide >= 1 && Math.abs(beta) < lim && Math.abs(beta - b0) < K.straightRate * DEG * h && heading < lim;
+      straightT = settled ? straightT + h : 0;
     }
 
     // ---- boosters

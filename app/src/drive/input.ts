@@ -370,8 +370,9 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
       // Loose: the travel bends at the rear's grip on the slip, so the road's bend wants a slip; the yaw is what moves
       // the slip there (the travel's turn plus closing the gap), and the steering asks for that yaw. More bend than the
       // slide gives on the throttle: it lifts (the tail tucks in, the line tightens). Out of the corner the road wants
-      // none: it straightens, and the drift ends by itself once the car is straight (a tap would keep it going).
-      const want = v * kff - bank + err * 3;
+      // none: it straightens - its line corrected gently there (through the lagging slip a full correction weaves at
+      // speed) - and the drift ends by itself once the slide has settled (a tap would keep it going).
+      const want = v * kff - bank + err * (corner[idx(st.trackS + x0)] < 0 ? 1 : 3);
       const lim = MAX_SLIP * (Math.PI / 180);
       if (Math.abs(want) > 0.85 * LOOSE_GRIP * sd * LOOSE_THR * lim) out.throttle = 0;
       const kl = LOOSE_GRIP * sd * (out.throttle > 0 ? LOOSE_THR : LOOSE_LIFT);

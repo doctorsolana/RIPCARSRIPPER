@@ -4,14 +4,21 @@ import type { DriveInput, Track, TrackFrame, VehicleState } from './types';
 // Every sound is generated in code (no files):
 //   engine   2 detuned saws + a sub sine through a lowpass that opens with throttle (900 Hz -> 6 kHz);
 //            pitch from a fake 5-speed gearbox (shift at 92%, drop to 62%, 120 ms throttle dip)
-//   rolling  by what the tyres are on, crossfaded over ~0.2 s, silent in the air:
+//   rolling  by what the tyres are on, crossfaded over ~0.2 s, silent in the air, and all of it dark - next to
+//            nothing above ~2 kHz (broadband hiss under a car reads as a TV off its channel, not as tyres):
 //            plastic  brown noise lowpassed at 200 + 18 v Hz (the hollow toy-track hum)
-//            asphalt  a softer hum under a tyre hiss (noise band-passed at 600 + 28 v Hz)
-//            dirt     a rougher hum and a gravel crunch: a loop of random grains, played faster with speed
-//            verge    a low rumble wobbling over the bumps, and a swish of grass
-//   joints   THE Hot Wheels sound, on the plastic only: a 2.2 kHz tick per axle each time trackS crosses a
-//            multiple of 17 u where the 8 u channel has a connector, front then rear a wheelbase later; the
-//            rhythm is a speedometer
+//            asphalt  a warm tyre roar: a loop of pink noise with rougher patches and soft low knocks in it (the
+//                     road's grain), scrolling past faster with speed, through 90 Hz .. 260 + 8 v Hz with a lift at the
+//                     tyre's cavity resonance (230 Hz); it builds all the way to top speed (~11 dB under the engine at
+//                     35 u/s on the throttle)
+//            dirt     a low rumble bumping along (a loop of brown noise with irregular swells, lowpassed at 220 + 6 v Hz)
+//                     and sparse soft crunches: rounded 300-850 Hz grains at random moments, ~0.8 v a second (more
+//                     in a slide), each at its own pitch and weight
+//            verge    a low rumble wobbling over the bumps, and a soft swish of grass (a ~0.8 kHz band, in waves)
+//   joints   THE Hot Wheels sound, on the plastic only: a round plastic 'tock' (~1.4 kHz over a hollow ~0.56 kHz,
+//            three pitches, every hit a little different) per axle each time trackS crosses a multiple of 17 u where
+//            the 8 u channel has a connector, front then rear a wheelbase later; the rhythm is a speedometer, in the
+//            background
 //   squeal   band-passed noise x smoothstep(4 deg, 20 deg, |slip|) on plastic and asphalt; a slide on dirt or
 //            grass is a heavier crunch / rumble instead
 //   scrape   a corner held on a wall while the car runs along it: noise through two resonances set by the
@@ -48,6 +55,9 @@ const TING = [0, 1318.5, 1661.2, 1975.5]; // E6, G#6, B6 for spark tiers 1-3
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
 const BLEND = 0.07; // s: time constant of a surface change (~0.2 s to settle)
+// The rolling beds' levels at 45 u/s (the asphalt's roar, the dirt's rumble and its crunches, the verge's swish), and the
+// joints' tock against the landing's tick.
+const ROAD = 0.23, DIRT = 0.15, CRUNCH = 0.36, SWISH = 0.25, TOCK = 0.31;
 // What a wall is made of (as fx.ts), and the scrape's two resonances on each: [f1, Q1, f2, Q2, level].
 const RAIL = 0, TYRE = 1, HAY = 2, SOFT = 3;
 // Levels even out the bands' widths (a narrow band passes less noise): all four ~0.065 RMS at the master.
@@ -65,10 +75,9 @@ const smoothstep = (a: number, b: number, x: number) => {
 };
 
 /** Render a mono buffer from a sample function (deterministic noise), normalised to `peak`. */
-function render(ctx: BaseAudioContext, dur: number, fn: (t: number, rnd: () => number) => number, peak = 0.9) {
+function render(ctx: BaseAudioContext, dur: number, fn: (t: number, rnd: () => number) => number, peak = 0.9, seed = 0x2f6b) {
   const sr = ctx.sampleRate, n = Math.ceil(dur * sr);
   const buf = ctx.createBuffer(1, n, sr), d = buf.getChannelData(0);
-  let seed = 0x2f6b;
   const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) | 0) / 2147483648;
   let m = 0;
   for (let i = 0; i < n; i++) {
@@ -80,27 +89,124 @@ function render(ctx: BaseAudioContext, dur: number, fn: (t: number, rnd: () => n
   return buf;
 }
 
-/** A seamless loop of gravel: ~260 random grains a second (short noisy clicks with a little pitch). */
-function gravelLoop(ctx: BaseAudioContext, dur: number) {
-  const sr = ctx.sampleRate, n = Math.ceil(dur * sr);
-  const buf = ctx.createBuffer(1, n, sr), d = buf.getChannelData(0);
+/** A mono buffer of the samples (at sr, the context's rate by default), normalised to `peak`. */
+function toBuffer(ctx: BaseAudioContext, d: Float32Array, peak = 0.9, sr = ctx.sampleRate) {
+  let m = 0;
+  for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i]));
+  const buf = ctx.createBuffer(1, d.length, sr), o = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) o[i] = (d[i] * peak) / (m || 1);
+  return buf;
+}
+
+/** Filtered noise that loops seamlessly: the filter (`step`, with memory) first runs over the end of the same white
+ *  noise (20000 samples, far longer than any pole here remembers), so the start carries on from the end. */
+function lapNoise(n: number, rnd: () => number, step: (x: number) => number) {
+  const w = new Float32Array(n), d = new Float32Array(n);
+  for (let i = 0; i < n; i++) w[i] = rnd() * 2 - 1;
+  for (let i = n - Math.min(n, 20000); i < n; i++) step(w[i]);
+  for (let i = 0; i < n; i++) d[i] = step(w[i]);
+  return d;
+}
+
+/** Adds `count` swells (parabolic bumps), len0..len1 s long and up to h high, at random places on env (wrapping round). */
+function swells(env: Float32Array, sr: number, rnd: () => number, count: number, len0: number, len1: number, h: number) {
+  const n = env.length;
+  for (let k = 0; k < count; k++) {
+    const at = Math.floor(rnd() * n), len = Math.ceil((len0 + (len1 - len0) * rnd()) * sr), a = 4 * h * rnd();
+    for (let i = 0; i < len; i++) env[(at + i) % n] += a * (i / len) * (1 - i / len);
+  }
+}
+
+/** The rate the rolling loops are made at: all they hold is under ~1.5 kHz, and the filters after them take away what
+ *  the resampling adds (22.05 kHz is as low as older Safari makes a buffer). */
+const loopRate = (ctx: BaseAudioContext) => Math.min(ctx.sampleRate, 22050);
+
+/** A seamless loop of asphalt under a tyre (dur s at playback rate 1): pink noise (Kellet's filter), the level swelling
+ *  a little over patches of rougher road (~10 a second), and soft low knocks in it (~90 a second at 250-800 Hz, a 1 ms
+ *  rounded rise, a few ms long) - the road's grain, which the playback rate scrolls past with the speed. */
+function roadLoop(ctx: BaseAudioContext, dur: number) {
+  const sr = loopRate(ctx), n = Math.ceil(dur * sr);
+  let seed = 0x51ab;
+  const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) | 0) >>> 0) / 4294967296;
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  const d = lapNoise(n, rnd, (x) => {
+    b0 = 0.99886 * b0 + x * 0.0555179;
+    b1 = 0.99332 * b1 + x * 0.0750759;
+    b2 = 0.969 * b2 + x * 0.153852;
+    b3 = 0.8665 * b3 + x * 0.3104856;
+    b4 = 0.55 * b4 + x * 0.5329522;
+    b5 = -0.7616 * b5 - x * 0.016898;
+    const y = b0 + b1 + b2 + b3 + b4 + b5 + b6 + x * 0.5362;
+    b6 = x * 0.115926;
+    return y;
+  });
+  let ms = 0;
+  for (let i = 0; i < n; i++) ms += d[i] * d[i];
+  const env = new Float32Array(n).fill(1);
+  swells(env, sr, rnd, Math.round(dur * 10), 0.04, 0.12, 0.25);
+  for (let i = 0; i < n; i++) d[i] *= env[i];
+  const A = 0.6 * Math.sqrt(ms / n), rise = 1e-3 * sr;
+  for (let k = 0, m = Math.round(dur * 90); k < m; k++) {
+    const at = Math.floor(rnd() * n), w = (TAU * (250 + 550 * rnd())) / sr, tau = (1.5 + 2.5 * rnd()) * 1e-3 * sr;
+    const a = A * (0.3 + 0.7 * rnd()), ph = rnd() * TAU, len = Math.ceil(tau * 5);
+    // a phasor turning w and shrinking 1/e every tau samples; its imaginary part is the knock
+    const c = Math.cos(w) * Math.exp(-1 / tau), sn = Math.sin(w) * Math.exp(-1 / tau);
+    let re = a * Math.cos(ph), im = a * Math.sin(ph);
+    for (let i = 0; i < len; i++) {
+      const x = Math.min(1, i / rise), r = re * c - im * sn;
+      d[(at + i) % n] += x * x * (3 - 2 * x) * im;
+      im = re * sn + im * c;
+      re = r;
+    }
+  }
+  return toBuffer(ctx, d, 0.9, sr);
+}
+
+/** A seamless loop of dirt road under a tyre (dur s at playback rate 1): a low rumble (brown noise) bumping along -
+ *  irregular swells, ~6 a second and up to ~+3 dB. */
+function dirtLoop(ctx: BaseAudioContext, dur: number) {
+  const sr = loopRate(ctx), n = Math.ceil(dur * sr);
   let seed = 0x6b43;
   const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) | 0) >>> 0) / 4294967296;
-  for (let k = 0, grains = Math.round(dur * 260); k < grains; k++) {
-    const at = Math.floor(rnd() * n), tau = (0.4 + 2.2 * rnd()) * 1e-3 * sr, amp = 0.2 + 0.8 * rnd() * rnd();
-    const w = (TAU * (1400 + 4200 * rnd())) / sr, ph = rnd() * TAU, len = Math.ceil(tau * 5);
-    for (let i = 0; i < len; i++) d[(at + i) % n] += amp * Math.exp(-i / tau) * (0.55 * Math.sin(w * i + ph) + 0.8 * (rnd() * 2 - 1));
-  }
-  let m = 0;
-  for (let i = 0; i < n; i++) m = Math.max(m, Math.abs(d[i]));
-  for (let i = 0; i < n; i++) d[i] *= 0.9 / (m || 1);
-  return buf;
+  const k = Math.exp((-TAU * 150) / sr); // a leaky integral, flat to 150 Hz (as the shared brown noise)
+  let last = 0;
+  const d = lapNoise(n, rnd, (x) => (last = k * last + (1 - k) * x));
+  const env = new Float32Array(n).fill(1);
+  swells(env, sr, rnd, Math.round(dur * 6), 0.07, 0.18, 0.45);
+  for (let i = 0; i < n; i++) d[i] *= env[i];
+  return toBuffer(ctx, d, 0.9, sr);
 }
 
 const e = (t: number, tau: number) => Math.exp(-t / tau);
 const sin = Math.sin;
 
-// The joint tick: a bright plastic click with a little body. Dominant mode 2.2 kHz, ~12 ms.
+// The joint knock: a round plastic 'tock' - a ~1.4 kHz body over a hollow 0.4 f, gone in ~10 ms - its edge softened
+// (a 0.7 ms rise and a puff of dark noise: no click). Made at three pitches.
+const tockFn = (f: number) => {
+  let lp = 0;
+  return (t: number, rnd: () => number) => {
+    lp += 0.3 * (rnd() - lp);
+    return (0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, t / 0.0007))) *
+        (sin(TAU * f * t) * e(t, 0.003) +
+          0.45 * sin(TAU * 0.4 * f * t + 0.5) * e(t, 0.0045) +
+          0.12 * sin(TAU * 1.63 * f * t + 1.3) * e(t, 0.0012) +
+          0.25 * sin(TAU * 180 * t) * e(t, 0.008)) +
+      0.6 * lp * e(t, 0.0006);
+  };
+};
+// A crunch of gravel under a tyre: a stone knocking (a damped low-mid tone and its overtone) in a puff of dark noise,
+// rounded at the front (a 1.5 ms rise) and gone in ~10 ms. The bank of six spans 300-850 Hz.
+const crunchFn = (k: number) => {
+  const f = 300 + 110 * k, tau = 0.0055 - 0.0006 * k, ph = 1.3 * k;
+  let lp = 0;
+  return (t: number, rnd: () => number) => {
+    lp += 0.2 * (rnd() - lp);
+    return (0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, t / 0.0015))) *
+      (sin(TAU * f * t + ph) * e(t, tau) + 0.45 * sin(TAU * 1.57 * f * t + 2 * ph) * e(t, 0.5 * tau) + 2.2 * lp * e(t, 0.8 * tau));
+  };
+};
+// The landing's tick (and the plastic's rattle after a slam): a bright plastic click with a little body. Dominant mode
+// 2.2 kHz, ~12 ms.
 const tickFn = (t: number, rnd: () => number) =>
   Math.min(1, t / 0.0003) *
     (sin(TAU * 2200 * t) * e(t, 0.0045) +
@@ -154,7 +260,7 @@ const slamFn = (t: number, rnd: () => number) =>
         (0.7 + 0.3 * sin(TAU * 31 * t))) +
   0.5 * rnd() * (e(t, 0.006) + 0.25 * e(t, 0.06));
 
-function build(ctx: AudioContext, muted: boolean) {
+function build(ctx: BaseAudioContext, muted: boolean) {
   const sr = ctx.sampleRate;
   // A peak limiter, not a leveller: a low threshold would duck the engine on every joint tick and
   // the mix would pump in the tick rhythm.
@@ -172,16 +278,12 @@ function build(ctx: AudioContext, muted: boolean) {
 
   // noise beds
   const white = ctx.createBuffer(1, sr, sr);
-  const brown = ctx.createBuffer(1, sr * 2, sr);
   {
-    const w = white.getChannelData(0), b = brown.getChannelData(0);
+    const w = white.getChannelData(0);
     for (let i = 0; i < w.length; i++) w[i] = Math.random() * 2 - 1;
-    let last = 0;
-    for (let i = 0; i < b.length; i++) b[i] = last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
-    let m = 0;
-    for (let i = 0; i < b.length; i++) m = Math.max(m, Math.abs(b[i]));
-    for (let i = 0; i < b.length; i++) b[i] *= 0.9 / (m || 1);
   }
+  let last = 0;
+  const brown = toBuffer(ctx, lapNoise(sr * 2, Math.random, (x) => (last = (last + 0.02 * x) / 1.02)));
   const loop = (buf: AudioBuffer) => {
     const s = ctx.createBufferSource();
     s.buffer = buf;
@@ -228,18 +330,23 @@ function build(ctx: AudioContext, muted: boolean) {
   wobG.connect(saw2.detune);
   for (const o of [saw1, saw2, sub, wob]) o.start();
 
-  // rolling: the hum (plastic, under asphalt and dirt too), asphalt hiss, gravel, the verge's rumble and swish
+  // rolling: the plastic's hum; the asphalt's roar; the dirt's rumble, and the bus its crunches play into; the verge's
+  // rumble and swish
   const humF = filter('lowpass', 200, 0.7), humG = gain(0);
   loop(brown).connect(humF).connect(humG).connect(master);
-  const roadF = filter('bandpass', 700, 0.7), roadG = gain(0);
-  loop(white).connect(roadF).connect(roadG).connect(master);
-  const gravel = loop(gravelLoop(ctx, 1.7)), gravelG = gain(0);
-  gravel.connect(filter('highpass', 700, 0.7)).connect(gravelG).connect(master);
+  const road = loop(roadLoop(ctx, 4)), roadF = filter('lowpass', 500, 0.6), cavity = filter('peaking', 230, 2), roadG = gain(0);
+  cavity.gain.value = 4;
+  road.connect(filter('highpass', 90, 0.7)).connect(roadF).connect(filter('lowpass', 1200, 0.7)).connect(cavity).connect(roadG).connect(master);
+  const dirt = loop(dirtLoop(ctx, 4)), dirtF = filter('lowpass', 400, 0.7), dirtG = gain(0);
+  dirt.connect(filter('highpass', 55, 0.7)).connect(dirtF).connect(dirtG).connect(master);
+  const crunchG = gain(0);
+  crunchG.connect(filter('lowpass', 1800, 0.7)).connect(master);
   const grassF = filter('lowpass', 140, 0.9), grassBump = gain(0.75), grassG = gain(0);
   loop(brown).connect(grassF).connect(grassBump).connect(grassG).connect(master);
   lfo(6.5, 0.25, grassBump.gain); // bumps
-  const swishG = gain(0);
-  loop(white).connect(filter('bandpass', 4200, 0.6)).connect(swishG).connect(master);
+  const swishAM = gain(0.7), swishG = gain(0);
+  loop(brown).connect(filter('bandpass', 800, 0.9)).connect(filter('lowpass', 1600, 0.7)).connect(swishAM).connect(swishG).connect(master);
+  lfo(1.6, 0.3, swishAM.gain); // the blades brush past in waves
   // tyre squeal: two resonances from one noise bed
   const sqG = gain(0), sqF1 = filter('bandpass', 1700, 7), sqF2 = filter('bandpass', 3500, 9), sqF2G = gain(0.5);
   const sqSrc = loop(white);
@@ -266,15 +373,16 @@ function build(ctx: AudioContext, muted: boolean) {
   loop(white).connect(whistleF).connect(whistleG).connect(master);
 
   return {
-    master, mute, white, engF, engG, saw1, saw2, sub, humF, humG, roadF, roadG, gravel, gravelG, grassF, grassG, swishG,
-    sqG, sqF1, sqF2, scF1, scF2, scG, jetG, windF, windG, windLowF, windLowG, whistleF, whistleG,
+    master, mute, white, engF, engG, saw1, saw2, sub, humF, humG, road, roadF, roadG, dirt, dirtF, dirtG, crunchG, grassF, grassG,
+    swishG, sqG, sqF1, sqF2, scF1, scF2, scG, jetG, windF, windG, windLowF, windLowG, whistleF, whistleG,
     tick: render(ctx, 0.03, tickFn, 0.9),
+    tock: [1300, 1420, 1560].map((f, i) => render(ctx, 0.03, tockFn(f), 0.9, 0x2f6b + i)),
+    crunch: [0, 1, 2, 3, 4, 5].map((k) => render(ctx, 0.03, crunchFn(k), 0.9, 0x7a31 + 97 * k)),
     slam: render(ctx, 0.7, slamFn, 0.95),
     clack: render(ctx, 0.12, clackFn, 0.9),
     thud: render(ctx, 0.3, thudFn, 0.95),
     thump: render(ctx, 0.3, thumpFn, 0.95),
     hay: render(ctx, 0.35, hayFn(), 0.9),
-    grains: gravel.buffer!,
   };
 }
 
@@ -283,9 +391,12 @@ const newFrame = (): TrackFrame => ({
   right: new THREE.Vector3(0, 0, 1), kappa: 0, kappaN: 0, width: 8, surface: 'plastic', edge: 'rail', shoulder: 0,
 });
 
-export function createAudio(): DriveAudio {
-  let ctx: AudioContext | null = null;
-  let g: ReturnType<typeof build> | null = null;
+/** `offline`: play into this context instead (an OfflineAudioContext a test drives with scripted states): no gesture
+ *  or tab listeners, and update() plays whatever the context's state (the test suspends it to step it). */
+export function createAudio(offline?: BaseAudioContext): DriveAudio {
+  let live: AudioContext | null = null; // the speakers' context, made on the first gesture
+  let ctx: BaseAudioContext | null = offline ?? null;
+  let g: ReturnType<typeof build> | null = offline ? build(offline, false) : null;
   let muted = false;
   let gear = 1, shiftT = 0, thr = 0, time = 0, sPrev = NaN;
   // what's under and beside the car (probe(), every frame): the surface mix under the tyres, the nearer wall
@@ -297,14 +408,16 @@ export function createAudio(): DriveAudio {
   // the big jump: the track's 'bigjump' spans [s0, s1, ...]; time aloft, and whether this flight left a big jump's lip
   const lips: number[] = [];
   let airT = 0, bigAir = false;
+  let crunchGap = 1; // the gravel: expected crunches left until the next one (an exponential draw)
 
   const unlock = () => {
+    if (offline) return;
     try {
-      if (!ctx) {
-        ctx = new AudioContext({ latencyHint: 'interactive' });
-        g = build(ctx, muted);
+      if (!live) {
+        ctx = live = new AudioContext({ latencyHint: 'interactive' });
+        g = build(live, muted);
       }
-      if (ctx.state !== 'running' && !document.hidden) void ctx.resume().catch(() => {});
+      if (live.state !== 'running' && !document.hidden) void live.resume().catch(() => {});
     } catch {
       /* no audio on this device */
     }
@@ -313,32 +426,35 @@ export function createAudio(): DriveAudio {
   const opts = { capture: true, passive: true } as const;
   const onGesture = () => {
     unlock();
-    if (ctx?.state === 'running') for (const t of ['pointerdown', 'keydown', 'touchend'] as const) window.removeEventListener(t, onGesture, opts);
+    if (live?.state === 'running') for (const t of ['pointerdown', 'keydown', 'touchend'] as const) window.removeEventListener(t, onGesture, opts);
   };
-  for (const t of ['pointerdown', 'keydown', 'touchend'] as const) window.addEventListener(t, onGesture, opts);
-  document.addEventListener('visibilitychange', () => {
-    if (!ctx) return;
-    if (document.hidden) void ctx.suspend().catch(() => {});
-    else void ctx.resume().catch(() => {});
-  });
+  if (!offline) {
+    for (const t of ['pointerdown', 'keydown', 'touchend'] as const) window.addEventListener(t, onGesture, opts);
+    document.addEventListener('visibilitychange', () => {
+      if (!live) return;
+      if (document.hidden) void live.suspend().catch(() => {});
+      else void live.resume().catch(() => {});
+    });
+  }
 
   // ---- one-shots ----------------------------------------------------------------------------------
-  function play(buf: AudioBuffer, when: number, level: number, rate = 1, offset = 0, dur = 0) {
+  /** A one-shot buffer into the master (or `to`, a bus). */
+  function play(buf: AudioBuffer, when: number, level: number, rate = 1, to?: AudioNode) {
     if (!ctx || !g) return;
     const s = ctx.createBufferSource();
     s.buffer = buf;
     s.playbackRate.value = rate;
     const a = ctx.createGain();
     a.gain.value = level;
-    if (dur) {
-      // a slice of a longer buffer, faded out
-      a.gain.setValueAtTime(level, when);
-      a.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    }
-    s.connect(a).connect(g.master);
-    s.start(Math.max(when, ctx.currentTime), offset);
-    if (dur) s.stop(when + dur + 0.02);
+    s.connect(a).connect(to ?? g.master);
+    s.start(Math.max(when, ctx.currentTime));
   }
+  /** A crunch of gravel: a grain of the bank at its own pitch and weight. */
+  const crunch = (when: number, level: number, rate: number, to?: AudioNode) =>
+    g && play(g.crunch[Math.floor(Math.random() * g.crunch.length)], when, level * (0.3 + 0.7 * Math.random() * Math.random()), rate * (0.85 + 0.3 * Math.random()), to);
+  /** A joint's tock: one of the three, +-5% in pitch, +-1.3 dB - every hit a little different. */
+  const tock = (when: number, level: number, rate: number) =>
+    g && play(g.tock[Math.floor(Math.random() * g.tock.length)], when, level * (0.85 + 0.3 * Math.random()), rate * (1 + 0.1 * (Math.random() - 0.5)));
   function tone(f: number, when: number, level: number, decay: number, type: OscillatorType = 'sine', fEnd = 0) {
     if (!ctx || !g) return;
     const o = ctx.createOscillator();
@@ -456,7 +572,7 @@ export function createAudio(): DriveAudio {
     const airWas = airT;
     airT = state.grounded ? 0 : airT + dt;
     if (ev.airborne) bigAir = !state.grounded && state.speed > 15 && onLip(state.trackS);
-    if (!ctx || !g || ctx.state !== 'running') {
+    if (!ctx || !g || (live && live.state !== 'running')) {
       sPrev = state.trackS;
       return;
     }
@@ -496,17 +612,21 @@ export function createAudio(): DriveAudio {
     }
     const slipDeg = slip / DEG, slide = smoothstep(6, 26, slipDeg);
 
-    // Rolling, by surface (silent in the air).
+    // Rolling, by surface (silent in the air). The asphalt and the dirt build smoothly all the way to top speed.
     const roll = grounded ? Math.min(1, v / 25) : 0, tc = grounded ? BLEND : 0.12;
-    g.humF.frequency.setTargetAtTime((200 + 18 * v) * (1 + 0.3 * mixD), now, 0.05);
-    g.humG.gain.setTargetAtTime(roll * (0.34 * mixP + 0.16 * mixA + 0.22 * mixD), now, tc);
-    g.roadF.frequency.setTargetAtTime(600 + 28 * v, now, 0.05);
-    g.roadG.gain.setTargetAtTime(roll * 0.3 * mixA * (1 + 0.4 * slide), now, tc);
-    g.gravel.playbackRate.setTargetAtTime(0.55 + v / 40 + 0.3 * slide, now, 0.05);
-    g.gravelG.gain.setTargetAtTime(roll * 0.65 * mixD * (1 + 0.8 * slide), now, tc);
+    const rise = grounded ? Math.pow(Math.min(v, 55) / 45, 0.7) : 0, rate = 0.5 + v / 50; // the loops scroll past
+    g.humF.frequency.setTargetAtTime(200 + 18 * v, now, 0.05);
+    g.humG.gain.setTargetAtTime(roll * 0.34 * mixP, now, tc);
+    g.road.playbackRate.setTargetAtTime(rate, now, 0.05);
+    g.roadF.frequency.setTargetAtTime(260 + 8 * v, now, 0.05);
+    g.roadG.gain.setTargetAtTime(rise * ROAD * mixA * (1 + 0.3 * slide), now, tc);
+    g.dirt.playbackRate.setTargetAtTime(rate + 0.15 * slide, now, 0.05);
+    g.dirtF.frequency.setTargetAtTime(220 + 6 * v, now, 0.05);
+    g.dirtG.gain.setTargetAtTime(rise * DIRT * mixD * (1 + 0.6 * slide), now, tc);
+    g.crunchG.gain.setTargetAtTime(rise * CRUNCH * mixD * (1 + 0.4 * slide), now, tc);
     g.grassF.frequency.setTargetAtTime(110 + 4 * v, now, 0.05);
-    g.grassG.gain.setTargetAtTime(roll * 0.45 * mixV * (1 + 0.6 * slide), now, tc);
-    g.swishG.gain.setTargetAtTime(roll * 0.06 * mixV, now, tc);
+    g.grassG.gain.setTargetAtTime(roll * 0.32 * mixV * (1 + 0.6 * slide), now, tc);
+    g.swishG.gain.setTargetAtTime(roll * SWISH * mixV * (1 + 0.5 * slide), now, tc);
 
     // Squeal: slip, or hard braking, on the surfaces that squeal.
     const sq = grounded ? Math.max(smoothstep(4, 20, slipDeg), 0.6 * smoothstep(30, 55, -state.accelLocal.x)) * Math.min(1, v / 10) * hard : 0;
@@ -565,7 +685,7 @@ export function createAudio(): DriveAudio {
       play(g.thud, now, 0.9 * k * (grass ? 0.75 : 1) * (1 + 0.5 * big), (0.95 + 0.1 * Math.random()) * (grass ? 0.85 : 1) * (1 - 0.2 * big));
       if (mixP >= 0.5) play(g.tick, now + 0.012, 0.5 * k, 0.8); // the plastic wheels slap the track
       else if (mixA >= 0.5) whoosh(now + 0.01, 0.35 * k, 2100, 1700, 0.12, 8, 0.005); // the tyres chirp
-      else if (mixD >= 0.5) play(g.grains, now, 0.7 * k, 1.1, Math.random(), 0.22); // a spit of gravel
+      else if (mixD >= 0.5) for (let i = 0; i < 8; i++) crunch(now + 0.15 * (i / 8) ** 1.5 + 0.008 * Math.random(), 0.9 * k * (1 - i / 10), 0.9); // a spit of gravel
       else whoosh(now, 0.12 * k, 4500, 2000, 0.3, 0.8, 0.02); // a swish of grass
       if (big > 0.05) {
         play(g.slam, now, 0.25 + 0.6 * big, 1.05 - 0.2 * big);
@@ -606,8 +726,18 @@ export function createAudio(): DriveAudio {
     spinning = (spinning || spinNow || !!ev.spinOut) && off > 35 * DEG && v > 6;
     if (ev.respawn) whoosh(now, 0.18, 2400, 300, 0.7);
 
-    // Track joints, on the plastic: a tick per axle at every multiple of JOINT along s. Scheduled one frame
-    // ahead at the sub-frame moment of the crossing, so the rhythm stays even at any frame rate.
+    // Scheduled one frame ahead at their sub-frame moments, so the rhythms stay even at any frame rate:
+    const lead = Math.max(dt, 1 / 60) + 0.006, t0 = now + lead - dt;
+    // the gravel's crunches, at random moments (a Poisson stream at a rate that follows the speed; a slide sprays more)
+    const due = grounded && mixD > 0.02 ? v * (0.8 + 1.4 * slide) * dt : 0; // crunches expected this frame
+    let left = due;
+    while (due > 0 && crunchGap <= left) {
+      left -= crunchGap;
+      crunch(t0 + (1 - left / due) * dt, 1, 1 - 0.12 * slide, g.crunchG);
+      crunchGap = -Math.log(1 - Math.random());
+    }
+    crunchGap -= left;
+    // and the track joints, on the plastic: a tock per axle at every multiple of JOINT along s.
     const s = state.trackS;
     if (!Number.isNaN(sPrev) && !ev.respawn) {
       let ds = s - sPrev, k = -1, frac = 0;
@@ -624,13 +754,12 @@ export function createAudio(): DriveAudio {
         frac = clamp(1 - s / ds, 0, 1);
       }
       if (k >= 0 && grounded && v > 1.5 && (!track || isJoint(track.frameAt(k * JOINT, fr2)))) {
-        const lead = Math.max(dt, 1 / 60) + 0.006;
-        const when = now + lead - (1 - frac) * dt;
-        const level = 0.26 + 0.36 * Math.min(1, v / 40);
+        const when = t0 + frac * dt;
+        const level = TOCK * (0.26 + 0.36 * Math.min(1, v / 40));
         const bright = 0.94 + 0.1 * Math.min(1, v / 50); // harder hits ring a little higher
-        play(g.tick, when, level, bright + 0.06 * (Math.random() - 0.5));
+        tock(when, level, bright);
         const lagRear = WHEELBASE / v;
-        if (lagRear < 0.4) play(g.tick, when + lagRear, level * 0.78, bright * 0.94 + 0.05 * (Math.random() - 0.5));
+        if (lagRear < 0.4) tock(when + lagRear, level * 0.78, bright * 0.94);
       }
     }
     sPrev = s;
