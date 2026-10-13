@@ -1,0 +1,398 @@
+import * as THREE from 'three';
+import type { DriveInput, Surface, Track, TrackFrame, VehicleState } from './types';
+
+// Keyboard, gamepad and touch merged into one DriveInput, plus an autopilot for ?auto=1 and tests.
+//   keys   A/D or arrows steer, W/up throttle, S/down brake (reverse), Space/Shift drift, R restart
+//   pad    left stick (deadzone 0.12, |x|^1.6) or d-pad, RT throttle, LT brake, A/RB drift, Start/Y restart
+//   touch  one thumb: drag anywhere to steer (6 px deadzone, full lock at 70 px; past that the anchor
+//          follows the finger, so steering back never needs a long swipe). The car accelerates by itself.
+//          Drift: a second finger, or hold full lock for 150 ms - a tap either way: the drift runs by itself until the
+//          car is straight again (centre the thumb or lift it), which fires the boost. There's no touch brake.
+// Steering slews 6/s turning in and 12/s coming back; a drift press counts as held for at least 150 ms (a tap: the car
+// goes loose on the press and stays loose by itself - holding the button changes nothing). Both run on the sim's steps
+// (read(h) once per step), so the DriveInput stream is a function of what's held at each step.
+
+export interface InputSource {
+  read(dt: number): DriveInput;
+  autopilot(state: VehicleState, track: Track): DriveInput;
+  onRestart(cb: () => void): void;
+  /** Resolves on the first key, tap, click or pad button (drops the gate, unlocks audio). */
+  firstInput: Promise<void>;
+  /** The player is on touch (auto-throttle on). */
+  readonly touch: boolean;
+  /** Haptics: gamepad rumble, or a short buzz on Android touch. strength 0..1. */
+  rumble(strength: number, ms: number): void;
+}
+
+const STEER_IN = 6, STEER_OUT = 12; // per s
+const DRIFT_BUFFER = 150; // ms
+const TOUCH_DEAD = 6, TOUCH_FULL = 70; // px
+const AUTO_DRIFT = 150, LIFT_GRACE = 100, CENTRE_RELEASE = 250; // ms
+const PAD_DEAD = 0.12;
+const GAME_KEYS = new Set(['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'ShiftLeft', 'ShiftRight']);
+
+const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
+
+export function createInput(target: HTMLElement): InputSource {
+  const out: DriveInput = { steer: 0, throttle: 0, brake: 0, drift: false };
+  const keys = new Set<string>();
+  const restartCbs: (() => void)[] = [];
+  let touchMode = matchMedia('(pointer: coarse)').matches;
+  let clock = 0, lastDriftPress = -1e9, prevDriftHeld = false; // clock: s of sim steps read
+  let tapped = false; // a drift press since the last step (a tap quicker than a frame still counts)
+  let started = false;
+  let resolveFirst = () => {};
+  const firstInput = new Promise<void>((r) => (resolveFirst = r));
+  const first = () => {
+    if (!started) {
+      started = true;
+      resolveFirst();
+    }
+  };
+  const restart = () => restartCbs.forEach((cb) => cb());
+
+  // ---- keyboard
+  const inField = (e: Event) => {
+    const t = e.target as HTMLElement | null;
+    return !!t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  };
+  addEventListener('keydown', (e) => {
+    if (inField(e) || e.metaKey || e.ctrlKey || e.altKey || e.code === 'Tab' || e.code === 'Escape') return;
+    if (GAME_KEYS.has(e.code)) e.preventDefault();
+    if (e.repeat) return;
+    keys.add(e.code);
+    if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') tapped = true;
+    touchMode = false;
+    if (e.code === 'KeyR') restart();
+    first();
+  });
+  addEventListener('keyup', (e) => keys.delete(e.code));
+  addEventListener('blur', () => keys.clear());
+
+  // ---- touch (pointer events; a mouse click only counts as "start")
+  let steerId = -1, anchor = 0, steerX = 0, lastDx = 0, liftedAt = -1e9, fullSince = -1, centredSince = -1;
+  let latch = false;
+  const others = new Set<number>();
+  target.addEventListener('contextmenu', (e) => e.preventDefault());
+  target.addEventListener(
+    'pointerdown',
+    (e) => {
+      first();
+      if (e.pointerType === 'mouse') return;
+      e.preventDefault();
+      touchMode = true;
+      if (steerId < 0) {
+        steerId = e.pointerId;
+        steerX = e.clientX;
+        // a re-grab right after a lift keeps the stick where it was
+        anchor = performance.now() - liftedAt < LIFT_GRACE ? steerX - lastDx : steerX;
+        try {
+          target.setPointerCapture(e.pointerId);
+        } catch {
+          // not capturable (synthetic event)
+        }
+      } else {
+        others.add(e.pointerId);
+        tapped = true;
+      }
+    },
+    { passive: false },
+  );
+  target.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== steerId) return;
+    steerX = e.clientX;
+    if (steerX - anchor > TOUCH_FULL) anchor = steerX - TOUCH_FULL;
+    else if (anchor - steerX > TOUCH_FULL) anchor = steerX + TOUCH_FULL;
+  });
+  const lift = (e: PointerEvent) => {
+    if (e.pointerId === steerId) {
+      lastDx = steerX - anchor;
+      steerId = -1;
+      liftedAt = performance.now();
+    } else others.delete(e.pointerId);
+  };
+  target.addEventListener('pointerup', lift);
+  target.addEventListener('pointercancel', lift);
+
+  // ---- gamepad (polled only once one has been seen)
+  let padSeen = false, padRestartPrev = false, padAt = -1e9;
+  const pad: DriveInput = { steer: 0, throttle: 0, brake: 0, drift: false };
+  addEventListener('gamepadconnected', () => (padSeen = true));
+
+  const ap = createAutopilot();
+
+  return {
+    get touch() {
+      return touchMode;
+    },
+    firstInput,
+    onRestart(cb: () => void) {
+      restartCbs.push(cb);
+    },
+    autopilot: ap,
+    rumble(strength: number, ms: number) {
+      if (touchMode) {
+        navigator.vibrate?.(Math.round(ms * 0.5));
+        return;
+      }
+      if (!padSeen) return;
+      for (const p of navigator.getGamepads()) {
+        const act = (p as (Gamepad & { vibrationActuator?: { playEffect?(t: string, o: object): Promise<unknown> } }) | null)?.vibrationActuator;
+        act?.playEffect?.('dual-rumble', { duration: ms, strongMagnitude: strength, weakMagnitude: Math.min(1, strength * 1.4) })?.catch(() => {});
+      }
+    },
+    read(dt: number): DriveInput {
+      const now = performance.now();
+      let steerT = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+      let thr = keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0;
+      let brk = keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0;
+      let drift = keys.has('Space') || keys.has('ShiftLeft') || keys.has('ShiftRight');
+
+      if (padSeen && now - padAt >= 8) {
+        padAt = now; // poll at most once per frame-ish, not every 1/120 s step
+        pad.steer = pad.throttle = pad.brake = 0;
+        pad.drift = false;
+        let restartNow = false;
+        for (const p of navigator.getGamepads()) {
+          if (!p || !p.connected) continue;
+          const b = (i: number) => p.buttons[i]?.value ?? 0;
+          const x = p.axes[0] ?? 0, ax = Math.abs(x);
+          let st = ax < PAD_DEAD ? 0 : Math.sign(x) * ((ax - PAD_DEAD) / (1 - PAD_DEAD)) ** 1.6;
+          if (b(14) > 0.5) st = -1;
+          if (b(15) > 0.5) st = 1;
+          if (Math.abs(st) > Math.abs(pad.steer)) pad.steer = st;
+          pad.throttle = Math.max(pad.throttle, b(7));
+          pad.brake = Math.max(pad.brake, b(6));
+          if (b(0) > 0.5 || b(5) > 0.5) pad.drift = true;
+          if (b(9) > 0.5 || b(3) > 0.5) restartNow = true;
+          let any = ax > 0.5;
+          for (let i = 0; i < p.buttons.length && !any; i++) any = p.buttons[i].pressed;
+          if (any) {
+            touchMode = false;
+            first();
+          }
+        }
+        if (restartNow && !padRestartPrev) restart();
+        padRestartPrev = restartNow;
+      }
+      if (padSeen) {
+        if (Math.abs(pad.steer) > Math.abs(steerT)) steerT = pad.steer;
+        thr = Math.max(thr, pad.throttle);
+        brk = Math.max(brk, pad.brake);
+        drift ||= pad.drift;
+      }
+
+      if (steerId >= 0) {
+        const dx = steerX - anchor;
+        const raw = Math.sign(dx) * Math.min(1, Math.max(0, Math.abs(dx) - TOUCH_DEAD) / (TOUCH_FULL - TOUCH_DEAD));
+        steerT = raw;
+        // one thumb: full lock held = drift; back to the middle (or lifted) = release
+        if (Math.abs(raw) >= 0.98) {
+          if (fullSince < 0) fullSince = now;
+          else if (now - fullSince >= AUTO_DRIFT) latch = true;
+        } else fullSince = -1;
+        if (Math.abs(raw) < 0.3) {
+          if (centredSince < 0) centredSince = now;
+          else if (now - centredSince > CENTRE_RELEASE) latch = false;
+        } else centredSince = -1;
+      } else {
+        fullSince = centredSince = -1;
+        if (now - liftedAt > LIFT_GRACE) latch = false;
+      }
+      if (others.size > 0 || latch) drift = true;
+      if (touchMode) thr = brk > 0 ? 0 : 1; // touch: the car drives itself, you steer
+
+      clock += dt;
+      if ((drift || tapped) && !prevDriftHeld) lastDriftPress = clock;
+      tapped = false;
+      prevDriftHeld = drift;
+      out.drift = drift || clock - lastDriftPress < DRIFT_BUFFER / 1000;
+      const s = out.steer;
+      const rate = steerT * s < 0 || Math.abs(steerT) < Math.abs(s) ? STEER_OUT : STEER_IN;
+      out.steer = s + clamp(steerT - s, -rate * dt, rate * dt);
+      out.throttle = thr;
+      out.brake = brk;
+      return out;
+    },
+  };
+}
+
+function newFrame(): TrackFrame {
+  return {
+    s: 0, p: new THREE.Vector3(), t: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0),
+    right: new THREE.Vector3(0, 0, 1), kappa: 0, kappaN: 0, width: 8, surface: 'plastic', edge: 'rail', shoulder: 0,
+  };
+}
+
+// What the autopilot knows of the arcade model (its defaults; it only needs to be good, not optimal).
+const VTOP = 44, YAW_LOW = 3, YAW_HIGH = 1.3, YAW_RAMP = 3.2, G = 24, BANK_ASSIST = 1.5;
+const SURF_YAW: Record<Surface, number> = { plastic: 1, asphalt: 1.06, dirt: 0.93 };
+const GRASS_YAW = 0.75;
+// Loose (a drift), the travel bends at LOOSE_GRIP x the surface's share x the slip (rad/s per rad; x LOOSE_THR on the
+// throttle, LOOSE_LIFT off it) and the steering's yaw is LOOSE_YAW x grip's; it plans a drifted corner at PLAN_SLIP deg
+// on the throttle (the soft limit is ~35).
+const LOOSE_GRIP = 3.2, LOOSE_THR = 0.8, LOOSE_LIFT = 1.3, LOOSE_YAW = 1.25, PLAN_SLIP = 28, MAX_SLIP = 33;
+const SURF_DRIFT: Record<Surface, number> = { plastic: 1, asphalt: 1.15, dirt: 0.9 };
+const DRIFT_TURN = 0.6; // rad: it drifts corners turning at least this far ...
+const DRIFT_R = 70; // ... at least this tight (u)
+const BRAKE = 42; // u/s^2 it plans to brake with (the car manages ~65)
+
+/** The most yaw the car has in grip at speed v (rad/s), sy = the surface's share. */
+const yawCap = (v: number, sy: number) => sy * Math.min(v / YAW_RAMP, YAW_LOW + (YAW_HIGH - YAW_LOW) * Math.min(1, v / VTOP));
+
+/** The fastest a corner of curvature k (1/u) goes: in grip, v k <= yawCap(v) + the bank's help (~1.5 g sin(bank) / v)
+ *  solved for v (sb = sin of the bank into the turn); in a drift (sd = the surface's drift share), if that's faster. */
+function cornerSpeed(k: number, sy: number, sb: number, sd: number) {
+  const a = k + (sy * (YAW_LOW - YAW_HIGH)) / VTOP, b = sy * YAW_LOW, c = BANK_ASSIST * G * Math.max(0, sb);
+  const grip = (0.97 * (b + Math.sqrt(b * b + 4 * a * c))) / (2 * a);
+  return sd > 0 ? Math.max(grip, (LOOSE_GRIP * LOOSE_THR * sd * PLAN_SLIP * (Math.PI / 180)) / k) : grip;
+}
+
+/** A driver for ?auto=1, lap tests and the victory lap. It holds the centre line in track space (so it works round the
+ *  loop): the curvature just ahead fed forward, less what a bank turns by itself, plus a correction of heading and
+ *  offset toward the line, looking further ahead (gentler) on the wide roads - it doesn't cut corners into the inside
+ *  wall. It plans its speed from the curvature up to 72 u ahead - each corner's speed plus what braking can shed before
+ *  it, skipping a jump's gap (no road there) - so it brakes into the tight ones. It drifts the corners that turn far
+ *  enough and tight enough (drift: 'auto'; 'off' never, 'all' every corner it can): a tap of Space at the turn-in,
+ *  then it drives the loose car - the slip that bends the travel as the road wants, steered for through the yaw - and
+ *  straightens out of the corner, which ends the drift by itself (it never taps mid-drift: that keeps a drift going). Into a big jump it lines
+ *  up on the centre line, runs flat out over the booster and holds it straight up the ramp (no drift, no brake: the
+ *  jump is its own speed and line), and it never steers in the air. Deterministic: a function of the state and track. */
+export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
+  const mode = opts.drift ?? 'auto';
+  const out: DriveInput = { steer: 0, throttle: 1, brake: 0, drift: false };
+  const f0 = newFrame(), f1 = newFrame();
+  const nose = new THREE.Vector3(), tmp = new THREE.Vector3();
+  let cur = -1, tapped = false;
+  // Per track, once: flags (a jump's gap, a big jump's run-up from 40 u before its booster to the lip) and the corners -
+  // runs of curvature one way (R < 150), each with its end, how far it turns and its tightest curvature - and which
+  // corner each frame is in (-1: none).
+  const GAP = 1, RUN = 2;
+  let prepped: Track | null = null, flags = new Uint8Array(0), corner = new Int16Array(0), ds = 0.5;
+  let cS1 = new Float64Array(0), cTurn = new Float64Array(0), cK = new Float64Array(0);
+  const idx = (s: number) => {
+    const n = flags.length;
+    return ((Math.round(s / ds) % n) + n) % n;
+  };
+  const prep = (track: Track) => {
+    if (prepped === track) return;
+    const fs = track.frames, n = fs.length, L = track.length;
+    ds = L / n;
+    flags = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (track.tagAt(i * ds) === 'gap') flags[i] |= GAP;
+    const back = (a: number, b: number) => (((a - b) % L) + L) % L; // how far b lies before a
+    for (const j of track.tags) {
+      if (j.tag !== 'bigjump') continue;
+      let from = j.s0 - 60, near = 200; // its booster: the nearest before the lip (none: the last 60 u)
+      for (const g of track.tags) if (g.tag === 'booster' && back(j.s0, g.s0) < near) (near = back(j.s0, g.s0)), (from = g.s0);
+      for (let x = from - 40; back(j.s0, x) > 0.5 && back(j.s0, x) < 300; x += ds) flags[idx(x)] |= RUN;
+    }
+    // the corners (a run may wrap round the lap's start: begin the scan where the road is straight)
+    const bend = (i: number) => {
+      const k = fs[i % n].kappa, tg = track.tagAt((i % n) * ds);
+      return Math.abs(k) > 1 / 150 && tg !== 'loop' && tg !== 'gap' ? Math.sign(k) : 0;
+    };
+    let i0 = 0;
+    while (i0 < n && bend(i0) !== 0) i0++;
+    corner = new Int16Array(n).fill(-1);
+    const s1s: number[] = [], turns: number[] = [], ks: number[] = [];
+    for (let i = i0; i < i0 + n; ) {
+      const sg = bend(i);
+      if (!sg) {
+        i++;
+        continue;
+      }
+      const c = s1s.length;
+      let j = i, turn = 0, kmax = 0;
+      for (; j < i0 + n && bend(j) === sg; j++) {
+        corner[j % n] = c;
+        turn += fs[j % n].kappa * ds;
+        kmax = Math.max(kmax, Math.abs(fs[j % n].kappa));
+      }
+      s1s.push(j * ds), turns.push(turn), ks.push(kmax);
+      i = j;
+    }
+    cS1 = Float64Array.from(s1s), cTurn = Float64Array.from(turns), cK = Float64Array.from(ks);
+    prepped = track;
+  };
+  /** Whether it drifts corner c. */
+  const drifts = (c: number) => c >= 0 && mode !== 'off' && Math.abs(cTurn[c]) >= (mode === 'all' ? 0.3 : DRIFT_TURN) && cK[c] >= 1 / DRIFT_R;
+  /** How far (u) the end of corner c lies ahead of s. */
+  const toEnd = (c: number, s: number, L: number) => {
+    const x = (((cS1[c] - s) % L) + L) % L;
+    return x > L / 2 ? x - L : x;
+  };
+
+  return (st: VehicleState, track: Track): DriveInput => {
+    prep(track);
+    const L = track.length;
+    const f = track.frameAt(st.trackS, f0);
+    nose.set(1, 0, 0).applyQuaternion(st.quaternion);
+    const psi = Math.atan2(nose.dot(f.right), nose.dot(f.t));
+    const d = tmp.subVectors(st.position, f.p).dot(f.right);
+    const v = Math.max(st.speed, 1);
+    const phi = psi - st.slip; // direction of travel relative to the track
+    const verge = f.edge === 'grass' && Math.abs(d) > f.width * 0.5;
+    const yawMax = yawCap(v, verge ? GRASS_YAW : SURF_YAW[f.surface] ?? 1);
+    const sd = SURF_DRIFT[f.surface] ?? 1;
+    // the curvature just ahead (past the yaw's lag; a drift's slip takes longer) to feed forward; a bank turns the car
+    // by itself
+    const x0 = v * (st.drifting ? 0.16 : 0.07);
+    let kff = 0;
+    for (let i = 0; i < 3; i++) kff += track.frameAt(st.trackS + x0 + i * 3, f1).kappa / 3;
+    const bank = (BANK_ASSIST * G * -f.right.y * v) / (v * v + 25);
+    // ... and a correction of the heading and offset toward the centre line, gentler on the wide roads
+    const la = f.surface === 'plastic' ? 7 + v * 0.1 : 10 + v * 0.2;
+    const err = Math.atan2(-d, la) - phi;
+
+    // speed: the slowest of what the corners ahead allow, each plus what braking can shed before reaching it
+    let vWant = 99;
+    for (let x = 2; x <= 72; x += 2) {
+      const i = idx(st.trackS + x);
+      if (flags[i] & GAP) continue; // in the air there: nothing to corner on
+      const g = track.frameAt(st.trackS + x, f1);
+      const k = Math.abs(g.kappa);
+      if (k < 0.012) continue; // R > 80: flat out
+      const sd = drifts(corner[i]) ? SURF_DRIFT[g.surface] ?? 1 : 0;
+      const vc = cornerSpeed(k, SURF_YAW[g.surface] ?? 1, -g.right.y * Math.sign(g.kappa), sd);
+      vWant = Math.min(vWant, Math.sqrt(vc * vc + 2 * BRAKE * Math.max(0, x - 6)));
+    }
+    const runUp = (flags[idx(st.trackS)] & RUN) !== 0; // a big jump's run-up: flat out, straight at the booster
+
+    // on the throttle unless the corners ahead want it slower: then lift, and brake when well over (a drift holds on)
+    const over = runUp ? 0 : v - vWant;
+    out.throttle = over > 0 && !(st.drifting && over < 4) ? 0 : 1;
+    out.brake = over > 2 && st.grounded ? Math.min(1, over / 6) : 0;
+
+    let steer: number;
+    out.drift = false;
+    if (st.drifting) {
+      // Loose: the travel bends at the rear's grip on the slip, so the road's bend wants a slip; the yaw is what moves
+      // the slip there (the travel's turn plus closing the gap), and the steering asks for that yaw. More bend than the
+      // slide gives on the throttle: it lifts (the tail tucks in, the line tightens). Out of the corner the road wants
+      // none: it straightens, and the drift ends by itself once the car is straight (a tap would keep it going).
+      const want = v * kff - bank + err * 3;
+      const lim = MAX_SLIP * (Math.PI / 180);
+      if (Math.abs(want) > 0.85 * LOOSE_GRIP * sd * LOOSE_THR * lim) out.throttle = 0;
+      const kl = LOOSE_GRIP * sd * (out.throttle > 0 ? LOOSE_THR : LOOSE_LIFT);
+      const b = clamp(want / kl, -lim, lim);
+      steer = clamp((want + (b - st.slip) * 4) / (LOOSE_YAW * yawMax), -1, 1);
+    } else {
+      steer = clamp((v * kff - bank) / yawMax + err * 2.5, -1, 1);
+      // a tap at the turn-in of a corner it drifts: the corner starts within reach and the wheel is already turning in
+      tapped = false;
+      const reach = 2 + v * 0.12;
+      for (let x = 0; x <= reach && !out.drift; x += 2) {
+        const c = corner[idx(st.trackS + x)];
+        if (c < 0 || !drifts(c) || toEnd(c, st.trackS, L) < v * 0.6) continue;
+        // ... and the slide can hold the corner at this speed
+        const g = track.frameAt(st.trackS + x, f1);
+        if (v * cK[c] > 1.1 * LOOSE_GRIP * LOOSE_THR * (SURF_DRIFT[g.surface] ?? 1) * MAX_SLIP * (Math.PI / 180)) continue;
+        const sg = Math.sign(cTurn[c]);
+        if (!runUp && st.grounded && v > 18 && steer * sg > 0.15) (out.drift = true), (cur = c);
+      }
+    }
+    out.steer = st.grounded ? steer : 0; // never steers in the air
+    return out;
+  };
+}

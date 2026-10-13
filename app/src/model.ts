@@ -77,6 +77,7 @@ export function buildModelRig(car: CarData, model: Model): CarRig {
   for (const o of meshes) {
     const src = o.material as THREE.MeshStandardMaterial;
     const isTyre = o.name.endsWith('_tyre');
+    const isWheel = o.name.endsWith('_wheel'); // a generated mesh's own wheel: tyre and rim in one texture
     const isBody = o.name === 'body' || o.parent === scene;
     const rest = new THREE.Matrix4().multiplyMatrices(toModel, o.matrixWorld); // object -> model space
     const make = () => carMaterial(uniforms, {
@@ -86,8 +87,8 @@ export function buildModelRig(car: CarData, model: Model): CarRig {
       glass: '#101418',
       // the sheet already has the toy's reflections painted in: keep the 3D ones light, or dark
       // paint turns milky
-      metalness: isTyre ? 0 : isBody ? 0.12 : 0.4,
-      roughness: isTyre ? 0.85 : isBody ? 0.5 : 0.4,
+      metalness: isTyre ? 0 : isWheel ? 0.2 : isBody ? 0.12 : 0.4,
+      roughness: isTyre ? 0.85 : isWheel ? 0.55 : isBody ? 0.5 : 0.4,
       clearcoat: isBody ? 0.3 : 0,
       clearcoatRoughness: 0.12,
       photo: { map: car.photoTex, matrix: new THREE.Matrix4().multiplyMatrices(toPhoto, rest) },

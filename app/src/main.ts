@@ -46,6 +46,10 @@ async function main() {
 
   const dir = createDirector(stage, rig, car, tier, dom);
   $('replay').addEventListener('click', () => dir.tl.restart());
+  // hand-off to the drive page: the same car, its GLB already in the browser cache
+  const spin = $('spin') as HTMLAnchorElement;
+  spin.href = `/drive.html?car=${encodeURIComponent(car.id)}`;
+  spin.hidden = !model;
 
   const resize = () => stage.resize(innerWidth, innerHeight);
   addEventListener('resize', resize);
@@ -79,7 +83,7 @@ async function main() {
     stage.update(dt);
     dir.updateCamera(clock.elapsedTime);
     stage.renderer.render(stage.scene, stage.camera);
-    if (++frames === 3) (window as any).__ready = true;
+    if (++frames === 3) Object.assign(window as any, { __ready: true, __rig: rig }); // for scripts/ checks
   });
 }
 

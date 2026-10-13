@@ -66,6 +66,7 @@ Faces the cameras see are turned towards them first; Tripo leaves inside-out pat
 | `glass-map.jpg` | Every view: the sheet, then the model with its glass in **magenta**. Magenta belongs exactly on the window panels. None on the roof, pillars, banners, or a wing seen through a window. |
 | `glass.jpg` | The sheet's own window masks in cyan. They are usually right on the drawing; a sun strip or banner may need trimming. |
 | `trace-<view>.png` | One view's windows zoomed, with Tripo's paint on top and clay shading below. It has a ruler in sheet px, the drawing's window outline in cyan, the glass in magenta, and traced corners as dots. |
+| `wheels.jpg` | What will spin, one tint per wheel: whole wheels only, no arch or body. |
 | `tripo-sheet.png`, `tripo-clay.png` | The whole mesh in the sheet's layout and pixel grid. |
 
 ## 4. Windows (the main hand step)
@@ -137,7 +138,7 @@ Check `qa/<id>/silhouette-*.png` and `pack-fit.png`, then the landing in the rev
 node scripts/shoot.mjs /tmp/shots 1280x800 "land:car=<id>&mode=final&card=0.6" "q1:car=<id>&mode=view&az=0.75&el=0.3" "q2:car=<id>&mode=view&az=-2.3&el=0.35"
 ```
 
-Generated meshes have their wheels baked into the body, so they don't spin in the reveal.
+The wheels spin: `rebake` finds them as Tripo's separate tyre, rim and hub pieces and exports a `wheel_*` pivot per wheel. Check `qa/<id>/wheels.jpg`: each wheel tinted, nothing else. The console line `wheels - …` says if it couldn't find all four; then they stay in the body.
 
 ## 7. Done when
 

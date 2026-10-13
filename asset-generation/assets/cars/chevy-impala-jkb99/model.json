@@ -37,7 +37,48 @@
     "height": 0.9527,
     "width": 1.5251
   },
-  "wheels": [],
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.4345,
+        0.2382,
+        0.599
+      ],
+      "r": 0.2471,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.4306,
+        0.2382,
+        -0.6005
+      ],
+      "r": 0.2471,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -0.9545,
+        0.2364,
+        0.5997
+      ],
+      "r": 0.2451,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -0.9584,
+        0.2364,
+        -0.5974
+      ],
+      "r": 0.2451,
+      "pieces": 1
+    }
+  ],
   "wing": null,
   "cabin_from_glass": null,
   "views": [
@@ -60,7 +101,7 @@
     "height": 0.99
   },
   "glb": {
-    "bytes": 1468560,
+    "bytes": 1460152,
     "triangles": 16793
   }
 }

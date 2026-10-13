@@ -16,7 +16,9 @@ texture, though, is consistent with its geometry (it made both). So:
   4. windows: from the sheet's glass masks (aligned the same way). The mesh's interior (seats, cage) is
      painted through the glass from what the drawings show behind it, and the glass becomes see-through
      in the app (glass texels marked in the roughness map, as for the scripts' own models)
--> snapshots/<name>-guided.glb (+ .json report); review images in qa/<car>/: align-<view>.jpg, and from
+  5. wheels: the generator builds each from separate pieces (parts.py); each becomes a `wheel_*` pivot
+     at its hub, like the scripts' wheels, so the reveal spins them
+-> snapshots/<name>-guided.glb (+ .json report); review images in qa/<car>/: align-<view>.jpg, wheels.jpg, and from
 trace.py tripo-sheet.png, tripo-clay.png, trace-<view>.png (trace windows on these) and glass-map.jpg
 """
 import json
@@ -28,7 +30,7 @@ from PIL import Image
 from scipy import ndimage
 from scipy.optimize import minimize
 
-from . import bake, glass, hull, paths, qa, render, sheet, trace, views
+from . import bake, glass, hull, parts, paths, qa, render, sheet, trace, views
 from . import wheels as wh
 
 GLASS_TINT = np.array([26, 32, 40], np.float32)
@@ -447,7 +449,11 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
                           traced=traced)
     name = src_path.stem.replace("-clean", "") + "-guided"
     dst = out / "snapshots" / f"{name}.glb"
-    report["glb"] = _export(mesh, tex, mr, dst, glass_uv)
+    wheels, report["wheels_note"] = parts.find_wheels(mesh.V, mesh.F) if rb.get("wheels", True) else ([], "off (hints)")
+    report["wheels"] = [{"name": w["name"], "centre": [round(float(c), 4) for c in w["centre"]], "r": round(w["r"], 4),
+                         "pieces": w["pieces"]} for w in wheels]
+    _write(qadir / "wheels.jpg", trace.wheel_map(cal, rasters, renders, wheels))
+    report["glb"] = _export(mesh, tex, mr, dst, glass_uv, wheels)
     (out / "snapshots" / f"{name}.json").write_text(json.dumps(report, indent=2) + "\n")
     _write(qadir / "glass-map.jpg", trace.glass_map(cal, rasters, mesh.F, mesh.uv, tex, glass_uv))
     return report
@@ -490,7 +496,8 @@ def _traced_masks(cal, polys: dict | None, mirror=()) -> dict:
     return masks
 
 
-def _export(mesh: Textured, tex: np.ndarray, mr: np.ndarray, dst, glass_uv: np.ndarray | None = None) -> dict:
+def _export(mesh: Textured, tex: np.ndarray, mr: np.ndarray, dst, glass_uv: np.ndarray | None = None,
+            wheels: list | None = None) -> dict:
     """Same geometry and UVs (fitted), new base colour + material map, the generated normal map kept -
     flattened on the glass, where the generator had embossed its own (invented) window lettering."""
     import io
@@ -526,12 +533,33 @@ def _export(mesh: Textured, tex: np.ndarray, mr: np.ndarray, dst, glass_uv: np.n
     F[inside_out] = F[inside_out][:, ::-1]
     vn = np.asarray(mesh.trimesh.vertex_normals, float).copy()
     vn *= np.where(np.sum(vn * mesh.normals_vert, axis=1, keepdims=True) < 0, -1.0, 1.0)
-    m = trimesh.Trimesh(mesh.V, F, vertex_normals=vn, process=False, visual=TextureVisuals(uv=uv, material=mat))
+    def part(mask, to_local=None):
+        used, idx = np.unique(F[mask], return_inverse=True)
+        v, n = mesh.V[used], vn[used]
+        if to_local is not None:
+            v, n = trimesh.transform_points(v, to_local), n @ to_local[:3, :3].T
+        return trimesh.Trimesh(v, idx.reshape(-1, 3), vertex_normals=n, process=False,
+                               visual=TextureVisuals(uv=uv[used], material=mat))
+
+    in_wheel = np.zeros(len(F), bool)
+    for w in wheels or []:
+        in_wheel[w["faces"]] = True
     scene = trimesh.Scene()
-    scene.add_geometry(m, node_name="body", geom_name="body")  # "body": the app's glass split applies
+    scene.add_geometry(part(~in_wheel), node_name="body", geom_name="body")  # "body": the app's glass split applies
+    for w in wheels or []:  # same layout as the scripts' wheels: pivot at the hub, local +z out of the car
+        pivot = np.eye(4)
+        if w["name"].endswith("left"):
+            pivot[:3, :3] = trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0])[:3, :3]
+        pivot[:3, 3] = w["centre"]
+        scene.graph.update(frame_from=scene.graph.base_frame, frame_to=w["name"], matrix=pivot)
+        only = np.zeros(len(F), bool)
+        only[w["faces"]] = True
+        scene.add_geometry(part(only, np.linalg.inv(pivot)), node_name=f"{w['name']}_wheel",
+                           geom_name=f"{w['name']}_wheel", parent_node_name=w["name"])
     data = scene.export(file_type="glb", include_normals=True)
     dst.write_bytes(data)
-    return {"bytes": len(data), "triangles": int(len(mesh.F)), "faces_rewound": int(inside_out.sum())}
+    return {"bytes": len(data), "triangles": int(len(mesh.F)), "faces_rewound": int(inside_out.sum()),
+            "spinning_wheels": len(wheels or [])}
 
 
 def _debug(path, view, rendered, flow):

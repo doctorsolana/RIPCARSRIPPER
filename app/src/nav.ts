@@ -1,5 +1,5 @@
-// The top bar shared by the reveal and the inspector: RIPCARS, the two pages, and on the reveal a car
-// picker plus "random pack". Self-contained (its own styles), so it drops into any page.
+// The top bar shared by the reveal, the inspector and the drive page: RIPCARS, the pages, and on the reveal
+// and the drive page a car picker plus "random pack". Self-contained (its own styles), so it drops into any page.
 interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean }
 
 export interface Nav {
@@ -35,7 +35,7 @@ const CSS = `
 }
 `;
 
-export async function mountNav(page: 'rip' | 'inspect'): Promise<Nav> {
+export async function mountNav(page: 'rip' | 'inspect' | 'drive'): Promise<Nav> {
   // embedded (the inspector's Reveal tab shows the reveal in a frame): the outer page has the bar
   if (window.top !== window.self) return { el: document.createElement('header'), setCar() {} };
   document.body.classList.add('nav-on');
@@ -49,6 +49,7 @@ export async function mountNav(page: 'rip' | 'inspect'): Promise<Nav> {
     <nav class="links">
       <a href="/" data-page="rip">Rip<span class="wide"> a pack</span></a>
       <a href="/inspect.html" data-page="inspect">Inspect<span class="wide"> cars</span></a>
+      <a href="/drive.html" data-page="drive">Drive</a>
     </nav>
     <span class="spacer"></span>`;
   el.querySelector(`[data-page="${page}"]`)!.classList.add('on');
@@ -58,18 +59,19 @@ export async function mountNav(page: 'rip' | 'inspect'): Promise<Nav> {
   const modelled = cars.filter((c) => c.modelled);
   const rip = el.querySelector<HTMLAnchorElement>('[data-page="rip"]')!;
   const inspect = el.querySelector<HTMLAnchorElement>('[data-page="inspect"]')!;
+  const drive = el.querySelector<HTMLAnchorElement>('[data-page="drive"]')!;
   let select: HTMLSelectElement | null = null;
 
-  if (page === 'rip' && modelled.length) {
-    // pick a car, or rip a random one; both reload the reveal with ?car=
+  if ((page === 'rip' || page === 'drive') && modelled.length) {
+    // pick a car, or rip a random one; both reload the page with ?car=
     select = document.createElement('select');
-    select.title = 'Which car to reveal';
+    select.title = page === 'drive' ? 'Which car to drive' : 'Which car to reveal';
     select.innerHTML = modelled.map((c) => `<option value="${c.id}">${c.make} ${c.model}${c.year ? ` · ${c.year}` : ''}</option>`).join('');
     select.addEventListener('change', () => go(select!.value));
     const random = document.createElement('button');
-    random.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.2" cy="5.2" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.8" cy="10.8" r="1.2" fill="currentColor"/></svg><span class="wide">Random pack</span>`;
-    random.setAttribute('aria-label', 'Rip a random car');
-    random.title = 'Rip a random car';
+    random.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.2" cy="5.2" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.8" cy="10.8" r="1.2" fill="currentColor"/></svg><span class="wide">${page === 'drive' ? 'Random car' : 'Random pack'}</span>`;
+    random.setAttribute('aria-label', page === 'drive' ? 'Drive a random car' : 'Rip a random car');
+    random.title = page === 'drive' ? 'Drive a random car' : 'Rip a random car';
     random.addEventListener('click', () => {
       const others = modelled.filter((c) => c.id !== select!.value);
       go((others.length ? others : modelled)[Math.floor(Math.random() * (others.length || modelled.length))].id);
@@ -87,8 +89,11 @@ export async function mountNav(page: 'rip' | 'inspect'): Promise<Nav> {
     el,
     setCar(id: string) {
       if (select && [...select.options].some((o) => o.value === id)) select.value = id;
-      // the links carry the car across: inspect what you just ripped, rip what you're inspecting
-      if (modelled.some((c) => c.id === id)) rip.href = `/?car=${id}`;
+      // the links carry the car across: inspect what you just ripped, rip what you're inspecting, drive it
+      if (modelled.some((c) => c.id === id)) {
+        rip.href = `/?car=${id}`;
+        drive.href = `/drive.html?car=${id}`;
+      }
       inspect.href = `/inspect.html?car=${id}`;
     },
   };

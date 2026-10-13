@@ -247,7 +247,7 @@ def promote_model(car: str, src: str | None = None) -> dict:
         "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
         "dimensions": {"length": round(float(np.ptp(V[:, 0])), 4), "height": round(float(V[:, 1].max()), 4),
                        "width": round(float(np.ptp(V[:, 2])), 4)},
-        "wheels": [],  # part of the generated body: they don't spin in the reveal
+        "wheels": made.get("wheels", []),  # found in the generated mesh and exported as spinning pivots (rebake)
         "wing": None,
         "cabin_from_glass": None,
         "views": sorted(cal.views),
@@ -356,6 +356,7 @@ def main(argv=None):
 
                 r = rebake.rebake(car, args.src)
                 print(f"{car}: rebaked {r['source']} - fit {r['fit']}, {r['glb']}, glass {r['glass_source']}")
+                print(f"{car}: wheels - {r['wheels_note']}")
                 continue
             if args.command == "outline":
                 from . import trace

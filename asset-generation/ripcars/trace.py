@@ -137,3 +137,21 @@ def dark_outlines(sheet_like: np.ndarray, region: tuple, dark: int = 110, min_ar
                     "polygon": poly.tolist()})
     return sorted(out, key=lambda o: -o["area"])
 
+
+def wheel_map(cal, rasters: dict, renders: dict, wheels: list) -> np.ndarray:
+    """The side views of the generated mesh with the faces that will spin tinted green, one colour
+    shade per wheel: what `parts.find_wheels` picked."""
+    tiles = []
+    for name in ("side", "left", "front"):
+        if name not in cal.views:
+            continue
+        v, r = cal.views[name], rasters[name]
+        img = renders[name].copy()
+        for k, w in enumerate(wheels):
+            hit = np.isin(r.face, w["faces"])
+            img[hit] = (0.45 * img[hit] + 0.55 * np.array((40, 230 - 30 * k, 90 + 40 * k))).astype(np.uint8)
+        x0, y0, x1, y1 = v.panel.bbox
+        tiles.append(img[y0:y1, x0:x1])
+    w = max(t.shape[1] for t in tiles)
+    return np.vstack([np.pad(t, ((0, 8), (0, w - t.shape[1]), (0, 0)), constant_values=255) for t in tiles])
+

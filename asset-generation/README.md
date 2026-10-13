@@ -39,7 +39,8 @@ A drawing never sits exactly on another tool's geometry: windows, panel ends and
 1. renders the mesh with its own texture through every sheet view's camera (`render.py`, an exact z-buffer), and turns every face a camera sees towards that camera. Tripo leaves inside-out patches (45% of the Roxy), which would otherwise never get painted and would show as black holes in the app.
 2. aligns each drawing to that render with dense optical flow. It keeps the flow only where both images have structure and agree, caps it per view, and drops it if it doesn't improve the match. The top view is aligned for paint only, because Tripo never saw one.
 3. paints each texel from the views that see it squarely. Wherever the blurred drawing disagrees with Tripo's paint (background, painted-in reflections), Tripo's paint is kept, so edges never bleed white. The exception is the top view: Tripo never saw it, so its paint there is a guess, such as a roof banner twice or a mirrored "PORSCHE", and the drawing wins. Each side has its own drawing: the left side comes from the left view, never mirrored.
-4. makes the glass a plain dark tint and marks it see-through in the material map. The normal map is flattened there too, since Tripo embosses invented lettering on glass. The cabin behind the glass is painted from what the drawings show through their windows.
+4. finds the wheels: Tripo builds each from separate pieces (a tyre standing at a corner, plus the rim and hub centred in it). Each is exported as a `wheel_*` pivot at its hub, the same layout as the scripts' wheels, so the reveal spins them. A brake caliper or anything else off-centre stays still. `qa/<id>/wheels.jpg` tints what will spin; `model.rebake.wheels: false` turns this off.
+5. makes the glass a plain dark tint and marks it see-through in the material map. The normal map is flattened there too, since Tripo embosses invented lettering on glass. The cabin behind the glass is painted from what the drawings show through their windows.
 
 ### Windows by hand
 
@@ -127,6 +128,7 @@ The scripts get each car most of the way. A person or a Claude session finishes 
 | --- | --- | --- |
 | `align-<view>.jpg` | generated | the mesh's render, the sheet, then checkerboards of both before and after alignment |
 | `glass-map.jpg` | generated | every view: the sheet next to the repainted model, glass in magenta |
+| `wheels.jpg` | generated | side, left and front views with the faces that will spin tinted, one colour per wheel |
 | `trace-<view>.png` | generated | one view's windows zoomed, paint above and clay below, sheet-px ruler, the drawing's windows (cyan) and the glass (magenta): trace windows here |
 | `tripo-inputs.jpg` | generated | the four images a Tripo request sends (written by the dry run) |
 | `tripo-sheet.png`, `tripo-clay.png` | generated | the whole mesh in the sheet's layout and pixel grid |
@@ -153,6 +155,6 @@ For textured checks in 3D, use the app's review pages and screenshot script (see
 The sheets are AI-generated. Proportions differ a few percent from the real toy (the landing stretch absorbs this), front and rear views are perspective shots, and fine lettering can drift.
 
 - **Scripts route**: concave shapes that no silhouette shows, such as a hood sunk between fenders, come out filled.
-- **Generated meshes**: wheels are part of the body, so they don't spin in the reveal. Some windows come out as open holes. Tripo invents what it couldn't see (underside, interior).
+- **Generated meshes**: some windows come out as open holes, and Tripo invents what it couldn't see (underside, interior). Wheels spin only when Tripo builds them as separate pieces, which it has for every car so far; otherwise `rebake` leaves them in the body and says so.
 
 The texture already carries the toy's painted-in reflections, so the 3D materials keep their own reflections light.
