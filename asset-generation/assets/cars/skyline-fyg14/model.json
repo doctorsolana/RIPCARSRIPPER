@@ -1,0 +1,107 @@
+{
+  "car": "skyline-fyg14",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      0.9995,
+      0.9983,
+      0.9999
+    ],
+    "offset_xy": [
+      -0.0001,
+      0.0289
+    ],
+    "side+top_iou": 1.857
+  },
+  "glass_source": {
+    "top": "traced",
+    "front": "traced",
+    "rear": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 3.998,
+    "height": 1.3087,
+    "width": 1.735
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.1561,
+        0.3367,
+        0.7296
+      ],
+      "r": 0.3077,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.1561,
+        0.3386,
+        -0.6877
+      ],
+      "r": 0.3097,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.214,
+        0.3376,
+        0.7147
+      ],
+      "r": 0.3087,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.2121,
+        0.3435,
+        -0.737
+      ],
+      "r": 0.3087,
+      "pieces": 1
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9486,
+    "top": 0.9587,
+    "left": 0.9322,
+    "front": 0.919,
+    "rear": 0.9261
+  },
+  "proportions_vs_sheet": {
+    "length": 0.981,
+    "width": 0.99,
+    "height": 1.022
+  },
+  "glb": {
+    "bytes": 1336280,
+    "triangles": 16669
+  }
+}

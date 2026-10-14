@@ -1,0 +1,349 @@
+{
+  "photo": "../../../../reference-collector/cars/mustang-cobra-r-hgk61/reference/pack-photo.png",
+  "carBox": [
+    47,
+    451,
+    289,
+    95
+  ],
+  "segModel": "birefnet-general",
+  "notes": [
+    "carBox: eyeballed on a ruler over the pack photo; segModel birefnet-general (the lite model followed the blister on the other cars)",
+    "carBox / wheels: measured on a 10x ruler crop of the pack photo. The detector put the rear wheel on the rim only (r 16) and the front one 4 px high; tyres are r 22.5, rear centred (110.5, 522), front (278, 518.5) - the car sits slightly nose-down in the blister",
+    "mask.remove (photo px, 8x ruler crop): between the wheels the segmenter took 1-2 px of the grey shadow line under the sill (to y 531); the cyan rocker ends at y ~529, so rows 530+ between the tyres (x 134-256) are cut",
+    "model.rebake.glass: every view traced on the mesh (ruler crops of tripo-sheet/tripo-clay). The aligned sheet masks spilled onto the door-window frames, roof rail and A/C pillars. Tripo left the door windows as open holes (nothing to paint) and modelled the quarter windows as panels: side/left trace the quarter-window panel inside its black frame. front: windscreen inside the black frit, stopping above the hood bulge; rear: the hatch glass Tripo painted below the roof lip; top: windscreen and hatch glass as Tripo modelled them (the drawing's rear window sits ~50 px further back, over the mesh's lower hatch panel). front/rear/top traced on one half and mirrored",
+    "model.rebake.skip top x 118-187: the drawing's rear window starts ~50 px further back (x 145) than the mesh's hatch glass (x 197), so on the mesh that strip is the body-coloured hatch panel above the spoiler - the top drawing painted it as a maroon-brown glass band; the rear/side views paint it instead",
+    "model.rebake.glass (2nd pass): polygons widened 2-3 px into Tripo's black frit - inside them a light fringe of the drawing's window colour was left as bodywork; top also gets the quarter-window panels (the top view sees their upper part, tumblehome, more squarely than the side views, so without them a light wedge stayed opaque)",
+    "model.rebake.skip rear y 1180-1209: the rear drawing's window starts higher (y 1197) than the mesh's (1212), so its dark top frame landed on the roof's rear lip as a wavy black line; the top view paints the lip alone",
+    "model.rebake.trust rear (mesh px, above the tail lights): the drawing's COBRA plate and Ford oval were dropped by the agreement test because Tripo painted that panel plain blue; here the aligned rear drawing wins"
+  ],
+  "wheels": [
+    {
+      "cx": 110.5,
+      "cy": 522,
+      "r": 22.5
+    },
+    {
+      "cx": 278,
+      "cy": 518.5,
+      "r": 22.5
+    }
+  ],
+  "mask": {
+    "remove": [
+      [
+        [
+          134,
+          530
+        ],
+        [
+          256,
+          530
+        ],
+        [
+          256,
+          545
+        ],
+        [
+          134,
+          545
+        ]
+      ]
+    ]
+  },
+  "model": {
+    "rebake": {
+      "glass": {
+        "side": [
+          [
+            [
+              226,
+              183
+            ],
+            [
+              322,
+              103
+            ],
+            [
+              383,
+              103
+            ],
+            [
+              380,
+              183
+            ]
+          ]
+        ],
+        "left": [
+          [
+            [
+              643,
+              454
+            ],
+            [
+              691,
+              453
+            ],
+            [
+              808,
+              535
+            ],
+            [
+              649,
+              535
+            ]
+          ]
+        ],
+        "front": [
+          [
+            [
+              93,
+              1281
+            ],
+            [
+              99,
+              1266
+            ],
+            [
+              108,
+              1243
+            ],
+            [
+              117,
+              1220
+            ],
+            [
+              124,
+              1205
+            ],
+            [
+              132,
+              1198
+            ],
+            [
+              252,
+              1197
+            ],
+            [
+              252,
+              1272
+            ],
+            [
+              158,
+              1272
+            ],
+            [
+              155,
+              1281
+            ]
+          ]
+        ],
+        "rear": [
+          [
+            [
+              628,
+              1262
+            ],
+            [
+              631,
+              1248
+            ],
+            [
+              638,
+              1231
+            ],
+            [
+              645,
+              1219
+            ],
+            [
+              653,
+              1212
+            ],
+            [
+              766,
+              1211
+            ],
+            [
+              766,
+              1262
+            ]
+          ]
+        ],
+        "top": [
+          [
+            [
+              194,
+              966
+            ],
+            [
+              194,
+              848
+            ],
+            [
+              199,
+              840
+            ],
+            [
+              284,
+              855
+            ],
+            [
+              292,
+              864
+            ],
+            [
+              291,
+              966
+            ]
+          ],
+          [
+            [
+              543,
+              966
+            ],
+            [
+              543,
+              856
+            ],
+            [
+              550,
+              848
+            ],
+            [
+              640,
+              826
+            ],
+            [
+              648,
+              830
+            ],
+            [
+              653,
+              870
+            ],
+            [
+              657,
+              966
+            ]
+          ],
+          [
+            [
+              252,
+              799
+            ],
+            [
+              296,
+              796
+            ],
+            [
+              381,
+              795
+            ],
+            [
+              383,
+              830
+            ],
+            [
+              338,
+              831
+            ]
+          ]
+        ]
+      },
+      "glass_mirror": [
+        "front",
+        "rear",
+        "top"
+      ],
+      "unseen": [
+        "top"
+      ],
+      "skip": {
+        "top": [
+          [
+            [
+              118,
+              796
+            ],
+            [
+              187,
+              796
+            ],
+            [
+              187,
+              966
+            ],
+            [
+              118,
+              966
+            ]
+          ]
+        ],
+        "rear": [
+          [
+            [
+              585,
+              1180
+            ],
+            [
+              945,
+              1180
+            ],
+            [
+              945,
+              1209
+            ],
+            [
+              585,
+              1209
+            ]
+          ]
+        ]
+      },
+      "skip_mirror": [
+        "top"
+      ],
+      "trust": {
+        "rear": [
+          [
+            [
+              583,
+              1302
+            ],
+            [
+              662,
+              1302
+            ],
+            [
+              662,
+              1324
+            ],
+            [
+              583,
+              1324
+            ]
+          ],
+          [
+            [
+              880,
+              1302
+            ],
+            [
+              948,
+              1302
+            ],
+            [
+              948,
+              1324
+            ],
+            [
+              880,
+              1324
+            ]
+          ]
+        ]
+      }
+    }
+  }
+}

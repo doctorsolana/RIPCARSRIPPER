@@ -1,0 +1,109 @@
+{
+  "car": "skyline-jkf36",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      1.0207,
+      1.0193,
+      1.0214
+    ],
+    "offset_xy": [
+      0.032,
+      0.0187
+    ],
+    "side+top_iou": 1.9205
+  },
+  "glass_source": {
+    "side": "traced",
+    "left": "traced",
+    "top": "traced",
+    "front": "traced",
+    "rear": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.083,
+    "height": 1.2853,
+    "width": 1.5482
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.2318,
+        0.3193,
+        0.5791
+      ],
+      "r": 0.3331,
+      "pieces": 3
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.1979,
+        0.33,
+        -0.5892
+      ],
+      "r": 0.3291,
+      "pieces": 3
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.2066,
+        0.3339,
+        0.5968
+      ],
+      "r": 0.3321,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.2585,
+        0.3436,
+        -0.5994
+      ],
+      "r": 0.3281,
+      "pieces": 4
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9598,
+    "top": 0.9482,
+    "left": 0.9186,
+    "front": 0.9028,
+    "rear": 0.9324
+  },
+  "proportions_vs_sheet": {
+    "length": 0.999,
+    "width": 1.006,
+    "height": 1.016
+  },
+  "glb": {
+    "bytes": 1404464,
+    "triangles": 16302
+  }
+}

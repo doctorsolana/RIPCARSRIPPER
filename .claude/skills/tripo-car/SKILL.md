@@ -129,6 +129,7 @@ When something is off, find the view that paints it (`align-<view>.jpg`) and fix
 | You see | Override |
 | --- | --- |
 | A decal on a featureless area comes out sheared or stepped (the Godzilla's roof claws: Tripo painted the roof plain red, the top alignment matched only 0.26) | `noalign: ["top"]`: project that drawing straight through the camera. Not for views Tripo was given: a rear without its alignment doubled the plate and badge. |
+| A drawn decal comes out faded toward the body colour (the Beach Bomb's white roof stripes came out lavender) | Check `glass.jpg`: the sheet's window finder probably took the decal for glass, so the repaint weights that drawing down there. Redraw that view's mask with `model.glass` `{"replace": [view], "add": {view: [polygons]}}` (this one is the sheet's mask, not `model.rebake`) |
 | Tripo embossed its own invented lettering into a surface (relief under the drawn decal) | `flat`: per view sheet-px polygons whose normal-map relief is flattened, as on glass |
 | Tripo's own garbled paint survives under a drawn decal | `trust`: per view polygons where that view's drawing always wins |
 | An elevated drawing smears a top surface (the rear drawing sees a wing's top lettering at a slant) | `skip`: per view polygons that view never paints, so the view that sees the surface squarely paints it alone |

@@ -241,6 +241,18 @@ const PROFILES: Record<string, Partial<Profile>> = {
     top: 0.99, pull: 1.06, rev: 1.7, brake: 0.88, grip: 0.93, turn: 0.97, steer: 1.12,
     slide: 0.92, unstick: 1.25, float: 1.15, angle: 1.15, aero: 0.9, heft: 1.25, dirt: 1.05,
   },
+  // '99 Honda Civic Type R (EK9): a light front-drive hot hatch - quick to turn in, grippy and planted, a VTEC four
+  // that loves the top of the revs; front drive means it's harder to get sideways and the slide stays tidy
+  civic: {
+    top: 0.98, pull: 0.97, rev: 2.6, brake: 1.05, grip: 1.05, turn: 1.06, steer: 0.8,
+    slide: 0.95, unstick: 0.75, float: 0.9, angle: 0.92, aero: 1.05, heft: 0.85, dirt: 1,
+  },
+  // 1993 Ford Mustang Cobra R: a stripped Fox-body with a V8 - strong low-down pull, a willing tail under power,
+  // decent race brakes; a touch heavier than the imports
+  mustang: {
+    top: 1.01, pull: 1.04, rev: 1.9, brake: 1.02, grip: 0.97, turn: 0.99, steer: 1,
+    slide: 0.95, unstick: 1.15, float: 1.05, angle: 1.1, aero: 0.95, heft: 1.1, dirt: 1,
+  },
   // Beach Bomb Too (a VW bus with surfboards): tall, soft and slow - an air-cooled flat-4's putter, a floaty lean
   // into every slide, drum brakes, but it shrugs over the dirt and carries a hill's speed (a box on wheels)
   beach: {

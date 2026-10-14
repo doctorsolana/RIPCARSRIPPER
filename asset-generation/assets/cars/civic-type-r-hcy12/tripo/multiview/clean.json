@@ -1,0 +1,35 @@
+{
+  "before": {
+    "verts": 8606,
+    "faces": 9434,
+    "quads": 7100,
+    "tris_faces": 2334,
+    "triangles": 16534,
+    "open_edges": 893,
+    "pieces": 38
+  },
+  "after": {
+    "verts": 8550,
+    "faces": 9391,
+    "quads": 7067,
+    "tris_faces": 2323,
+    "triangles": 16460,
+    "open_edges": 823,
+    "pieces": 38
+  },
+  "hidden_faces_removed": 0,
+  "sheet_fit": [
+    1.0046,
+    0.9632,
+    1.0016,
+    0.0089,
+    -0.013
+  ],
+  "flat_faces_merged": 0,
+  "source_dimensions": [
+    0.9995,
+    0.4272,
+    0.3677
+  ],
+  "texture_px": 1024
+}

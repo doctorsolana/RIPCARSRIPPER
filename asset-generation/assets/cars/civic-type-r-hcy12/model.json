@@ -1,0 +1,109 @@
+{
+  "car": "civic-type-r-hcy12",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      0.9997,
+      1.0122,
+      0.9675
+    ],
+    "offset_xy": [
+      -0.0001,
+      -0.019
+    ],
+    "side+top_iou": 1.814,
+    "by_hand": {
+      "width": 0.983
+    }
+  },
+  "glass_source": {
+    "front": "traced",
+    "top": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 3.9988,
+    "height": 1.409,
+    "width": 1.6493
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.2833,
+        0.3204,
+        0.6805
+      ],
+      "r": 0.3487,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.2833,
+        0.3204,
+        -0.6701
+      ],
+      "r": 0.3487,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.4379,
+        0.3394,
+        0.6908
+      ],
+      "r": 0.3546,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.4379,
+        0.3394,
+        -0.6833
+      ],
+      "r": 0.3546,
+      "pieces": 1
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9597,
+    "top": 0.9454,
+    "left": 0.9566,
+    "front": 0.9533,
+    "rear": 0.9428
+  },
+  "proportions_vs_sheet": {
+    "length": 0.996,
+    "width": 0.994,
+    "height": 1.017
+  },
+  "glb": {
+    "bytes": 1356372,
+    "triangles": 16460
+  }
+}

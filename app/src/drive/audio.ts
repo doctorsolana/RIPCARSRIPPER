@@ -383,6 +383,23 @@ const ENGINES: Record<string, Engine> = {
     inertia: 0.1, drop: 0.14, blip: 0.3, body: [[95, 0.9, 8], [300, 1.3, 5], [900, 2, 3]], lp: [450, 2100],
     noise: [520, 0.7, 0.9], rumble: [170, 1.6], vary: 0.34, jitter: 40, lope: 0.05, turbo: 0, pops: 5, popFade: 1, pop: 2, shiftPop: 0, level: 0.178,
   },
+  // Honda B16B VTEC four (Civic Type R EK9): even 180-degree pulses, a thin hard bark that turns into a scream
+  // high up (8400), a short-geared 5-speed with quick clean shifts; a pop or two on a lift
+  'civic-type-r-hcy12': {
+    cyl: 4, fire: [0, 180, 360, 540], load: [1, 0.9, 0.98, 0.88], lift: [0.6, 0.5, 0.58, 0.48], width: [0.022, 0.045],
+    idle: 1000, redline: 8400, launch: 4500, gears: [13, 20, 28, 37, 50], up: 0.96, down: 0.45, shift: 0.15, cut: 0,
+    inertia: 0.04, drop: 0.06, blip: 0.45, body: [[200, 0.9, 5], [620, 1.6, 4.5], [1700, 2.4, 4]], lp: [750, 3000],
+    noise: [1300, 0.7, 1], rumble: [240, 2], vary: 0.2, jitter: 32, lope: 0.01, turbo: 0, pops: 3, popFade: 0.5, pop: 1, shiftPop: 0, level: 0.13,
+  },
+  // Ford 5.8 V8 (Mustang Cobra R): the cross-plane lope with a crisper, higher bark than the big-blocks (5900), a
+  // 5-speed manual, a burble on a lift
+  'mustang-cobra-r-hgk61': {
+    cyl: 8, fire: [0, 99, 189, 270, 369, 449, 541, 639], load: [1, 0.74, 0.7, 0.95, 0.75, 1.03, 0.97, 0.72],
+    lift: [0.84, 0.34, 0.3, 0.7, 0.42, 0.9, 0.72, 0.32], width: [0.019, 0.036],
+    idle: 720, redline: 5900, launch: 2900, gears: [15, 24, 34, 45, 60], up: 0.93, down: 0.36, shift: 0.22, cut: 0,
+    inertia: 0.09, drop: 0.12, blip: 0.35, body: [[105, 0.9, 7.5], [330, 1.3, 5], [1000, 2, 3.2]], lp: [480, 2300],
+    noise: [560, 0.7, 0.9], rumble: [175, 1.6], vary: 0.32, jitter: 38, lope: 0.04, turbo: 0, pops: 5, popFade: 0.9, pop: 2, shiftPop: 0, level: 0.17,
+  },
   // Beach Bomb Too (VW bus): an air-cooled flat-four putter - even pulses with the boxer's slight unevenness, low
   // revs (4800), a whiny cooling fan in the mid; a 4-speed with long slow shifts; barely pops
   'beach-bomb-too-k3370': {

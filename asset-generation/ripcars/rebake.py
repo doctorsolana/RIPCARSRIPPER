@@ -275,12 +275,21 @@ def _hand_glass(vs: dict, masks: dict) -> np.ndarray:
 def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int = 2048, power: float = 4.0,
                 agree_sigma: float = 55.0, hand_glass: bool = False, report: dict | None = None,
                 unseen: frozenset = frozenset({"top"}), traced: dict | None = None, tinted: dict | str | None = None,
-                flat: dict | None = None, trust: dict | None = None, skip: dict | None = None):
+                flat: dict | None = None, trust: dict | None = None, skip: dict | None = None,
+                rasters: dict | None = None):
     """unseen: views the generator never got - not aligned, and not trusted to say where the glass is
     (their window outlines don't line up with the generated greenhouse). tinted: "all" (every window super
     tinted) or {view: (mask, aligned)} marking the super-tinted panels (model.rebake.tinted, as for the glass)."""
     V, F = mesh.V, mesh.F
-    ys, xs, t, bary = bake._texels(F, mesh.uv, size)
+    # where the generated UV islands overlap (a windscreen laid over the dashboard behind it), the face the views see
+    # most wins the texels: faces drawn in order of how much of them the views' renders show
+    order = None
+    if rasters:
+        seen = np.zeros(len(F), np.int64)
+        for r in rasters.values():
+            seen += np.bincount(r.face[r.face >= 0], minlength=len(F))
+        order = np.argsort(seen, kind="stable")
+    ys, xs, t, bary = bake._texels(F, mesh.uv, size, order)
     P = (bary[:, :, None] * V[F[t]]).sum(1)
     N = (bary[:, :, None] * mesh.normals_vert[F[t]]).sum(1)
     N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9)
@@ -494,7 +503,7 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
                               if traced else "sheet masks, aligned")
     tex, mr, glass_uv = guided_bake(mesh, cal, grid, flows, renders, size=texture, hand_glass="replace" in tune.get("glass", {}),
                           report=report, unseen=unseen, power=rb.get("power", 4.0), agree_sigma=rb.get("agree", 55.0),
-                          traced=traced, tinted=tinted, flat=flat, trust=trust, skip=skip)
+                          traced=traced, tinted=tinted, flat=flat, trust=trust, skip=skip, rasters=rasters)
     name = src_path.stem.replace("-clean", "") + "-guided"
     dst = out / "snapshots" / f"{name}.glb"
     wheels, report["wheels_note"] = parts.find_wheels(mesh.V, mesh.F) if rb.get("wheels", True) else ([], "off (hints)")

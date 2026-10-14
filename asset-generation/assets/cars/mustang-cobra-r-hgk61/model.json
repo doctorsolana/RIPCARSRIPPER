@@ -1,0 +1,109 @@
+{
+  "car": "mustang-cobra-r-hgk61",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      0.9986,
+      0.9971,
+      0.9954
+    ],
+    "offset_xy": [
+      -0.0153,
+      0.0191
+    ],
+    "side+top_iou": 1.8873
+  },
+  "glass_source": {
+    "side": "traced",
+    "left": "traced",
+    "front": "traced",
+    "rear": "traced",
+    "top": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 3.9943,
+    "height": 1.3248,
+    "width": 1.5714
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.2569,
+        0.3376,
+        0.6245
+      ],
+      "r": 0.3307,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.2569,
+        0.3376,
+        -0.6346
+      ],
+      "r": 0.3307,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.1851,
+        0.3366,
+        0.6586
+      ],
+      "r": 0.3298,
+      "pieces": 5
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.189,
+        0.3376,
+        -0.6586
+      ],
+      "r": 0.3298,
+      "pieces": 4
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9712,
+    "top": 0.9763,
+    "left": 0.9698,
+    "front": 0.921,
+    "rear": 0.9558
+  },
+  "proportions_vs_sheet": {
+    "length": 0.998,
+    "width": 0.995,
+    "height": 1.003
+  },
+  "glb": {
+    "bytes": 1351000,
+    "triangles": 16054
+  }
+}

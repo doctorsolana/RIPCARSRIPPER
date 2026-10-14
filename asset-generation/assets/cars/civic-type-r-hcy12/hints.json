@@ -1,0 +1,270 @@
+{
+  "photo": "../../../../reference-collector/cars/civic-type-r-hcy12/reference/pack-photo.png",
+  "carBox": [
+    76,
+    478,
+    248,
+    88
+  ],
+  "segModel": "birefnet-general",
+  "notes": [
+    "carBox: re-measured on a 12x pixel ruler (tail light x76, nose x323, spoiler top y478, tyre bottoms y564); the eyeballed box clipped the nose and the tyres; segModel birefnet-general (the lite model followed the blister on the other cars)",
+    "wheels: traced on the ruler (rim rings r~16, tyres r~22, both cy 542); auto-detection found only the rims, which put the ground 5 px too high",
+    "model.rebake.glass: only the windscreen is a surface on this mesh - the side, quarter and rear-hatch windows are open holes (clay renders show the seats through them), so side/left/rear are left out. Windscreen traced on the mesh's own panel in front (inside the A-pillars, below the roof lip at y1188, above the cowl line at y1270; the sheet mask ran up onto the roof lip) and top (Tripo's grey panel inside its dark cowl band); both on one half, mirrored",
+    "model.rebake.skip top: the rear seat backs and the hatch-opening frame sit where the top drawing has its spoiler and red-interior rear window (the hatch glass is an open hole on this mesh), so the top view painted the seats gold and the frame lip red; the top view no longer paints inside the opening's outer edge (Tripo's red seats / black frame or the rear drawing win)",
+    "mask.remove: the segmenter took 2 px of the blister's edge past the front bumper (the bumper's shaded end is x324 on a 14x ruler); trimmed at x325",
+    "model.fit width 0.983: after the sheet fit the body was 1.7-2% wider than the front and rear drawings (cyan bands down both flanks of silhouette-front/rear) and the top body width 1.017; 0.983 brings front 1.000, rear 1.005, top 1.000 and raises front/rear IoU 0.949/0.933 -> 0.955/0.943. The red left on the greenhouse in front/rear is the mesh's narrower cabin (shape), not size",
+    "model.rebake.skip top (cowl): the top drawing's windscreen is longer than the mesh's, so it painted its thick black frame and red interior onto the mesh's cowl/hood edge as a wavy dark band (lopsided by the alignment); the top view no longer paints a curved strip ahead of the traced windscreen, just past the drawn frame (a straight cut left a visible seam across the hood), so the front drawing / Tripo's gold cowl with its thin dark line show",
+    "width vs the front/rear drawings: the sheet disagrees with itself - calibrate reports front_aspect_mismatch +23% and rear +24% (the front/rear views draw the car that much wider for their height than the side+top views do). The model is sized to side+top (the gated proportions); a fit of width 1.21 matching the front/rear drawings was tried, looked squat, failed the 5% top-width gate and doubled the hood badge, so it was not kept"
+  ],
+  "wheels": [
+    {
+      "cx": 115,
+      "cy": 542,
+      "r": 22
+    },
+    {
+      "cx": 281.5,
+      "cy": 542,
+      "r": 22
+    }
+  ],
+  "model": {
+    "rebake": {
+      "glass": {
+        "front": [
+          [
+            [
+              147,
+              1188
+            ],
+            [
+              262,
+              1188
+            ],
+            [
+              262,
+              1270
+            ],
+            [
+              93,
+              1270
+            ],
+            [
+              97,
+              1260
+            ],
+            [
+              108,
+              1240
+            ],
+            [
+              120,
+              1220
+            ],
+            [
+              133,
+              1200
+            ],
+            [
+              140,
+              1192
+            ]
+          ]
+        ],
+        "top": [
+          [
+            [
+              547,
+              956
+            ],
+            [
+              547,
+              858
+            ],
+            [
+              551,
+              854
+            ],
+            [
+              600,
+              840
+            ],
+            [
+              630,
+              830
+            ],
+            [
+              641,
+              827
+            ],
+            [
+              648,
+              829
+            ],
+            [
+              655,
+              840
+            ],
+            [
+              659,
+              855
+            ],
+            [
+              663,
+              875
+            ],
+            [
+              665,
+              900
+            ],
+            [
+              667,
+              925
+            ],
+            [
+              668,
+              956
+            ]
+          ]
+        ]
+      },
+      "glass_mirror": [
+        "front",
+        "top"
+      ],
+      "unseen": [
+        "top"
+      ],
+      "skip": {
+        "top": [
+          [
+            [
+              116,
+              860
+            ],
+            [
+              124,
+              842
+            ],
+            [
+              140,
+              836
+            ],
+            [
+              175,
+              840
+            ],
+            [
+              195,
+              850
+            ],
+            [
+              195,
+              1057
+            ],
+            [
+              175,
+              1067
+            ],
+            [
+              140,
+              1071
+            ],
+            [
+              124,
+              1064
+            ],
+            [
+              116,
+              1048
+            ]
+          ],
+          [
+            [
+              650,
+              812
+            ],
+            [
+              690,
+              815
+            ],
+            [
+              696,
+              845
+            ],
+            [
+              700,
+              900
+            ],
+            [
+              706,
+              953
+            ],
+            [
+              709,
+              1000
+            ],
+            [
+              705,
+              1050
+            ],
+            [
+              694,
+              1092
+            ],
+            [
+              650,
+              1095
+            ],
+            [
+              660,
+              1062
+            ],
+            [
+              667,
+              1010
+            ],
+            [
+              669,
+              953
+            ],
+            [
+              667,
+              896
+            ],
+            [
+              660,
+              845
+            ]
+          ]
+        ]
+      }
+    },
+    "fit": {
+      "width": 0.983
+    }
+  },
+  "mask": {
+    "remove": [
+      [
+        [
+          325,
+          515
+        ],
+        [
+          340,
+          515
+        ],
+        [
+          340,
+          560
+        ],
+        [
+          325,
+          560
+        ]
+      ]
+    ]
+  }
+}

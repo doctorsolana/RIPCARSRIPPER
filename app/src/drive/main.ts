@@ -39,6 +39,7 @@ const KMH = 4.3; // u/s -> km/h at toy scale
 // laps x length / PAR
 const PARS: Record<string, number> = {
   skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26,
+  civic: 42.64, mustang: 43.18,
 };
 const PAR = CAR.toLowerCase().split('-').map((w) => PARS[w]).find((x) => x !== undefined) ?? 42.1;
 const HARD_HIT = 25; // u/s square into a wall: an extra camera kick and a hard buzz (the camera scales its own shake by the hit)

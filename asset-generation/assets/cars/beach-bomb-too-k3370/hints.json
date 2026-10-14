@@ -23,7 +23,9 @@
     "side_iou gate (0.966 < 0.97) accepted: the sheet draws the rear wheel ~13 px above the ground line; the pack photo shows both tyres on the ground, so the model stands them on one ground line on purpose",
     "landing.pitch_deg 12 (seed, not locked): the boxy van fits the pack photo almost equally well from 7 to 18 deg, so the free fit drifted between rebuilds; 12 deg matches how much roof the pack photo shows",
     "model.rebake.glass: the sheet's own window finder failed on this car (it took the roof stripes and a surfboard for glass and found only thin strips of the dark side windows), so every view is traced on the mesh: side/left cab window on Tripo's light window paint, the two body side windows on the clay panel edges, the rear one cut along the surfboard's top edge (board stays opaque); front windscreen and the back window as three panes between the mesh's two posts, on Tripo's light window paint; top: windscreen band on the mesh and the roof window from the drawing (the mesh has no roof-window geometry, Tripo never saw the top); side/left also take the windscreen's wrap-around corners behind the A-pillars (Tripo painted them light and the front view sees them too steeply)",
-    "model.rebake.tinted: the body's side windows (side+left) and the two back windows are dark privacy glass on the real toy (founder); cab windows, windscreen and roof window stay clear"
+    "model.rebake.tinted: the body's side windows (side+left) and the two back windows are dark privacy glass on the real toy (founder); cab windows, windscreen and roof window stay clear",
+    "model.glass replace top (founder: the roof stripes must be white): the sheet's window finder took both white roof stripes for glass in the top view (qa glass.jpg), so the repaint weighted the top drawing down on the stripes and Tripo's purple leaked in - they came out pale lavender. The top view's window mask is now just the roof window (x 412-610, y 945-1090) and the windscreen strip",
+    "model.rebake.noalign top: the top drawing's alignment was weak (match 0.16, ~16 px shift: Tripo never saw the top) and smeared purple along the stripe edges; projected straight"
   ],
   "landing": {
     "pitch_deg": 12
@@ -631,6 +633,94 @@
             [
               768,
               1294
+            ]
+          ]
+        ]
+      },
+      "noalign": [
+        "top"
+      ]
+    },
+    "glass": {
+      "replace": [
+        "top"
+      ],
+      "add": {
+        "top": [
+          [
+            [
+              414,
+              945
+            ],
+            [
+              606,
+              945
+            ],
+            [
+              610,
+              952
+            ],
+            [
+              610,
+              1084
+            ],
+            [
+              604,
+              1090
+            ],
+            [
+              418,
+              1090
+            ],
+            [
+              412,
+              1084
+            ],
+            [
+              412,
+              952
+            ]
+          ],
+          [
+            [
+              876,
+              898
+            ],
+            [
+              896,
+              904
+            ],
+            [
+              907,
+              960
+            ],
+            [
+              909,
+              1040
+            ],
+            [
+              905,
+              1100
+            ],
+            [
+              893,
+              1140
+            ],
+            [
+              876,
+              1138
+            ],
+            [
+              869,
+              1060
+            ],
+            [
+              868,
+              960
+            ],
+            [
+              870,
+              905
             ]
           ]
         ]

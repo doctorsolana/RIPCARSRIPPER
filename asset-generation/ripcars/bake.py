@@ -32,13 +32,15 @@ def unwrap(mesh: trimesh.Trimesh, size: int, padding: int = 4):
     return vmap, faces.astype(np.int64), uv.astype(np.float64)
 
 
-def _texels(faces, uv, size):
-    """Which triangle covers each texel centre, and its barycentric coordinates there."""
+def _texels(faces, uv, size, order=None):
+    """Which triangle covers each texel centre, and its barycentric coordinates there. Where UV islands overlap
+    the last face drawn wins: `order` (face indices) draws them in that order, e.g. hidden faces first so a
+    visible window beats the dashboard a generated mesh laid over the same texels."""
     tid = np.full((size, size), -1, np.int32)
     px = uv * size
     pts = np.round(px * 16).astype(np.int32)
-    for t, f in enumerate(faces):
-        cv2.fillConvexPoly(tid, pts[f], int(t), lineType=cv2.LINE_8, shift=4)
+    for t in (range(len(faces)) if order is None else order):
+        cv2.fillConvexPoly(tid, pts[faces[t]], int(t), lineType=cv2.LINE_8, shift=4)
     ys, xs = np.nonzero(tid >= 0)
     t = tid[ys, xs]
     a, b, c = px[faces[t, 0]], px[faces[t, 1]], px[faces[t, 2]]
