@@ -1,6 +1,16 @@
 // The top bar shared by the reveal, the inspector and the drive page: RIPCARS, the pages, and on the reveal
-// and the drive page a car picker plus "random pack". Self-contained (its own styles), so it drops into any page.
+// and the drive page a car picker plus "random pack" (the drive page adds its track switch). Self-contained (its own
+// styles), so it drops into any page.
 interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean }
+
+/** A segmented switch of links in the bar, before the car picker (the drive page's tracks); the current option is lit
+ *  and inert. Where the bar has no room for it in its row (under 1200 px: in the row it would squeeze the page links
+ *  onto two lines, which happens below ~1150), it hangs below the bar's right end as a tab, out of the row: the bar
+ *  stays one 48 px row laid out exactly as on the other pages, and nothing under it moves. */
+export interface NavSwitch {
+  label: string; // what it picks (for screen readers)
+  options: { name: string; href: string; on: boolean; title?: string; color?: string }[]; // color: the option's dot
+}
 
 export interface Nav {
   el: HTMLElement;
@@ -26,6 +36,20 @@ const CSS = `
 #nav button { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 #nav select option { color: #111; }
 #nav button:hover, #nav select:hover { border-color: #ff3d6e; }
+#nav .seg { display: flex; flex: none; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12); }
+#nav .seg a { display: flex; align-items: center; gap: 7px; padding: 8px 11px; border-radius: 6px; color: rgba(238, 240, 243, 0.7);
+  text-decoration: none; white-space: nowrap; }
+#nav .seg a::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dot, currentColor); opacity: 0.6; }
+#nav .seg a:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+#nav .seg a.on { color: #fff; background: rgba(255, 255, 255, 0.15); cursor: default; }
+#nav .seg a.on::before { opacity: 1; box-shadow: 0 0 8px var(--dot, currentColor); }
+@media (max-width: 1199px) {
+  #nav .seg { position: absolute; top: 100%; right: max(16px, env(safe-area-inset-right)); padding: 0 3px 3px; border-top: 0;
+    border-radius: 0 0 11px 11px; background: rgba(10, 11, 15, 0.72); border-color: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  #nav .seg a { padding: 7px 10px; font-size: 12px; }
+}
 @media (max-width: 560px) {
   #nav { gap: 6px; }
   #nav .brand { font-size: 18px; }
@@ -35,7 +59,7 @@ const CSS = `
 }
 `;
 
-export async function mountNav(page: 'rip' | 'inspect' | 'drive'): Promise<Nav> {
+export async function mountNav(page: 'rip' | 'inspect' | 'drive', opts: { switch?: NavSwitch } = {}): Promise<Nav> {
   // embedded (the inspector's Reveal tab shows the reveal in a frame): the outer page has the bar
   if (window.top !== window.self) return { el: document.createElement('header'), setCar() {} };
   document.body.classList.add('nav-on');
@@ -53,6 +77,25 @@ export async function mountNav(page: 'rip' | 'inspect' | 'drive'): Promise<Nav> 
     </nav>
     <span class="spacer"></span>`;
   el.querySelector(`[data-page="${page}"]`)!.classList.add('on');
+  if (opts.switch) {
+    // links (a switch reloads the page): the current one has no href, so it's inert. It goes in after the spacer, so
+    // the car picker and Random car (appended once the car list is in) land after it
+    const seg = document.createElement('nav');
+    seg.className = 'seg';
+    seg.setAttribute('aria-label', opts.switch.label);
+    for (const o of opts.switch.options) {
+      const a = document.createElement('a');
+      a.textContent = o.name;
+      if (o.title) a.title = o.title;
+      if (o.color) a.style.setProperty('--dot', o.color);
+      if (o.on) {
+        a.className = 'on';
+        a.setAttribute('aria-current', 'page');
+      } else a.href = o.href;
+      seg.append(a);
+    }
+    el.append(seg);
+  }
   document.body.prepend(el);
 
   const { cars } = (await fetch('/cars/index.json').then((r) => r.json()).catch(() => ({ cars: [] }))) as { cars: NavCar[] };
@@ -89,10 +132,12 @@ export async function mountNav(page: 'rip' | 'inspect' | 'drive'): Promise<Nav> 
     el,
     setCar(id: string) {
       if (select && [...select.options].some((o) => o.value === id)) select.value = id;
-      // the links carry the car across: inspect what you just ripped, rip what you're inspecting, drive it
+      // the links carry the car across: inspect what you just ripped, rip what you're inspecting, drive it (from the
+      // drive page: on the same track; from anywhere else: the meadow)
       if (modelled.some((c) => c.id === id)) {
         rip.href = `/?car=${id}`;
-        drive.href = `/drive.html?car=${id}`;
+        const track = page === 'drive' ? new URLSearchParams(location.search).get('track') : null;
+        drive.href = `/drive.html?car=${id}${track ? `&track=${encodeURIComponent(track)}` : ''}`;
       }
       inspect.href = `/inspect.html?car=${id}`;
     },

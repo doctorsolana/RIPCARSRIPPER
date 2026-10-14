@@ -33,6 +33,7 @@ const PAD_DEAD = 0.12;
 const GAME_KEYS = new Set(['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'ShiftLeft', 'ShiftRight']);
 
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
+const smooth01 = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 
 export function createInput(target: HTMLElement): InputSource {
   const out: DriveInput = { steer: 0, throttle: 0, brake: 0, drift: false };
@@ -275,8 +276,10 @@ function cornerSpeed(k: number, sy: number, sb: number, kl: number, slip: number
  *  at the turn-in, then it drives the loose car - the slip that bends the travel as the road wants, steered for through
  *  the yaw, gentler on a floaty car - and straightens out of the corner, which ends the drift by itself (it never taps
  *  mid-drift: that keeps a drift going). Into a big jump it lines up on the centre line, runs flat out over the booster
- *  and holds it straight up the ramp (no drift, no brake: the jump is its own speed and line), and it never steers in
- *  the air. Deterministic: a function of the state and track. */
+ *  and holds it straight up the ramp (no drift, no brake: the jump is its own speed and line; on track 2 the whole
+ *  in-run, tag 'inrun', and the climb, tag 'climb', from 40 u before its pads), and it never steers in the air. A
+ *  narrow booster pad ahead (a tag with d0..d1) it lines up on its middle. Deterministic: a function of the state and
+ *  track. */
 export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
   const mode = opts.drift ?? 'auto';
   const out: DriveInput = { steer: 0, throttle: 1, brake: 0, drift: false };
@@ -289,6 +292,7 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
   // and which corner each frame is in (-1: none).
   const GAP = 1, RUN = 2;
   let prepped: Track | null = null, flags = new Uint8Array(0), corner = new Int16Array(0), ds = 0.5;
+  let aims: { s0: number; s1: number; d: number }[] = []; // narrow booster pads (d0..d1): it lines up on their middle
   let cS1 = new Float64Array(0), cTurn = new Float64Array(0), cK = new Float64Array(0), cCalm = new Uint8Array(0);
   const idx = (s: number) => {
     const n = flags.length;
@@ -307,10 +311,20 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
       for (const g of track.tags) if (g.tag === 'booster' && back(j.s0, g.s0) < near) (near = back(j.s0, g.s0)), (from = g.s0);
       for (let x = from - 40; back(j.s0, x) > 0.5 && back(j.s0, x) < 300; x += ds) flags[idx(x)] |= RUN;
     }
+    // a big jump's in-run (tag 'inrun', track 2's): the whole descent is run-up - flat out, straight, no drift
+    for (const g of track.tags) if (g.tag === 'inrun') for (let x = g.s0; back(g.s1, x) > 0.5 && back(g.s1, x) < L / 2; x += ds) flags[idx(x)] |= RUN;
+    // ... and track 2's climb (tag 'climb': up the wall and over) is one too, from 40 u before the pads that run up to it
+    for (const g of track.tags) {
+      if (g.tag !== 'climb') continue;
+      let from = g.s0 - 40;
+      for (const b of track.tags) if (b.tag === 'booster' && back(g.s0, b.s0) < 120) from = Math.min(from, g.s0 - back(g.s0, b.s0) - 40);
+      for (let x = from; back(g.s1, x) > 0.5 && back(g.s1, x) < L / 2; x += ds) flags[idx(x)] |= RUN;
+    }
+    aims = track.tags.filter((g) => g.tag === 'booster' && g.d0 !== undefined).map((g) => ({ s0: g.s0, s1: g.s1, d: (g.d0! + (g.d1 ?? g.d0!)) / 2 }));
     // the corners (a run may wrap round the lap's start: begin the scan where the road is straight)
     const bend = (i: number) => {
       const k = fs[i % n].kappa, tg = track.tagAt((i % n) * ds);
-      return Math.abs(k) > 1 / 150 && tg !== 'loop' && tg !== 'gap' ? Math.sign(k) : 0;
+      return Math.abs(k) > 1 / 150 && tg !== 'loop' && tg !== 'climb' && tg !== 'gap' ? Math.sign(k) : 0;
     };
     let i0 = 0;
     while (i0 < n && bend(i0) !== 0) i0++;
@@ -368,9 +382,17 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
     let kff = 0;
     for (let i = 0; i < 3; i++) kff += track.frameAt(st.trackS + x0 + i * 3, f1).kappa / 3;
     const bank = (BANK_ASSIST * G * -f.right.y * v) / (v * v + 25);
-    // ... and a correction of the heading and offset toward the centre line, gentler on the wide roads
-    const la = f.surface === 'plastic' ? 7 + v * 0.1 : 10 + v * 0.2;
-    const err = Math.atan2(-d, la) - phi;
+    // ... and a correction of the heading and offset toward the centre line, gentler on the wide roads - and on the
+    // wide plastic (track 2's stadium decks, over 16 u: the channel's quick correction weaves there at speed)
+    const wp = f.surface === 'plastic' ? smooth01((f.width - 16) / 2) : 0;
+    const la = f.surface === 'plastic' ? 7 + v * 0.1 + (5 + v * 0.15) * wp : 10 + v * 0.2;
+    // (toward a narrow booster pad ahead - within 70 u, or on it - its middle is the line)
+    let aim: number | null = null;
+    for (let i = 0; i < aims.length; i++) {
+      const g = aims[i], x = (((g.s0 - st.trackS) % L) + L) % L;
+      if (x < 70 || x > L - (g.s1 - g.s0)) aim = g.d;
+    }
+    const err = (aim === null ? Math.atan2(-d, la) : Math.atan2(aim - d, la)) - phi;
 
     // speed: the slowest of what the corners ahead allow, each plus what braking can shed before reaching it (less
     // while a slope pulls the car on: past its top speed off a hill, the corners come up fast)

@@ -373,7 +373,7 @@ const MARK_FS = /* glsl */ `
 const SKID_VS = /* glsl */ `
   attribute vec4 aA; // start, birth
   attribute vec4 aB; // end, strength
-  attribute vec3 aN; // surface normal
+  attribute vec3 aN; // surface normal, as long as the lift (x 0.012 u)
   uniform float uHead; // the ring's next slot: the ones just after it are the oldest
   uniform float uWidth;
   varying float vA;
@@ -940,7 +940,10 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     } else skids.touch(i);
     const j = i * 4, q = i * 3;
     kB[j] = p.x, kB[j + 1] = p.y, kB[j + 2] = p.z, kB[j + 3] = strength;
-    kN[q] = n.x, kN[q + 1] = n.y, kN[q + 2] = n.z;
+    // (the normal's length is the strip's lift, 0.012 u: on a bank past ~30 deg - track 2's wall ride, whose wide floor
+    // stands up to ~0.025 u off the surface between its rings - up to three times that; never on the meadow's banks)
+    const lift = 1 + 2 * smoothstep(0.5, 0.75, Math.abs(side.y));
+    kN[q] = n.x * lift, kN[q + 1] = n.y * lift, kN[q + 2] = n.z * lift;
     if (p.distanceToSquared(st.last) >= SKID_SEG * SKID_SEG) {
       st.last.copy(p);
       st.head = -1;

@@ -26,8 +26,8 @@ import type { CarSpec, DriveInput, Track, TrackFrame, VehicleState } from './typ
 //            verge    a low rumble wobbling over the bumps, and a soft swish of grass (a ~0.8 kHz band, in waves)
 //   joints   THE Hot Wheels sound, on the plastic only: a round plastic 'tock' (~1.4 kHz over a hollow ~0.56 kHz,
 //            three pitches, every hit a little different) per axle each time trackS crosses a multiple of 17 u where
-//            the 8 u channel has a connector, front then rear a wheelbase later; the rhythm is a speedometer, in the
-//            background
+//            the 8 u channel has a connector (track 2: wherever its plastic has one, its wide decks too - track.ts
+//            channelGeometry), front then rear a wheelbase later; the rhythm is a speedometer, in the background
 //   squeal   band-passed noise x smoothstep(4 deg, 20 deg, |slip|) on plastic and asphalt; a slide on dirt or
 //            grass is a heavier crunch / rumble instead
 //   scrape   a corner held on a wall while the car runs along it: noise through two resonances set by the
@@ -718,7 +718,8 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
   let popEnv = 0, popDue = 0, popGap = 1, lopeA = 0, lopeB = 0;
   // what's under and beside the car (probe(), every frame): the surface mix under the tyres, the nearer wall
   let track: Track | null = null;
-  const fr = newFrame(), fr2 = newFrame();
+  const fr = newFrame(), fr2 = newFrame(), fr3 = newFrame(), fr4 = newFrame();
+  let wideTabs = false; // track 2 has connectors across all its plastic, not just the 8 u channel
   const nose = new THREE.Vector3(), side = new THREE.Vector3(), rel = new THREE.Vector3(), prevNose = new THREE.Vector3(1, 0, 0);
   let mixP = 1, mixA = 0, mixD = 0, mixV = 0, wallMat = RAIL, wallGap = Infinity, vAlong = 0, hAbove = 0;
   let scrapeHold = 0, scMat = -1, hitT = -1, hitN = 0, spinT = -1, spinning = false;
@@ -873,7 +874,14 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     return false;
   }
 
-  const isJoint = (f: TrackFrame) => f.surface === 'plastic' && Math.abs(f.width - CHANNEL) < 0.05;
+  /** A connector at f (track.ts channelGeometry: on the 8 u channel - on track 2 on any plastic, but not within 3 u of
+   *  where a piece ends (at a jump's gap or a road), nor where a wide deck twists as a bank eases in or out). */
+  const isJoint = (f: TrackFrame) => {
+    if (f.surface !== 'plastic') return false;
+    if (!wideTabs || !track) return Math.abs(f.width - CHANNEL) < 0.05;
+    for (const d of [-3.5, 0, 3.5]) if (track.tagAt(f.s + d) === 'gap' || track.frameAt(f.s + d, fr3).surface !== 'plastic') return false;
+    return Math.abs(track.frameAt(f.s - 0.5, fr3).right.dot(track.frameAt(f.s + 0.5, fr4).up)) * (f.width / 2 + 0.25) <= 0.05;
+  };
 
   /** Reads the frame under the car: the share of the tyres on each surface, and the nearer wall (as fx.ts). */
   function probe(state: VehicleState) {
@@ -1206,6 +1214,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     },
     setTrack(t: Track) {
       track = t;
+      wideTabs = (t.object.userData as { course?: string }).course === 'sky';
       lips.length = 0;
       for (const b of t.tags) if (b.tag === 'bigjump') lips.push(b.s0, b.s1);
     },

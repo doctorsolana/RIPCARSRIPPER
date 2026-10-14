@@ -11,6 +11,22 @@ import type { Edge, Surface, Track, TrackFrame, TrackTag } from './types';
 // verge: width and verge blend between keys, surface and edge switch at them, and every change keeps the hard limit
 // (width / 2 + verge) continuous. Units: the car is 4 u long. The meadow is y = 0 and ground-level surfaces sit at
 // y = 0.3. Plan view: +x east, +z south. Positive yaw turns right (toward +z when heading +x), and right = cross(t, up).
+// Track 2, the Sky Tower (layoutSky, ?track=sky), is built the same way and is wide for racing in a pack (16-24 u, four
+// cars abreast; SKY) but for the classic 9 u channel where the squeeze is the point: the gate deck on a blue lattice
+// tower 42 u up with a start grid, a 40 deg plunge in the narrow channel into its loop, a stadium with chained boosters,
+// a 30 deg banked 180, a double jump, a 70 deg wall ride ridden UP onto from the meadow (one narrow booster pad in the
+// middle of its approach), esses and a chicane on the road, the climb - chained pads into a pull-up past vertical, over
+// the top upside down and a half roll out into a banked right-hander, onto a deck 41 u up (CLIMB, Path.immelmann) - the
+// sky jump's in-run - a long descending curve, a row of pads at its foot - and the jump itself (3+ s of air through a
+// hoop: SKYJ), and a 2.5-turn spiral round the tower back up to the gate.
+
+/** The courses (?track=<id>): the meadow lap, and track 2 - the sky tower. */
+export type CourseId = 'meadow' | 'sky';
+export const COURSES: { id: CourseId; name: string; blurb: string }[] = [
+  { id: 'meadow', name: 'Meadow', blurb: 'Country roads, a dirt stretch, the big jump and the loop' },
+  { id: 'sky', name: 'Sky Tower', blurb: 'A tower drop, huge jumps, a wall ride and the spiral back up' },
+];
+export const isCourse = (id: string | null | undefined): id is CourseId => COURSES.some((c) => c.id === id);
 
 export const TRACK_SPEC = {
   width: 8, rail: 0.8, lip: 0.25, base: 0.25, // plastic channel: floor width, rail height, rail thickness, floor thickness
@@ -53,10 +69,10 @@ const CLOSE = (w: number) => Math.max(GROW, 6 * w);
 const smooth = (u: number) => u * u * (3 - 2 * u);
 
 interface Pose { x: number; y: number; z: number; yaw: number; pitch: number; bank: number; k: number }
-interface Span { tag: TrackTag; s0: number; s1: number }
+interface Span { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number } // d0..d1: a narrow booster pad's lateral extent
 interface Style { surface: Surface; edge: Edge; width: number; shoulder: number }
 interface Key extends Style { s: number }
-type Support = 'tower' | 'trestle' | 'scaffold' | 'pillar' | 'loop' | 'rig';
+type Support = 'tower' | 'trestle' | 'scaffold' | 'pillar' | 'loop' | 'rig' | 'spire' | 'stilts' | 'pylons' | 'climb';
 interface Range<T> { kind: T; s0: number; s1: number }
 
 /** Height gained over a ramp of length len whose pitch eases 0 -> th (smoothstep). */
@@ -102,10 +118,11 @@ class Path {
   free: { x: number; z: number }[] = [];
   private cur: Style = { surface: 'plastic', edge: 'rail', width: TRACK_SPEC.width, shoulder: 0 };
 
-  constructor(y: number) {
+  /** Starts at height y heading +x, in the style given (the plain channel by default). */
+  constructor(y: number, style: Partial<Style> = {}) {
     this.pose = { x: 0, y, z: 0, yaw: 0, pitch: 0, bank: 0, k: 0 };
     this.push(0, 0, y, 0, 0, 0, 0);
-    this.key(0, {});
+    this.key(0, style);
   }
 
   push(s: number, x: number, y: number, z: number, yaw: number, pitch: number, bank: number) {
@@ -226,16 +243,17 @@ class Path {
   }
   /** Off the plastic: the channel flares to the road's width, then the rails end and the verge opens (or a barrier
    *  takes over at the edge when shoulder is 0). */
-  toRoad(surface: Surface, shoulder: number) {
-    const s = this.s, w = surface === 'dirt' ? TRACK_SPEC.dirt : TRACK_SPEC.road;
+  toRoad(surface: Surface, shoulder: number, width?: number) {
+    const s = this.s, w = width ?? (surface === 'dirt' ? TRACK_SPEC.dirt : TRACK_SPEC.road);
     this.key(s, {}).key(s + FLARE, { width: w }).key(s + FLARE, { surface, edge: shoulder ? 'grass' : 'barrier', shoulder: 0 });
     return shoulder ? this.key(s + FLARE + GROW, { shoulder }) : this;
   }
-  /** The plastic starts here: the verge has closed over the u before (CLOSE), and the funnel narrows to the channel. */
-  toPlastic() {
+  /** The plastic starts here: the verge has closed over the u before (CLOSE), and the funnel narrows to the channel
+   *  (or to `width`). */
+  toPlastic(width: number = TRACK_SPEC.width) {
     const s = this.s;
     this.key(s - CLOSE(this.cur.shoulder), {}).key(s, { shoulder: 0 }).key(s, { surface: 'plastic', edge: 'rail' });
-    return this.key(s + FLARE, { width: TRACK_SPEC.width });
+    return this.key(s + FLARE, { width });
   }
   /** The verge eases to `shoulder` u over the next `len` u. */
   verge(shoulder: number, len = GROW) {
@@ -253,6 +271,121 @@ class Path {
   /** Asphalt <-> dirt from here (the width eases over `len` u). */
   surfaceTo(surface: Surface, len = 14) {
     return this.key(this.s, { surface }).key(this.s + len, { width: surface === 'dirt' ? TRACK_SPEC.dirt : TRACK_SPEC.road });
+  }
+  /** The surface widens (or narrows) to w over the next `len` u. */
+  widen(w: number, len: number) {
+    return this.key(this.s, {}).key(this.s + len, { width: w });
+  }
+  /** A kicker over a gap onto a landing: the lip eases up to `lip` deg over lipLen, the gap's virtual surface eases on
+   *  to the landing's `land` deg over `gap` u, the landing holds it for `hold` u and eases flat over `out`. */
+  kicker(J: { lip: number; lipLen: number; gap: number; land: number; hold: number; out: number }) {
+    let k0 = this.s;
+    this.seg(J.lipLen, { pitch: J.lip * DEG }).tag('kicker', k0);
+    k0 = this.s;
+    this.seg(J.gap, { pitch: J.land * DEG }).tag('gap', k0);
+    return this.seg(J.hold).seg(J.out, { pitch: 0 });
+  }
+
+  /** Over `len`: yaw rate ramps linearly to k1 and bank eases (smoothstep) to bank1, as seg, while the centre line
+   *  climbs h(u) over where it starts (h(0) = 0): the pitch is asin(h'(u)), so the line starts and ends level wherever
+   *  h does. (Track 2's wall ride; the meadow never comes here.) */
+  climb(len: number, k1: number, bank1: number, h: (u: number) => number) {
+    const P = this.pose, k0 = P.k, b0 = P.bank, y0 = P.yaw, e = 1e-3;
+    const yaw = (u: number) => y0 + k0 * u + ((k1 - k0) * u * u) / (2 * len);
+    const pitch = (u: number) => {
+      const a = Math.max(0, u - e), b = Math.min(len, u + e);
+      return Math.asin(Math.max(-0.9, Math.min(0.9, (h(b) - h(a)) / (b - a))));
+    };
+    const tx = (u: number) => Math.cos(pitch(u)) * Math.cos(yaw(u));
+    const ty = (u: number) => Math.sin(pitch(u));
+    const tz = (u: number) => Math.cos(pitch(u)) * Math.sin(yaw(u));
+    const n = Math.ceil(len / STEP), dh = len / n;
+    let { x, y, z } = P;
+    for (let i = 1; i <= n; i++) {
+      const a = (i - 1) * dh, m = a + dh / 2, b = i * dh;
+      x += (dh / 6) * (tx(a) + 4 * tx(m) + tx(b));
+      y += (dh / 6) * (ty(a) + 4 * ty(m) + ty(b));
+      z += (dh / 6) * (tz(a) + 4 * tz(m) + tz(b));
+      this.push(this.s + b, x, y, z, yaw(b), pitch(b), b0 + (bank1 - b0) * smooth(b / len));
+    }
+    Object.assign(P, { x, y, z, yaw: yaw(len), pitch: pitch(len), bank: bank1, k: k1 });
+    this.s += len;
+    return this;
+  }
+
+  /** Over `len`: the heading, pitch and bank are the given functions of u (0 .. len, starting where the pose is) -
+   *  integrated as seg does (Simpson on the tangent). Pitch may run past 90 deg (up a wall and over the top): the frame
+   *  is push's, smooth through vertical while the yaw holds still there. Ends with yaw rate k1. (Track 2's climb.) */
+  sweep(len: number, yaw: (u: number) => number, pitch: (u: number) => number, bank: (u: number) => number, k1 = 0) {
+    const P = this.pose;
+    const tx = (u: number) => Math.cos(pitch(u)) * Math.cos(yaw(u));
+    const ty = (u: number) => Math.sin(pitch(u));
+    const tz = (u: number) => Math.cos(pitch(u)) * Math.sin(yaw(u));
+    const n = Math.ceil(len / STEP), dh = len / n;
+    let { x, y, z } = P;
+    for (let i = 1; i <= n; i++) {
+      const a = (i - 1) * dh, m = a + dh / 2, b = i * dh;
+      x += (dh / 6) * (tx(a) + 4 * tx(m) + tx(b));
+      y += (dh / 6) * (ty(a) + 4 * ty(m) + ty(b));
+      z += (dh / 6) * (tz(a) + 4 * tz(m) + tz(b));
+      this.push(this.s + b, x, y, z, yaw(b), pitch(b), bank(b));
+    }
+    Object.assign(P, { x, y, z, yaw: yaw(len), pitch: pitch(len), bank: bank(len), k: k1 });
+    this.s += len;
+    return this;
+  }
+
+  /** Up the wall and over (track 2's climb, C = CLIMB): from level, a pull-up - a clothoid into radius r1 and out of
+   *  it - to `over` deg, past vertical; a straight `wall` there; over the top at r2, easing to rTop as it comes upside
+   *  down and level, heading back the way it came. Then a half roll (`roll` u) out of that into a right-hand turn of
+   *  radius turnR banked `bank` deg: the line dives a little while the car is upside down and on its side (the curve
+   *  that keeps it pressed onto the track) and levels as it comes upright, the turn's yaw rate ramping in. Ends in
+   *  that turn (yaw rate 1 / turnR). The Euler angles hold over the half loop (the yaw stays put while the pitch runs
+   *  0 -> 180 deg); at the top the pose is re-expressed - heading reversed, pitch 0, bank 180 - for the roll. */
+  immelmann(C: { r1: number; e1: number; over: number; wall: number; r2: number; e2: number; rTop: number; e3: number; roll: number; dive: number; pull: number; turnR: number; bank: number }) {
+    const P = this.pose, y0 = P.yaw;
+    // the half loop: the pitch rate (curvature) along u, piecewise linear between knots, and its integral
+    const q1 = 1 / C.r1, q2 = 1 / C.r2, qt = 1 / C.rTop, over = C.over * DEG;
+    const h1 = over * C.r1 - C.e1 / 2; // clothoids (e1 / 2 each) in and out of r1: (h1 + e1 / 2) q1 = over
+    const h2 = (Math.PI - over - (C.e2 * q2) / 2 - (C.e3 * (q2 + qt)) / 2) / q2; // ... then up to 180 deg
+    if (h1 < 0 || h2 < 0) throw new Error('immelmann: radii too tight for the eases');
+    const knots: [number, number][] = [[0, 0]];
+    const add = (du: number, q: number) => knots.push([knots[knots.length - 1][0] + du, q]);
+    add(C.e1 / 2, q1), add(h1, q1), add(C.e1 / 2, 0), add(C.wall, 0), add(C.e2, q2), add(h2, q2), add(C.e3, qt);
+    const len = knots[knots.length - 1][0];
+    const th = (u: number) => {
+      let a = 0;
+      for (let i = 0; i < knots.length - 1; i++) {
+        const [u0, qa] = knots[i], [u1, qb] = knots[i + 1], du = Math.min(u, u1) - u0;
+        if (du <= 0) break;
+        a += qa * du + ((qb - qa) * du * du) / (2 * (u1 - u0));
+      }
+      return a;
+    };
+    this.sweep(len, () => y0, th, () => 0);
+    // the half roll: heading reversed, the bank 180 -> `bank` (rolling right, through the car on its side), the yaw rate
+    // ramping in to the turn's; the pitch keeps diving - at rTop's rate, easing off over the first `dive` of it (on its
+    // side, gravity's own curve, so nothing pushes it across) - and pulls back up to level over the last `pull` of it
+    const L = C.roll, b1 = C.bank * DEG, kT = 1 / C.turnR, yr = y0 + Math.PI, xd = C.dive, x3 = 1 - C.pull;
+    const dive = (x: number) => { const t = Math.min(1, x / xd); return x < xd ? x - xd * (t * t * t - (t * t * t * t) / 2) : xd / 2; };
+    const pull = (x: number) => (x < x3 ? 0 : (x - x3) / 2 - ((1 - x3) / (4 * Math.PI)) * Math.sin((2 * Math.PI * (x - x3)) / (1 - x3)));
+    const lam = (qt * dive(1)) / pull(1);
+    Object.assign(P, { yaw: yr, pitch: 0, bank: Math.PI });
+    return this.sweep(L, (u) => yr + (kT * u * u) / (2 * L), (u) => L * (lam * pull(u / L) - qt * dive(u / L)),
+      (u) => Math.PI - (Math.PI - b1) * smooth(u / L), kT);
+  }
+
+  /** A wall ride: a turn of `deg` (+ right) at radius R banked `bank` deg into it, ridden UP onto: its deck (w u
+   *  across) pivots on its inner edge, so as the bank comes in over the entry's `ease` u the centre line climbs
+   *  w / 2 sin(bank) - and `lift` more, the inner edge rising too - while the turn tightens in; the band holds level
+   *  round the turn; the exit unwinds the bank and comes back down all of that and `drop` u more. */
+  wallArc(R: number, deg: number, o: { bank: number; ease: number; w: number; lift: number; drop: number }) {
+    const ang = Math.abs(deg) * DEG, sg = Math.sign(deg), e = o.ease, hold = ang * R - e;
+    if (hold < 0) throw new Error(`wallArc too short: R ${R} deg ${deg}`);
+    const b = o.bank * DEG, half = o.w / 2;
+    this.climb(e, sg / R, sg * b, (u) => o.lift * smooth(u / e) + half * Math.sin(b * smooth(u / e)));
+    this.seg(hold);
+    return this.climb(e, 0, 0, (u) => -o.drop * smooth(u / e) - half * (Math.sin(b) - Math.sin(b * (1 - smooth(u / e)))));
   }
 }
 
@@ -358,6 +491,183 @@ function layout(A: number, B: number) {
   return P;
 }
 
+/** Track 2, the Sky Tower (u, deg). Wide for racing in a pack - most of the lap is 16-24 u (four cars abreast) - with
+ *  the classic channel kept where the squeeze is the point: the plunge off the tower and its loop (`narrow`), and the
+ *  chicane on the road (12). */
+export const SKY = {
+  gateY: 42, gateLen: 40, start: 24, deck: 22, // the gate deck on the tower top: height, length, start line, width
+  spiralR: 26, spiralW: 16, spiralBank: 20, spiralY: 3, spiralPads: 4, // the spiral round the tower (2.5 turns)
+  plunge: 40, narrow: 9, loopR: 14, // the plunge off the tower and the loop at its foot, in the classic channel
+  wide: 22, // the stadium decks and the roads
+  bank180: 30, r180: 56, // the banked 180 at the end of the stadium
+  // The wall ride: a 180 at wallR banked wallBank, wallW across, ridden up onto: over its entry (wallEase u) the inner
+  // edge rises wallLift and the centre the bank's w / 2 sin(bank) more; the exit comes down that and wallDrop. One
+  // booster pad, wallPad u wide, in the middle of its approach: line up for it, or ride the wall slower.
+  wallBank: 70, wallR: 46, wallW: 24, wallEase: 60, wallLift: 3, wallDrop: 3, wallPad: 5,
+  floorY: 0.3,
+};
+
+/** The double jump: two kickers back to back (lip, gap, landing as JUMP, bigger), 18 u wide. */
+export const DOUBLE = { lip: 12, lipLen: 8, gap: 26, land: -12, hold: 10, out: 16, between: 14, width: 18, catch: 24, y: 4.5 };
+
+/** The sky jump and its in-run, solved against the arcade model (g = 24). The in-run: from the deck the climb (CLIMB)
+ *  ends on, 41 u up on the east side, a long sweeping left curve (curveR, banked curveBank) that falls to `bottom` - the
+ *  speed builds down it - a row of booster pads on the straight at its foot (`run`), and a short steep kicker (`lip`
+ *  deg) to a lip only `lipY` up (~51.5 u/s there: `speed`). Then a gap of gapX (horizontal) to the landing hill's edge
+ *  gapY ABOVE the lip - it jumps up and over onto the hill, like the meadow's big jump - and the hill, a long ski slope:
+ *  it eases `edge` -> `steep` over `hill` u, holds, eases to the runway's pitch, and flares onto the meadow. Every run
+ *  from 0.85 to 1.15 x `speed` lands on the slope lined up (PERFECT): the slow ones early, near its top, the fast ones
+ *  ~100 u further down; 1.2-1.25 x come down on the flare (ok); slower than 0.85 x falls short into the gap and is put
+ *  back at the top of the in-run. ~3.3 s of air at the design speed, the apex ~28 u over the lip; the hoop stands over
+ *  it (scratch jsearch.mjs, window.ts). */
+export const SKYJ = {
+  cornerR: 46, // the SE corner on the way to the climb (CLIMB)
+  curveR: 66, curveBank: 8, lineUp: 64, bottom: 10, run: 26, padAt: 16, // the in-run's descending curve, the straight
+  // descent after it (lining up for the ramp), its foot; the straight
+  // there and its row of pads (padAt u in: the pads' boost lasts up the ramp)
+  lip: 46, lipY: 24, sag: 30, // the launch ramp
+  gapX: 66, gapY: 5, // the landing hill's edge from the lip (horizontal, vertical)
+  edge: -6, hill: 40, steep: -24, // the hill: its edge's pitch, easing to `steep` over `hill` u ...
+  runway: -12, ease: 28, runLen: 30, flare: 30, // ... then to the runway's pitch, and the flare to the meadow
+  width: 20, catch: 48, speed: 51.5, // the in-run's and lip's width, the landing's; the design lip speed (u/s)
+};
+
+/** The climb to the sky jump's deck, up the wall and over (Path.immelmann; tag 'climb'), 20 u wide: `east` u of plastic
+ *  past the road and the SE corner, `pre` u, `pads` chained booster pads (24 u apart) and a `lead` straight; the pull-up
+ *  (clothoids totalling e1 into and out of r1) to `over` deg, past vertical; a straight `wall` there; over the top at r2,
+ *  easing over e3 to rTop as it comes upside down 48 u up; the half roll over `roll` u (the line diving at first - the
+ *  curve that keeps the car pressed on while it's upside down and on its side - and levelling as it comes upright,
+ *  `dive` / `pull`: Path.immelmann) into a right-hander of turnR banked `bank`, which sweeps on round to the north onto
+ *  the deck (41 u up) and eases out over `out`. Up the wall it's the speed brought to it that carries the car (the tyres
+ *  push less the steeper it gets: arcade.ts): over the pads a car reaches ~66 u/s, ~41 at the top; under ~56 at the
+ *  pull-up it can't stay on round the top, falls off and is put back before the pads (scratch climbspeed.ts, hold.ts). */
+export const CLIMB = {
+  east: 100, pre: 20, pads: 3, w: 20, lead: 16,
+  r1: 18, e1: 16, over: 95, wall: 9, r2: 12, e2: 8, rTop: 34, e3: 10, roll: 34, dive: 1, pull: 0.5, turnR: 28, bank: 30, out: 16,
+};
+
+/** Track 2: the Sky Tower lap. A and B are the free straights that close it (the deck at the top of the climb, the
+ *  runout west from the sky jump's landing to the spiral). */
+function layoutSky(A: number, B: number) {
+  const K = SKY, J2 = SKYJ, D2 = DOUBLE, C = CLIMB;
+  const P = new Path(K.gateY, { width: K.spiralW });
+  let s0 = 0;
+  // ---- The gate deck on the tower top: four abreast, two rows behind the line (track.object.userData.grid)
+  P.widen(K.deck, 10);
+  P.seg(K.gateLen).tag('gate', 0).support('spire', 0);
+  P.tags.push({ tag: 'finish', s0: K.start - 1, s1: K.start + 1 });
+  // ---- The plunge: 40 deg off the tower in the classic narrow channel (the pack squeezes in single file), a booster on
+  // the way down, straight into the loop
+  s0 = P.s;
+  P.widen(K.narrow, 24);
+  const th = K.plunge * DEG, rIn = 60, rOut = 30; // (a long crest: the chase camera stays over it)
+  const hold = (P.pose.y - K.floorY - rampRise(th, rIn) - rampRise(th, rOut)) / Math.sin(th);
+  P.seg(rIn, { pitch: -th });
+  P.tags.push({ tag: 'booster', s0: P.s + hold * 0.35, s1: P.s + hold * 0.35 + 8 });
+  P.seg(hold);
+  P.seg(rOut, { pitch: 0 }).tag('drop', s0).support('pylons', s0);
+  P.seg(10);
+  const l0 = P.s;
+  P.loop(K.loopR, K.narrow + 3).tag('loop', l0).support('loop', l0);
+  P.seg(10);
+  // ---- Speed: the stadium on the meadow, chained boosters, up onto stilts and the banked 180
+  P.widen(K.wide, 30);
+  P.seg(40);
+  for (let i = 0; i < 3; i++) P.booster(24, 8);
+  s0 = P.s;
+  P.slopeTo(6, 5, 24);
+  P.arc(K.r180, 180, { bank: K.bank180, ease: 30 });
+  P.seg(10);
+  // ---- The double jump, westward on stilts
+  P.slopeTo(D2.y, 3, 20);
+  P.widen(D2.width, 16);
+  P.seg(18);
+  // each landing is a catch tray wider than the lips (a crooked or off-centre take-off still lands), narrowing again
+  // before the next lip; it widens over the end of the gap (nothing there to drive on or hit), so the walls never jump
+  // out between two frames - a car reversing up the tray to its edge isn't snapped sideways
+  const tray = () => P.key(P.s - D2.hold - D2.out - 6, {}).key(P.s - D2.hold - D2.out, { width: D2.catch });
+  P.kicker(D2);
+  tray().widen(D2.width, D2.between);
+  P.seg(D2.between).kicker(D2);
+  tray().widen(K.wide, 20);
+  P.seg(20).support('stilts', s0);
+  // ---- The wall ride, on the meadow: one narrow booster pad in the middle of the approach, then the 180 ridden up
+  // onto the wall and back down off it
+  P.slopeTo(K.floorY, 3, 12); // (the second landing runs out a little below the deck it left)
+  s0 = P.s;
+  P.widen(K.wallW, 24);
+  P.seg(24);
+  P.tags.push({ tag: 'booster', s0: P.s, s1: P.s + 8, d0: -K.wallPad / 2, d1: K.wallPad / 2 });
+  P.seg(26);
+  P.wallArc(K.wallR, -180, { bank: K.wallBank, ease: K.wallEase, w: K.wallW, lift: K.wallLift, drop: K.wallDrop });
+  P.support('stilts', s0);
+  P.widen(K.wide, 20);
+  P.seg(50);
+  // ---- Technical, on the road: esses between grass verges, a chicane between tyre walls, eastward
+  P.seg(6).toRoad('asphalt', 5, 16).seg(FLARE + GROW);
+  P.arc(30, -50, { ease: 12 }).arc(30, 100, { ease: 12 }).arc(30, -50, { ease: 12 }).seg(16);
+  P.wall().widen(12, 10);
+  P.seg(10);
+  P.arc(18, 45, { ease: 10 }).arc(18, -45, { ease: 10 });
+  P.seg(4).open(6);
+  P.seg(GROW).widen(K.wide, 16);
+  P.seg(16);
+  // ---- The climb to the sky jump (CLIMB): back onto the plastic, east on the meadow and round the SE corner, north
+  // over a row of chained pads, then up the wall - a pull-up past vertical, over the top upside down (heading back
+  // south, above the pads) and a half roll out of it into a banked right-hander - that sweeps on round to the north,
+  // onto the deck 41 u up (A). Its rig: a lattice tower behind the wall and one beside the roll (supports 'climb')
+  P.seg(CLOSE(6) + 4).toPlastic(J2.width);
+  s0 = P.s;
+  P.seg(FLARE).seg(C.east);
+  P.arc(J2.cornerR, -90, { bank: 6, ease: 16 });
+  P.seg(C.pre);
+  for (let i = 0; i < C.pads; i++) P.booster(24, 8);
+  P.widen(C.w, C.lead);
+  P.seg(C.lead).support('stilts', s0);
+  const c0 = P.s;
+  P.immelmann(C).tag('climb', c0);
+  // ... the rest of the right-hander to the north (yaw rate 1 / turnR), the bank and turn easing out together
+  const left = 3 * Math.PI / 2 - (P.pose.yaw - 2 * Math.PI * Math.floor(P.pose.yaw / (2 * Math.PI))), kT = 1 / C.turnR;
+  P.seg(left / kT - C.out / 2).seg(C.out, { k: 0, bank: 0 }).support('climb', c0);
+  s0 = P.s;
+  P.widen(J2.width, 16);
+  P.seg(16);
+  P.freeStraight(A);
+  // ... then down: the long sweeping curve to the foot of the launch ramp (tag 'inrun': a miss is put back before it)
+  const in0 = P.s;
+  P.arc(J2.curveR, -90, { bank: J2.curveBank, ease: 20, toY: J2.bottom, pin: 20, pout: J2.lineUp });
+  P.booster(J2.run, J2.padAt).support('stilts', s0);
+  // ---- The sky jump, westward toward the tower: the launch ramp, the gap (the hoop over its apex), the landing hill
+  s0 = P.s;
+  const lipTh = J2.lip * DEG;
+  const ramp = (J2.lipY - P.pose.y - easeRun(0, lipTh, J2.sag).y) / Math.sin(lipTh);
+  P.seg(J2.sag, { pitch: lipTh }).seg(ramp).tag('kicker', s0);
+  const lip = P.s, p0 = J2.edge * DEG;
+  P.tags.push({ tag: 'inrun', s0: in0, s1: lip });
+  // the gap's virtual surface: two equal eases, lip pitch -> c -> the hill's edge pitch, ending on its edge
+  const unit = (c: number) => { const a = easeRun(lipTh, c, 1), b = easeRun(c, p0, 1); return { x: a.x + b.x, y: a.y + b.y }; };
+  const crest = solve((c) => { const u = unit(c); return u.y / u.x; }, J2.gapY / J2.gapX, -lipTh, lipTh);
+  const half = J2.gapX / unit(crest).x;
+  P.seg(half, { pitch: crest }).seg(half, { pitch: p0 }).tag('gap', lip);
+  P.key(P.s - 16, {}).key(P.s, { width: J2.catch }); // the landing is a catch tray, wider than the lip (widening over the gap's end)
+  const p1 = J2.steep * DEG, rw = J2.runway * DEG;
+  P.seg(J2.hill, { pitch: p1 });
+  const steep = (K.floorY - P.pose.y - easeRun(p1, rw, J2.ease).y - Math.sin(rw) * J2.runLen - easeRun(rw, 0, J2.flare).y) / Math.sin(p1);
+  P.seg(steep).seg(J2.ease, { pitch: rw }).seg(J2.runLen);
+  P.widen(K.spiralW, J2.flare + 20);
+  P.seg(J2.flare, { pitch: 0 }).tag('bigjump', lip).support('rig', s0);
+  // ---- The runout west to the tower (B), and the spiral: up round the tower to the gate, counter-clockwise, a booster
+  // about every half turn
+  P.freeStraight(B);
+  P.slopeTo(K.spiralY, 4, 16);
+  s0 = P.s;
+  const yaw = P.pose.yaw / DEG, turn = -(yaw - 360 * Math.floor(yaw / 360 + 1e-9)) - 720; // whatever closes the heading
+  const pin = 20, len = Math.abs(turn) * DEG * K.spiralR + 14;
+  for (let i = 0; i < K.spiralPads; i++) P.tags.push({ tag: 'booster', s0: s0 + pin + len * (0.12 + 0.22 * i), s1: s0 + pin + len * (0.12 + 0.22 * i) + 8 });
+  P.arc(K.spiralR, turn, { bank: K.spiralBank, ease: 14, toY: K.gateY, pin, pout: 0 }).tag('helix', s0).support('spire', s0);
+  return P;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Frames
 
@@ -394,8 +704,10 @@ const STRIP = { rail: 0, barrier: 1.8, grass: 1.2 } as const;
 /** Ground clearance and the dirt's humps. A banked turn tips one edge of its cross-section (the channel's base, or the
  *  road's verge) toward the meadow: lift the centre line just enough to keep that edge above it, spread out (dilate 24 u,
  *  then two 24 u box filters) so the lift is gentle and never a launch crest. The humps go on top. Then s, t and up are
- *  recomputed from the lifted points, and everything keyed along s moves with the (slightly longer) arc length. */
-function settle(P: Path) {
+ *  recomputed from the lifted points, and everything keyed along s moves with the (slightly longer) arc length. With
+ *  `wide` the plastic's edge is where its width puts it (track 2's wide decks); without, the channel's (the meadow's
+ *  plastic is never banked wide, and its numbers stay exactly as they were). */
+function settle(P: Path, wide = false) {
   const d = P.d, n = d.length / 10, L = d[(n - 1) * 10], G = Math.round(L / 0.5), h = L / G;
   const bad = P.keys.findIndex((k, i) => i > 0 && k.s < P.keys[i - 1].s - 1e-6);
   if (bad > 0) console.warn(`track: style changes overlap (a key at s ${P.keys[bad].s.toFixed(1)} before one at ${P.keys[bad - 1].s.toFixed(1)})`);
@@ -405,7 +717,7 @@ function settle(P: Path) {
     const o = i * 10, tx = d[o + 4], tz = d[o + 6], ux = d[o + 7], uy = d[o + 8], uz = d[o + 9];
     const ry = Math.abs(tz * ux - tx * uz); // |(t x up).y|
     style(d[o], st);
-    const low = st.surface === 'plastic' ? 0.05 + OUT * ry + BASE * uy : 0.15 + (hardOf(st) + STRIP[st.edge]) * ry;
+    const low = st.surface === 'plastic' ? 0.05 + (wide ? st.width / 2 + TRACK_SPEC.lip : OUT) * ry + BASE * uy : 0.15 + (hardOf(st) + STRIP[st.edge]) * ry;
     const k = Math.round(d[o] / h) % G;
     need[k] = Math.max(need[k], low - d[o + 2]);
   }
@@ -476,14 +788,15 @@ const newFrame = (): TrackFrame => ({
 });
 
 /** Builds the closed centre line and its frame table (no meshes; buildTrack adds those). */
-export function buildFrames() {
-  const base = layout(0, 0);
+export function buildFrames(course: CourseId = 'meadow') {
+  const lay = course === 'sky' ? layoutSky : layout;
+  const base = lay(0, 0);
   const [a, b] = base.free, ex = -base.pose.x, ez = -base.pose.z, det = a.x * b.z - a.z * b.x;
   const A = (ex * b.z - ez * b.x) / det, B = (a.x * ez - a.z * ex) / det;
   if (!(A > 2 && B > 2)) console.warn(`track: closure straights A=${A.toFixed(1)} B=${B.toFixed(1)} too short`);
-  const P = layout(A, B);
+  const P = lay(A, B);
   const turned = P.pose.yaw / DEG;
-  settle(P);
+  settle(P, course === 'sky');
   const d = P.d, n = d.length / 10, L = d[(n - 1) * 10];
   const N = Math.round(L / 0.5), ds = L / N;
   const style = styler(P.keys, L);
@@ -582,20 +895,42 @@ function runs(frames: TrackFrame[], ds: number, pred: (f: TrackFrame) => boolean
   return out;
 }
 
-/** Ring positions along [s0, s1]: every frame, thinned where nothing changes (<= 3 u apart, <= `deg` of turn, width
- *  and limits steady); `dense(s)` forces every frame. */
-function stations(frameAt: FrameAt, s0: number, s1: number, ds: number, dense: (s: number) => boolean = () => false, deg = 2.5) {
+/** Ring positions along [s0, s1]: every frame, thinned where nothing changes (<= `gap` u apart, <= `deg` of turn, width
+ *  and limits steady); `dense(s)` forces every frame. With `twist` (deg) a ring also comes every `twist` of roll about
+ *  the tangent (a bank easing in or out): a ring-to-ring band of a wide deck is then a twisted quad, and each of its
+ *  triangles bulges off the true surface by ~ width / 4 x the twist - on 16-24 u decks at the turn's 4 deg, past the
+ *  0.25 u slab, so the underside poked up through the floor in dark slivers (track 2's banked turns). */
+function stations(frameAt: FrameAt, s0: number, s1: number, ds: number, dense: (s: number) => boolean = () => false, deg = 2.5, gap = 3, twist?: number) {
   const cand: number[] = [s0];
   for (let s = Math.ceil(s0 / ds + 1e-6) * ds; s < s1 - 1e-6; s += ds) cand.push(s);
   cand.push(s1);
-  const keep = [s0], a = newFrame(), b = newFrame(), cos = Math.cos(deg * DEG);
+  const keep = [s0], a = newFrame(), b = newFrame(), cos = Math.cos(deg * DEG), roll = twist ? Math.sin(twist * DEG) : 0;
+  // (with `twist`, track 2's wide decks: also a ring wherever the floor between two would stand off the true surface
+  // by more than SAG / SAG_FLAT)
+  const mid = twist ? newFrame() : null;
+  const sag = (sa: number, sb: number) => {
+    frameAt((sa + sb) / 2, mid!);
+    let worst = 0;
+    // the middles of the chords (the two rings' points at the same offset: the edges, the centre) and of the floor quad's
+    // diagonals (a twist bulges those) against the surface there, along its normal
+    for (const [xa, xb] of [[-0.5, -0.5], [0, 0], [0.5, 0.5], [-0.5, 0.5], [0.5, -0.5]]) {
+      const w = mid!.width * (xa + xb) * 0.5, ka = a.width * xa, kb = b.width * xb;
+      const dx = 0.5 * (a.p.x + a.right.x * ka + b.p.x + b.right.x * kb) - mid!.p.x - mid!.right.x * w;
+      const dy = 0.5 * (a.p.y + a.right.y * ka + b.p.y + b.right.y * kb) - mid!.p.y - mid!.right.y * w;
+      const dz = 0.5 * (a.p.z + a.right.z * ka + b.p.z + b.right.z * kb) - mid!.p.z - mid!.right.z * w;
+      worst = Math.max(worst, Math.abs(dx * mid!.up.x + dy * mid!.up.y + dz * mid!.up.z));
+    }
+    return worst;
+  };
+  const tol = (x: TrackFrame, y: TrackFrame) => (Math.max(Math.abs(x.right.y), Math.abs(y.right.y)) > STEEP ? SAG : SAG_FLAT);
   frameAt(s0, a);
   let ha = hardOf(a);
   for (let i = 1; i < cand.length; i++) {
     frameAt(cand[i], b);
     const hb = hardOf(b);
-    if (i === cand.length - 1 || dense(cand[i]) || cand[i] - keep[keep.length - 1] >= 3 || a.t.dot(b.t) < cos || a.up.dot(b.up) < cos ||
-      Math.abs(hb - ha) > 0.2 || Math.abs(a.width - b.width) > 0.1 || a.edge !== b.edge || a.surface !== b.surface) {
+    if (i === cand.length - 1 || dense(cand[i]) || cand[i] - keep[keep.length - 1] >= gap || a.t.dot(b.t) < cos || a.up.dot(b.up) < cos ||
+      Math.abs(hb - ha) > 0.2 || Math.abs(a.width - b.width) > 0.1 || a.edge !== b.edge || a.surface !== b.surface ||
+      (roll && Math.abs(a.right.dot(b.up)) > roll) || (mid && sag(keep[keep.length - 1], cand[i]) > tol(a, b))) {
       keep.push(cand[i]);
       frameAt(cand[i], a);
       ha = hb;
@@ -676,12 +1011,18 @@ function profile(w: number, r: number) {
   ] as { pts: [number, number, number][]; n: [number, number] }[];
 }
 const RING = profile(W, RAIL).reduce((a, g) => a + g.pts.length, 0);
+/** deg of roll between the wide plastic's rings (track 2): its triangles stay within ~0.03 u of the true surface. */
+const TWIST = Number((globalThis as any).__TWIST ?? 0.75);
+/** u: the most track 2's wide floor may stand off the true surface between two rings (mid-chord and mid-diagonal) on a
+ *  bank past STEEP deg - the wall ride, its band a 70 deg cone, its entry sweeping the outer edge up 25 u: the skid
+ *  marks (0.012 u up, lifted there: fx.ts) and the blob shadow were buried under its chords - and elsewhere SAG_FLAT. */
+const SAG = 0.012, SAG_FLAT = 0.03, STEEP = Math.sin(35 * DEG);
 
 /** The orange channel over each plastic run: its width follows the frames (the funnels where it meets a road flare to
  *  the road's width, the big jump's landing ramp is a wide catch tray), the rails ramp down to nothing at a road and
  *  end square at a gap, where a striped lip plate thickens the edge. The blue connectors every 17 u of s go in the same
  *  mesh (vertex colours; the material is white). */
-function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L: number, ds: number, gaps: Span[]) {
+function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L: number, ds: number, gaps: Span[], wideTabs = false) {
   const G = new Geo(), f = newFrame(), p = v3(), nr = v3(), orange = col(TRACK_SPEC.color), c = new THREE.Color();
   const pieces: { s0: number; s1: number; road0: boolean; road1: boolean }[] = [];
   for (const [a, b] of plastic) {
@@ -700,7 +1041,9 @@ function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L: numbe
   for (const pc of pieces) {
     const closed = !pc.road0 && !pc.road1 && pc.s1 - pc.s0 >= L - 1e-6;
     const near = (s: number) => (pc.road0 && s - pc.s0 < TAPER) || (pc.road1 && pc.s1 - s < TAPER);
-    const st = stations(frameAt, pc.s0, pc.s1, ds, near);
+    // (track 2's long wide decks: a ring every 4 deg of turn or 5 u, the channel's look at a lighter count - and every
+    // TWIST deg of roll, so a bank easing in keeps the floor true)
+    const st = wideTabs ? stations(frameAt, pc.s0, pc.s1, ds, near, 4, 5, TWIST) : stations(frameAt, pc.s0, pc.s1, ds, near);
     const count = closed ? st.length - 1 : st.length;
     const base = G.n;
     for (let r = 0; r < count; r++) {
@@ -751,13 +1094,18 @@ function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L: numbe
   const blue = col('#2f72f0').multiplyScalar(1.05), m = new THREE.Matrix4();
   const inPiece = (s: number) => pieces.some((pc) => (s >= pc.s0 + 3 && s <= pc.s1 - 3) || (s + L >= pc.s0 + 3 && s + L <= pc.s1 - 3));
   let tabs = 0;
+  const fa = newFrame(), fb = newFrame();
   for (let s = 0; s < L - 2; s += TRACK_SPEC.tabEvery) {
     frameAt(s, f);
-    if (f.surface !== 'plastic' || Math.abs(f.width - TRACK_SPEC.width) > 0.01 || !inPiece(s)) continue;
+    if (f.surface !== 'plastic' || (!wideTabs && Math.abs(f.width - TRACK_SPEC.width) > 0.01) || !inPiece(s)) continue;
     if (gaps.some((g) => s > g.s0 - 1.5 && s < g.s1 + 1.5)) continue;
+    // (a tab is a flat box in one frame: where a wide deck twists - a bank easing in - its far ends would rise through
+    // the floor, so none there)
+    if (wideTabs && Math.abs(frameAt(s - 0.5, fa).right.dot(frameAt(s + 0.5, fb).up)) * (f.width / 2 + LIP) > 0.05) continue;
     basis(f, m);
-    box(G, m, [0, -BASE - 0.1, 0], [0.7, 0.36, 2 * OUT + 0.6], blue, blue, 2);
-    for (const sg of [-1, 1]) box(G, m, [0, RAIL + 0.025, sg * (W + LIP / 2)], [0.4, 0.07, LIP + 0.12], blue);
+    const w = wideTabs ? f.width / 2 : W, o = w + LIP; // (track 2: wherever the plastic is, as wide as it is)
+    box(G, m, [0, -BASE - 0.1, 0], [0.7, 0.36, 2 * o + 0.6], blue, blue, 2);
+    for (const sg of [-1, 1]) box(G, m, [0, RAIL + 0.025, sg * (w + LIP / 2)], [0.4, 0.07, LIP + 0.12], blue);
     tabs++;
   }
   return { geo: G.build(), tabs };
@@ -766,6 +1114,8 @@ const m4 = new THREE.Matrix4(), mr = new THREE.Matrix4();
 /** A rotation about the local y axis (for boxes in a frame basis that should face the other way). */
 const rotY = (a: number) => mr.makeRotationY(a);
 
+/** The booster pad's plate across the track (u). */
+const PAD_W = 6.6;
 /** Booster pad: a dark plate with three chevrons (aPhase 0..2 drives the running-light pulse; -1 = static). */
 function boosterGeometry() {
   const G = new Geo(), up = v3(0, 1, 0), p = v3(), dark = col('#2a1408');
@@ -1071,9 +1421,10 @@ export interface Stack { x: number; z: number; ax: number; az: number; hx: numbe
 
 /** Outdoor supports under the raised plastic, by kind along s: the wooden start tower under the gate, wooden trestles
  *  (A-frames) under the drop, galvanised scaffolding under the kicker and its landing, tall scaffold towers under the
- *  big jump's ramps, stone pillars under the climb, and two scaffold poles holding the loop. Returns the world-shadow
- *  hints: `posts` are the centre-line points over each support. */
-function supports(G: Geo, frameAt: FrameAt, sup: Range<Support>[], tags: Span[]) {
+ *  big jump's ramps, stone pillars under the climb, and two scaffold poles holding the loop - and track 2's: the Sky
+ *  Tower with its arms (spire) and toy stilts under the wide decks; its scaffolds are painted `metal` (the toy's blue).
+ *  Returns the world-shadow hints: `posts` are the centre-line points over each support. */
+function supports(G: Geo, frameAt: FrameAt, sup: Range<Support>[], tags: Span[], metal: THREE.Color = METAL, frames: TrackFrame[] = []) {
   const f = newFrame(), m = new THREE.Matrix4(), a = v3(), b = v3(), r = rng(29);
   const posts: [number, number][] = [];
   const bottom = (h: TrackFrame) => h.p.y - BASE * h.up.y; // underside of the channel
@@ -1143,21 +1494,21 @@ function supports(G: Geo, frameAt: FrameAt, sup: Range<Support>[], tags: Span[])
         frameAt(s, f);
         const H = bottom(f) - 0.3;
         if (H < 0.7) { prev = null; continue; }
-        box(G, basis(f, m), [0, -BASE - 0.15, 0], [0.3, 0.3, 2 * out(f) + 0.9], METAL);
+        box(G, basis(f, m), [0, -BASE - 0.15, 0], [0.3, 0.3, 2 * out(f) + 0.9], metal);
         const tops: THREE.Vector3[] = [];
         for (const sg of [-1, 1]) {
           const top = side(f, sg, out(f) + 0.3, BASE + 0.15, v3());
           const foot = v3(top.x, -0.2, top.z);
-          beam(G, foot, top, 0.24, 0.24, f.t, METAL);
-          box(G, m.makeTranslation(foot.x, -0.1, foot.z), [0, 0, 0], [0.7, 0.2, 0.7], METAL); // base plate
+          beam(G, foot, top, 0.24, 0.24, f.t, metal);
+          box(G, m.makeTranslation(foot.x, -0.1, foot.z), [0, 0, 0], [0.7, 0.2, 0.7], metal); // base plate
           tops.push(top);
         }
         if (prev && s - prevS < 9) {
           for (let k = 0; k < 2; k++) {
             const h0 = Math.min(prev[k].y, tops[k].y) * 0.5;
-            beam(G, a.set(prev[k].x, h0, prev[k].z), b.set(tops[k].x, h0, tops[k].z), 0.18, 0.18, v3(0, 1, 0), METAL);
-            if (flip > 0) beam(G, a.set(prev[k].x, 0.2, prev[k].z), b.set(tops[k].x, tops[k].y - 0.3, tops[k].z), 0.16, 0.16, v3(0, 1, 0), METAL);
-            else beam(G, a.set(tops[k].x, 0.2, tops[k].z), b.set(prev[k].x, prev[k].y - 0.3, prev[k].z), 0.16, 0.16, v3(0, 1, 0), METAL);
+            beam(G, a.set(prev[k].x, h0, prev[k].z), b.set(tops[k].x, h0, tops[k].z), 0.18, 0.18, v3(0, 1, 0), metal);
+            if (flip > 0) beam(G, a.set(prev[k].x, 0.2, prev[k].z), b.set(tops[k].x, tops[k].y - 0.3, tops[k].z), 0.16, 0.16, v3(0, 1, 0), metal);
+            else beam(G, a.set(tops[k].x, 0.2, tops[k].z), b.set(prev[k].x, prev[k].y - 0.3, prev[k].z), 0.16, 0.16, v3(0, 1, 0), metal);
           }
           flip = -flip;
         }
@@ -1184,39 +1535,43 @@ function supports(G: Geo, frameAt: FrameAt, sup: Range<Support>[], tags: Span[])
           continue;
         }
         const o = out(f) + 0.25;
-        box(G, basis(f, m), [0, -BASE - 0.17, 0], [0.34, 0.34, 2 * o + 0.8], METAL); // transom
+        box(G, basis(f, m), [0, -BASE - 0.17, 0], [0.34, 0.34, 2 * o + 0.8], metal); // transom
         const tops: THREE.Vector3[] = [];
-        for (const d of f.width > 10 ? [-o, 0, o] : [-o, o]) {
+        // a standard each side, one under the middle of a wide deck - and on track 2's widest (past 16 u) one every ~10 u
+        const n = f.width > 16.5 ? Math.max(3, Math.round(o / 6.5) + 1) : f.width > 10 ? 3 : 2;
+        for (let i = 0; i < n; i++) {
+          const d = -o + (2 * o * i) / (n - 1);
           const top = side(f, 1, d, BASE + 0.34, v3()), foot = v3(top.x, -0.2, top.z);
-          beam(G, foot, top, 0.26, 0.26, f.t, METAL);
-          box(G, m.makeTranslation(foot.x, -0.1, foot.z), [0, 0, 0], [0.75, 0.2, 0.75], METAL); // base plate
+          beam(G, foot, top, 0.26, 0.26, f.t, metal);
+          box(G, m.makeTranslation(foot.x, -0.1, foot.z), [0, 0, 0], [0.75, 0.2, 0.75], metal); // base plate
           tops.push(top);
         }
-        // X-braces across the bent, between neighbouring standards, ~5 u of height each
+        // X-braces across the bent, between neighbouring standards, ~5 u of height each (the outer bays of a wider one)
         for (let i = 0; i < tops.length - 1; i++) {
+          if (i > 0 && i < tops.length - 2) continue;
           const p0 = tops[i], p1 = tops[i + 1], hTop = Math.min(p0.y, p1.y) - 0.4, n = Math.floor(hTop / 5);
           for (let k = 0; k < n; k++) {
             const y0 = 0.3 + (k * (hTop - 0.3)) / n, y1 = 0.3 + ((k + 1) * (hTop - 0.3)) / n;
-            beam(G, a.set(p0.x, y0, p0.z), b.set(p1.x, y1, p1.z), 0.14, 0.14, f.t, METAL);
-            beam(G, a.set(p0.x, y1, p0.z), b.set(p1.x, y0, p1.z), 0.14, 0.14, f.t, METAL);
+            beam(G, a.set(p0.x, y0, p0.z), b.set(p1.x, y1, p1.z), 0.14, 0.14, f.t, metal);
+            beam(G, a.set(p0.x, y1, p0.z), b.set(p1.x, y0, p1.z), 0.14, 0.14, f.t, metal);
           }
         }
         if (prev && s - prev.s < 8.5 && prev.tops.length === tops.length) {
           const both = tower(s) && tower(prev.s);
           for (let k = 0; k < tops.length; k++) {
-            if (k === 1 && tops.length === 3 && !both) continue; // the middle line only braces the towers
+            if (k > 0 && k < tops.length - 1 && !both) continue; // the middle lines only brace the towers
             const p0 = prev.tops[k], p1 = tops[k], hTop = Math.min(p0.y, p1.y) - 0.5;
-            for (let y = 4; y < hTop; y += 4) beam(G, a.set(p0.x, y, p0.z), b.set(p1.x, y, p1.z), 0.16, 0.16, UP, METAL); // ledgers
+            for (let y = 4; y < hTop; y += 4) beam(G, a.set(p0.x, y, p0.z), b.set(p1.x, y, p1.z), 0.16, 0.16, UP, metal); // ledgers
             if (both) {
               // a tower: X-braced, ~5 u of height each
               const n = Math.max(1, Math.floor(hTop / 5));
               for (let i = 0; i < n; i++) {
                 const y0 = 0.3 + (i * (hTop - 0.3)) / n, y1 = 0.3 + ((i + 1) * (hTop - 0.3)) / n;
-                beam(G, a.set(p0.x, y0, p0.z), b.set(p1.x, y1, p1.z), 0.14, 0.14, UP, METAL);
-                beam(G, a.set(p0.x, y1, p0.z), b.set(p1.x, y0, p1.z), 0.14, 0.14, UP, METAL);
+                beam(G, a.set(p0.x, y0, p0.z), b.set(p1.x, y1, p1.z), 0.14, 0.14, UP, metal);
+                beam(G, a.set(p0.x, y1, p0.z), b.set(p1.x, y0, p1.z), 0.14, 0.14, UP, metal);
               }
-            } else if (flip > 0) beam(G, a.set(p0.x, 0.3, p0.z), b.set(p1.x, p1.y - 0.4, p1.z), 0.15, 0.15, UP, METAL);
-            else beam(G, a.set(p1.x, 0.3, p1.z), b.set(p0.x, p0.y - 0.4, p0.z), 0.15, 0.15, UP, METAL);
+            } else if (flip > 0) beam(G, a.set(p0.x, 0.3, p0.z), b.set(p1.x, p1.y - 0.4, p1.z), 0.15, 0.15, UP, metal);
+            else beam(G, a.set(p1.x, 0.3, p1.z), b.set(p0.x, p0.y - 0.4, p0.z), 0.15, 0.15, UP, metal);
           }
           flip = -flip;
         }
@@ -1233,14 +1588,18 @@ function supports(G: Geo, frameAt: FrameAt, sup: Range<Support>[], tags: Span[])
         box(G, m.makeRotationY(-yaw).setPosition(f.p.x, 0.25, f.p.z), [0, 0, 0], [2, 0.7, 2], STONE2);
         posts.push([f.p.x, f.p.z]);
       }
-    } else if (sp.kind === 'loop') {
+    } else if (sp.kind === 'spire') spire(G, frameAt, sp, tags, posts);
+    else if (sp.kind === 'pylons') pylons(G, frameAt, sp, posts);
+    else if (sp.kind === 'stilts') stilts(G, frameAt, sp, inGap, posts);
+    else if (sp.kind === 'climb') climbRig(G, frameAt, sp, frames, posts);
+    else if (sp.kind === 'loop') {
       // Two poles hold the loop at its front and back (outside the channel), clamped to its base.
       for (const u of [0.25, 0.75]) {
         frameAt(sp.s0 + (sp.s1 - sp.s0) * u, f);
         a.copy(f.p).addScaledVector(f.up, -(BASE + 0.32));
-        beam(G, v3(a.x, -0.2, a.z), v3(a.x, a.y + 0.6, a.z), 0.4, 0.4, f.right, METAL);
-        box(G, basis(f, m), [0, -BASE - 0.15, 0], [0.9, 0.3, 2 * out(f) + 0.5], METAL);
-        box(G, m.makeTranslation(a.x, -0.05, a.z), [0, 0, 0], [1.2, 0.3, 1.2], METAL);
+        beam(G, v3(a.x, -0.2, a.z), v3(a.x, a.y + 0.6, a.z), 0.4, 0.4, f.right, metal);
+        box(G, basis(f, m), [0, -BASE - 0.15, 0], [0.9, 0.3, 2 * out(f) + 0.5], metal);
+        box(G, m.makeTranslation(a.x, -0.05, a.z), [0, 0, 0], [1.2, 0.3, 1.2], metal);
         posts.push([a.x, a.z]);
       }
     }
@@ -1270,6 +1629,286 @@ function launchArch(G: Geo, frameAt: FrameAt, s: number) {
   box(G, m, [0, top - 1.25, 0], [0.42, 2.5, span - 1.8], black, black, 2);
   const bands = [col('#e23a1e'), col('#ff7a00'), col('#ffc21a')];
   for (let i = 0; i < 3; i++) box(G, m, [0, top - 1.95 + i * 0.7, 0], [0.5, 0.66, span - 2.1], bands[i], bands[i], 0);
+}
+
+// ---- track 2's props: the Sky Tower, toy stilts, the wide gate and its grid, the hoop, checkpoint arches -----------
+
+const BLUE = col('#2a63d4'), BLUE2 = col('#1f4fae'), ORANGE = col('#ff5a12'), YELLOW = col('#ffc21a'), GREY = col('#c4c8cc');
+
+/** The centre of the spiral (the 'helix' tag): each frame's centre of turn (R to the inside of its horizontal right),
+ *  averaged over the middle of the climb. */
+function helixCentre(frameAt: FrameAt, h: Span, R: number) {
+  const f = newFrame(), c = v3(), r = v3();
+  let n = 0;
+  const a = h.s0 + (h.s1 - h.s0) * 0.15, b = h.s0 + (h.s1 - h.s0) * 0.85;
+  for (let s = a; s <= b; s += 2) {
+    frameAt(s, f);
+    r.set(f.right.x, 0, f.right.z).normalize().multiplyScalar(Math.sign(f.kappa) * R); // (+ kappa: right is the inside)
+    c.add(r.add(f.p));
+    n++;
+  }
+  return c.divideScalar(n).setY(0);
+}
+
+/** The Sky Tower: a chunky blue lattice column at the centre of the spiral, up to the gate deck - four corner posts,
+ *  a girt every 6 u, an X-brace per face and storey, orange chevron plates under the top - with an arm out to the
+ *  spiral's inner edge every ~24 deg of its climb (and a strut under each), and girders out to the gate deck. Under
+ *  the deck's far end, a slimmer lattice leg. */
+function spire(G: Geo, frameAt: FrameAt, sp: Range<Support>, tags: Span[], posts: [number, number][]) {
+  const helix = tags.find((t) => t.tag === 'helix');
+  if (!helix) return;
+  const C = helixCentre(frameAt, helix, SKY.spiralR), f = newFrame(), a = v3(), b = v3(), UP = v3(0, 1, 0), m = new THREE.Matrix4();
+  const HW = 7, top = frameAt(0).p.y - BASE - 0.4; // the column's half-width and height (to just under the deck)
+  const onDeck = sp.s0 < 1;
+  if (!onDeck) {
+    // the column (built once, with the spiral's range), capped with a deck and an orange band
+    column(G, C.x, C.z, HW, 0, top + 3, 6, BLUE, BLUE2);
+    box(G, m.makeTranslation(C.x, top + 3.3, C.z), [0, 0, 0], [2 * HW + 1.6, 0.6, 2 * HW + 1.6], BLUE2, BLUE, 2);
+    box(G, m.makeTranslation(C.x, top + 4.1, C.z), [0, 0, 0], [2 * HW + 1, 1, 2 * HW + 1], ORANGE, BLUE2, 1);
+    // chevrons: two rows of orange plates on each face, under the top
+    for (let face = 0; face < 4; face++) {
+      const ang = (face * Math.PI) / 2, nx = Math.cos(ang), nz = Math.sin(ang);
+      for (const y of [top - 4, top - 9]) for (const k of [-1, 1]) {
+        m.makeRotationY(-ang).setPosition(C.x + nx * (HW + 0.35), y, C.z + nz * (HW + 0.35));
+        box(G, m.multiply(mr.makeRotationX(k * 0.62)), [0, 0, k * 1.6], [0.3, 1.1, 4.2], ORANGE, ORANGE, 2);
+      }
+    }
+    posts.push([C.x, C.z]);
+    // arms to the spiral: every ~24 deg of turn
+    const step = (24 * DEG) * SKY.spiralR;
+    for (let s = helix.s0 + 22; s < helix.s1 - 4; s += step) {
+      frameAt(s, f);
+      const inner = Math.sign(f.kappa); // the inside of the turn (+1: the right)
+      a.copy(f.p).addScaledVector(f.right, inner * (f.width / 2 + LIP)).addScaledVector(f.up, -BASE - 0.3);
+      const dx = a.x - C.x, dz = a.z - C.z, k = HW / Math.max(Math.abs(dx), Math.abs(dz));
+      b.set(C.x + dx * k, a.y, C.z + dz * k);
+      beam(G, b, a, 0.7, 0.7, UP, BLUE);
+      beam(G, b.set(C.x + dx * k, Math.max(0.3, a.y - 6), C.z + dz * k), a, 0.45, 0.45, UP, BLUE2);
+      box(G, basis(f, m), [0, -BASE - 0.25, 0], [0.6, 0.5, f.width + 2 * LIP + 0.6], BLUE); // a transom under the floor
+    }
+    return;
+  }
+  // the gate deck: a girder out from the column's top to each bent under the deck, and a leg under its far end
+  for (let s = sp.s0 + 2; s < sp.s1; s += 8) {
+    frameAt(s, f);
+    box(G, basis(f, m), [0, -BASE - 0.3, 0], [0.7, 0.6, f.width + 2 * LIP + 0.8], BLUE);
+    a.copy(f.p).addScaledVector(f.up, -BASE - 0.6);
+    const dx = a.x - C.x, dz = a.z - C.z, k = HW / Math.max(Math.abs(dx), Math.abs(dz));
+    if (k < 1) {
+      b.set(C.x + dx * k, a.y, C.z + dz * k);
+      beam(G, b, a, 0.8, 0.9, UP, BLUE);
+      beam(G, b.set(C.x + dx * k, a.y - 7, C.z + dz * k), a, 0.5, 0.5, UP, BLUE2);
+    }
+  }
+  frameAt(sp.s1 - 4, f);
+  column(G, f.p.x, f.p.z, 3, 0, f.p.y - BASE - 0.6, 6, BLUE, BLUE2, Math.atan2(f.t.z, f.t.x));
+  posts.push([f.p.x, f.p.z]);
+}
+
+/** A square lattice column centred on (x, z), half-width hw, from y0 to y1: corner posts, a girt every `storey` u and
+ *  an X-brace per face and storey (yaw turns it). */
+function column(G: Geo, x: number, z: number, hw: number, y0: number, y1: number, storey: number, c: THREE.Color, c2: THREE.Color, yaw = Math.PI / 4) {
+  const UP = v3(0, 1, 0), a = v3(), b = v3(), corners: [number, number][] = [];
+  for (let i = 0; i < 4; i++) {
+    const ang = yaw + Math.PI / 4 + (i * Math.PI) / 2;
+    corners.push([x + Math.cos(ang) * hw * Math.SQRT2, z + Math.sin(ang) * hw * Math.SQRT2]);
+  }
+  const n = Math.max(1, Math.round((y1 - y0) / storey)), dy = (y1 - y0) / n, post = Math.max(0.5, hw * 0.16);
+  for (const [cx, cz] of corners) beam(G, a.set(cx, y0 - 0.2, cz), b.set(cx, y1, cz), post, post, v3(1, 0, 0), c);
+  for (let i = 0; i < 4; i++) {
+    const [x0, z0] = corners[i], [x1, z1] = corners[(i + 1) % 4];
+    for (let k = 0; k <= n; k++) {
+      const y = y0 + k * dy;
+      if (k > 0) beam(G, a.set(x0, y, z0), b.set(x1, y, z1), post * 0.7, post * 0.7, UP, c);
+      if (k < n) {
+        beam(G, a.set(x0, y, z0), b.set(x1, y + dy, z1), post * 0.45, post * 0.45, UP, c2);
+        beam(G, a.set(x1, y, z1), b.set(x0, y + dy, z0), post * 0.45, post * 0.45, UP, c2);
+      }
+    }
+  }
+}
+
+/** Blue lattice pylons under tall plastic (track 2's plunge): a slim column every ~16 u under the centre line, a
+ *  transom across the floor on top of each; posts (stilts) where it runs low. */
+function pylons(G: Geo, frameAt: FrameAt, sp: Range<Support>, posts: [number, number][]) {
+  const f = newFrame(), m = new THREE.Matrix4();
+  for (let s = sp.s0 + 6; s < sp.s1 - 4; s += 16) {
+    frameAt(s, f);
+    // on a slope the column's level top would poke through the floor ahead: it stops short by its footprint's fall,
+    // and the transom deepens to meet it
+    const sink = 2.2 * Math.SQRT2 * (Math.abs(f.t.y) / Math.max(0.3, Math.sqrt(1 - f.t.y * f.t.y))), deep = 0.6 + sink;
+    const top = f.p.y - (BASE + deep) * f.up.y;
+    if (top < 2) continue;
+    box(G, basis(f, m), [0, -BASE - deep / 2, 0], [1.2, deep, f.width + 2 * LIP + 0.8], BLUE2);
+    column(G, f.p.x, f.p.z, 2.2, 0, top, 6, BLUE, BLUE2, Math.atan2(f.t.z, f.t.x));
+    posts.push([f.p.x, f.p.z]);
+  }
+}
+
+/** Toy stilts under the wide raised plastic: every ~9 u of s a transom under the floor and blue posts across it (one
+ *  every ~8 u of its width, the edges included) down to the meadow, an X-brace between neighbours on the tall ones. */
+function stilts(G: Geo, frameAt: FrameAt, sp: Range<Support>, inGap: (s: number, pad: number) => boolean, posts: [number, number][]) {
+  const f = newFrame(), m = new THREE.Matrix4(), a = v3(), b = v3(), UP = v3(0, 1, 0);
+  for (let s = sp.s0 + 4; s < sp.s1 - 2; s += 9) {
+    if (inGap(s, 1)) continue;
+    frameAt(s, f);
+    const o = f.width / 2 + LIP, low = Math.min(f.p.y + f.right.y * o, f.p.y - f.right.y * o) - BASE * f.up.y;
+    if (low < 0.9) continue;
+    box(G, basis(f, m), [0, -BASE - 0.2, 0], [0.5, 0.4, 2 * o + 0.6], BLUE2);
+    const n = Math.max(2, Math.ceil((2 * o) / 8) + 1), tops: THREE.Vector3[] = [];
+    for (let i = 0; i < n; i++) {
+      const d = -o + 0.2 + ((2 * o - 0.4) * i) / (n - 1);
+      const top = v3().copy(f.p).addScaledVector(f.right, d).addScaledVector(f.up, -BASE - 0.4);
+      if (top.y < 0.6) continue;
+      beam(G, a.set(top.x, -0.2, top.z), top, 0.55, 0.55, f.t, BLUE);
+      box(G, m.makeTranslation(top.x, -0.05, top.z), [0, 0, 0], [1, 0.3, 1], GREY);
+      tops.push(top);
+    }
+    for (let i = 0; i < tops.length - 1; i++) {
+      const p0 = tops[i], p1 = tops[i + 1], h = Math.min(p0.y, p1.y) - 0.5;
+      if (h < 5) continue;
+      beam(G, a.set(p0.x, 0.4, p0.z), b.set(p1.x, h, p1.z), 0.25, 0.25, UP, BLUE2);
+      beam(G, a.set(p1.x, 0.4, p1.z), b.set(p0.x, h, p0.z), 0.25, 0.25, UP, BLUE2);
+    }
+    posts.push([f.p.x, f.p.z]);
+  }
+}
+
+/** The rig of track 2's climb (up the wall, over the top, the half roll and the right-hander after it): a lattice tower
+ *  behind each place the track stands on its side - the wall, and the roll - as tall as what it carries, with an arm
+ *  from it to the back of the slab every ~6 u wherever the track faces sideways or down (a clamp across the back), and
+ *  posts down to the meadow under it where it's the right way up - but never onto the track below (the pads' strip
+ *  that the roll crosses over). */
+function climbRig(G: Geo, frameAt: FrameAt, sp: Range<Support>, frames: TrackFrame[], posts: [number, number][]) {
+  const f = newFrame(), m = new THREE.Matrix4(), a = v3(), b = v3(), UP = v3(0, 1, 0), HW = 3.2;
+  const back = (h: TrackFrame, o: THREE.Vector3) => o.copy(h.p).addScaledVector(h.up, -BASE - 0.35);
+  // the towers: behind the slab where it stands on its side (|up.y| < 0.15), one per stretch of that, 2.5 u clear of it
+  const towers: { x: number; z: number; top: number }[] = [];
+  let run: number[] = [];
+  // ground under (x, z) taken by the track elsewhere (a low stretch more than 30 u along the lap from s), `pad` u clear?
+  const taken = (x: number, z: number, s: number, pad = 1.5) =>
+    frames.some((g) => g.p.y < 4 && Math.abs(g.s - s) > 30 && Math.hypot(g.p.x - x, g.p.z - z) < g.width / 2 + LIP + pad);
+  const flush = () => {
+    if (!run.length) return;
+    const s = run[Math.floor(run.length / 2)];
+    frameAt(s, f);
+    // (stepped further out while its footprint would stand on the track below: the roll passes over the pads' strip)
+    const out = v3(f.up.x, 0, f.up.z).normalize().negate();
+    back(f, a).addScaledVector(out, HW + 2.5);
+    for (let k = 0; k < 40 && taken(a.x, a.z, s, HW * Math.SQRT2 + 2); k++) a.addScaledVector(out, 1);
+    towers.push({ x: a.x, z: a.z, top: 0 });
+    run = [];
+  };
+  for (let s = sp.s0; s < sp.s1; s += 1) {
+    frameAt(s, f);
+    if (Math.abs(f.up.y) < 0.15 && Math.hypot(f.up.x, f.up.z) > 0.9) run.push(s);
+    else flush();
+  }
+  flush();
+  const arms: [THREE.Vector3, number][] = [];
+  for (let s = sp.s0 + 3; s < sp.s1 - 2; s += 6) {
+    frameAt(s, f);
+    const p = back(f, v3());
+    if (f.up.y > 0.55) {
+      // right way up: a transom across the floor and a post at each edge (and the middle on wide), down to the meadow
+      const o = f.width / 2 + LIP, low = Math.min(f.p.y + f.right.y * o, f.p.y - f.right.y * o) - BASE * f.up.y;
+      if (low < 0.9) continue;
+      const feet: THREE.Vector3[] = [];
+      for (const d of f.width > 16 ? [-o + 0.3, 0, o - 0.3] : [-o + 0.3, o - 0.3]) {
+        const top = v3().copy(f.p).addScaledVector(f.right, d).addScaledVector(f.up, -BASE - 0.4);
+        if (top.y < 0.6 || taken(top.x, top.z, s)) continue;
+        feet.push(top);
+      }
+      if (!feet.length) continue;
+      box(G, basis(f, m), [0, -BASE - 0.2, 0], [0.5, 0.4, 2 * o + 0.6], BLUE2);
+      for (const top of feet) {
+        beam(G, a.set(top.x, -0.2, top.z), top, 0.6, 0.6, f.t, BLUE);
+        box(G, m.makeTranslation(top.x, -0.05, top.z), [0, 0, 0], [1, 0.3, 1], GREY);
+      }
+      posts.push([f.p.x, f.p.z]);
+      continue;
+    }
+    // on its side or upside down: an arm from the nearest tower (to its face, level) to a clamp across the slab's back
+    let best = -1, bd = 1e9;
+    towers.forEach((t, i) => { const dd = Math.hypot(t.x - p.x, t.z - p.z); if (dd < bd) (bd = dd), (best = i); });
+    if (best < 0 || bd > 40) continue;
+    const t = towers[best];
+    t.top = Math.max(t.top, p.y + 3);
+    box(G, basis(f, m), [0, -BASE - 0.2, 0], [0.7, 0.4, f.width + 2 * LIP - 0.2], BLUE2, BLUE2, 2);
+    arms.push([p, best]);
+  }
+  for (const t of towers) {
+    if (t.top <= 0) continue;
+    column(G, t.x, t.z, HW, 0, t.top, 6, BLUE, BLUE2);
+    box(G, m.makeTranslation(t.x, t.top + 0.3, t.z), [0, 0, 0], [2 * HW + 1.2, 0.6, 2 * HW + 1.2], ORANGE, BLUE2, 2);
+    posts.push([t.x, t.z]);
+  }
+  for (const [p, i] of arms) {
+    const t = towers[i], dx = p.x - t.x, dz = p.z - t.z, k = HW / Math.max(Math.abs(dx), Math.abs(dz), 1e-6);
+    b.set(t.x + dx * Math.min(1, k), p.y, t.z + dz * Math.min(1, k));
+    beam(G, b, p, 0.7, 0.7, UP, BLUE);
+  }
+}
+
+/** Track 2's start: the checkered line across the whole deck, an arch over it, and the grid - a white bracket painted
+ *  in front of each slot (userData.grid). */
+function gateWide(G: Geo, frameAt: FrameAt, s: number, grid: { s: number; d: number }[]) {
+  const f = frameAt(s), m = basis(f, new THREE.Matrix4()), white = col('#f4f4f2'), black = col('#1a1a1c'), red = col('#d62d20');
+  const w = f.width / 2, o = w + LIP, cells = Math.round(2 * w);
+  box(G, m, [0, 0.015, 0], [1.6, 0.02, 2 * w], white);
+  for (let i = 0; i < cells; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2) box(G, m, [-0.4 + j * 0.8, 0.02, -w + (2 * w * (i + 0.5)) / cells], [0.8, 0.022, (2 * w) / cells], black);
+  // (the posts stand beside the deck, 42 u up: they reach down to a blue cross-beam under it that carries them)
+  for (const sg of [-1, 1]) box(G, m, [0, 4.2 - 0.3, sg * (o + 0.6)], [1, 9 + 0.6, 1], red);
+  box(G, m, [0, -BASE - 0.3, 0], [1.2, 0.66, 2 * o + 2.4], BLUE, BLUE, 2);
+  const span = 2 * o + 2.2;
+  box(G, m, [0, 8, 0], [0.45, 2, span], white);
+  for (const sx of [-1, 1]) for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++)
+    if ((i + j) % 2) box(G, m, [sx * 0.23, 7.5 + j * 1, -span / 2 + (i + 0.5) * (span / 12)], [0.012, 1, span / 12], black);
+  const g = newFrame(), gm = new THREE.Matrix4();
+  for (const slot of grid) {
+    basis(frameAt(slot.s, g), gm);
+    box(G, gm, [2.6, 0.015, slot.d], [0.25, 0.02, 2.4], white); // the line in front of the car
+    for (const sd of [-1, 1]) box(G, gm, [2, 0.015, slot.d + sd * 1.15], [1.2, 0.02, 0.2], white);
+  }
+}
+
+/** The arch over a wide lip (track 2's sky jump): as launchArch, spanning the deck. */
+function launchArchWide(G: Geo, frameAt: FrameAt, s: number) {
+  const f = frameAt(s), t = v3(f.t.x, 0, f.t.z).normalize(), up = v3(0, 1, 0), r = v3().crossVectors(t, up);
+  const m = new THREE.Matrix4().makeBasis(t, up, r).setPosition(f.p.x, f.p.y, f.p.z);
+  const red = col('#d62d20'), black = col('#1a1a1c'), span = f.width + 2 * LIP + 2.4, y0 = -BASE - 0.4, top = 11;
+  for (const sg of [-1, 1]) box(G, m, [0, (y0 + top) / 2, sg * (span / 2 - 0.45)], [0.9, top - y0, 0.9], red, red, 2);
+  box(G, m, [0, top - 1.25, 0], [0.42, 2.5, span - 1.8], black, black, 2);
+  const bands = [col('#e23a1e'), col('#ff7a00'), col('#ffc21a')];
+  for (let i = 0; i < 3; i++) box(G, m, [0, top - 1.95 + i * 0.7, 0], [0.5, 0.66, span - 2.1], bands[i], bands[i], 0);
+}
+
+/** The hoop over the sky jump: a ring (centre `c`, facing along the flight `dir`, radius R) in red and white segments,
+ *  held up by two slim blue masts from the meadow. */
+function hoop(G: Geo, c: THREE.Vector3, dir: THREE.Vector3, R: number, posts: [number, number][]) {
+  const n = 24, side = v3(-dir.z, 0, dir.x).normalize(), UP = v3(0, 1, 0), a = v3(), b = v3();
+  const at = (i: number, o: THREE.Vector3) => { const ang = (i / n) * 2 * Math.PI; return o.copy(c).addScaledVector(side, Math.cos(ang) * R).addScaledVector(UP, Math.sin(ang) * R); };
+  const red = col('#e2261c'), white = col('#f6f4ee');
+  for (let i = 0; i < n; i++) beam(G, at(i, a), at(i + 1, b), 1.5, 1.1, dir, i % 2 ? white : red);
+  for (const sg of [-1, 1]) {
+    at(sg > 0 ? n * 0.625 : n * 0.875, a); // the lower quarter of the ring each side
+    beam(G, b.set(a.x + side.x * sg * 3, -0.2, a.z + side.z * sg * 3), a, 0.6, 0.6, dir, BLUE);
+    posts.push([b.x, b.z]);
+  }
+}
+
+/** A checkpoint arch over the track at s (a Trackmania touch): two blue posts, a yellow-and-black banner. */
+function checkpoint(G: Geo, frameAt: FrameAt, s: number) {
+  const f = frameAt(s), t = v3(f.t.x, 0, f.t.z).normalize(), up = v3(0, 1, 0), r = v3().crossVectors(t, up);
+  const m = new THREE.Matrix4().makeBasis(t, up, r).setPosition(f.p.x, f.p.y, f.p.z);
+  const half = f.width / 2 + (f.edge === 'grass' ? f.shoulder : 0) + 1.6, top = 8.5, black = col('#1a1a1c');
+  // on a deck up in the air (the in-run's) the posts reach down to a cross-beam under it that carries them
+  const high = f.p.y > 3, y0 = high ? -BASE - 0.7 : -0.4;
+  for (const sg of [-1, 1]) box(G, m, [0, (top + y0) / 2, sg * half], [0.8, top - y0, 0.8], BLUE, BLUE, 2);
+  if (high) box(G, m, [0, -BASE - 0.32, 0], [1, 0.76, 2 * half + 0.8], BLUE, BLUE, 2);
+  box(G, m, [0, top - 0.8, 0], [0.4, 1.6, 2 * half + 0.8], black, black, 2);
+  const k = Math.round(half / 1.2);
+  for (const sx of [-1, 1]) for (let i = 0; i < 2 * k; i += 2) box(G, m, [sx * 0.21, top - 0.8, -half + ((i + 0.5) * half) / k], [0.012, 1.2, half / k], YELLOW);
 }
 
 /** Area chunks of the props (~4k triangles each): a chase camera along the lap draws half of them on average. */
@@ -1340,8 +1979,8 @@ function chunked(G: Geo, k: number): THREE.BufferGeometry[] {
 
 /** Builds the track. `nearest()` returns a shared object (valid until the next call) whose `offset` is LOCAL to the
  *  frame: x along t, y along up (height above the surface), z along right (lateral, + right). */
-export function buildTrack(): Track {
-  const F = buildFrames();
+export function buildTrack(course: CourseId = 'meadow'): Track {
+  const F = buildFrames(course);
   const { frames, L, N, ds, tags } = F;
   const wrap = (s: number) => ((s % L) + L) % L;
   const clamp = (x: number, a: number) => (x < -a ? -a : x > a ? a : x);
@@ -1403,7 +2042,8 @@ export function buildTrack(): Track {
   // The orange channel (and its tabs). AgX insets saturated primaries, which turns #ff6b00 salmon under the lights: the
   // plastic skips tone mapping (with a darker albedo to match the scene's exposure) so it stays Hot Wheels orange.
   const gaps = tags.filter((g) => g.tag === 'gap');
-  const ch = channelGeometry(frameAt, plasticRuns, L, ds, gaps);
+  const sky = course === 'sky';
+  const ch = channelGeometry(frameAt, plasticRuns, L, ds, gaps, sky);
   const trackMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.5, 0.5, 0.5), roughness: 0.6, metalness: 0, vertexColors: true, envMapIntensity: 0.25, toneMapped: false });
   const channel = new THREE.Mesh(ch.geo, trackMat);
   channel.name = 'channel';
@@ -1420,9 +2060,28 @@ export function buildTrack(): Track {
       '#include <color_fragment>\nif (vPhase >= 0.0) diffuseColor.rgb *= 0.35 + 0.95 * pow(0.5 + 0.5 * sin(uTime * 10.0 - vPhase * 2.1), 2.0);',
     );
   };
-  const boosters = new THREE.InstancedMesh(boosterGeometry(), padMat, pads.length);
-  const m = new THREE.Matrix4(), f = newFrame();
-  pads.forEach((g, i) => boosters.setMatrixAt(i, basis(frameAt((g.s0 + g.s1) / 2, f), m)));
+  // A pad spans the 8 u channel; across wider plastic they lie side by side, a row of them (one more every ~7.4 u). A
+  // narrow pad (d0..d1: track 2's before the wall ride) is one plate just that wide, where it lies across the deck.
+  const m = new THREE.Matrix4(), f = newFrame(), row = (w: number) => (w <= 10 ? 1 : Math.round(w / 7.4));
+  const count = (g: Span) => (g.d0 !== undefined ? 1 : row(frameAt((g.s0 + g.s1) / 2, f).width));
+  const nPads = pads.reduce((n, g) => n + count(g), 0);
+  const boosters = new THREE.InstancedMesh(boosterGeometry(), padMat, nPads);
+  let iPad = 0;
+  for (const g of pads) {
+    frameAt((g.s0 + g.s1) / 2, f);
+    if (g.d0 !== undefined) {
+      const d1 = g.d1 ?? g.d0;
+      basis(f, m).multiply(mr.makeTranslation(0, 0, (g.d0 + d1) / 2)).multiply(new THREE.Matrix4().makeScale(1, 1, (d1 - g.d0) / PAD_W));
+      boosters.setMatrixAt(iPad++, m);
+      continue;
+    }
+    const n = row(f.width);
+    for (let k = 0; k < n; k++) {
+      basis(f, m);
+      if (n > 1) m.multiply(mr.makeTranslation(0, 0, (k - (n - 1) / 2) * (f.width / n)));
+      boosters.setMatrixAt(iPad++, m);
+    }
+  }
   boosters.name = 'boosters';
 
   // The road: asphalt, dirt, verges, banks and curbs.
@@ -1433,9 +2092,36 @@ export function buildTrack(): Track {
   // The props: supports, the start tower and gate, the big jump's arch, tyre walls and hay bales - in PROP_CHUNKS area
   // chunks, each its own mesh, so the ones off screen are frustum-culled.
   const PG = new Geo();
-  const sp = supports(PG, frameAt, F.sup, tags);
-  gate(PG, frameAt);
-  for (const g of tags) if (g.tag === 'bigjump') launchArch(PG, frameAt, g.s0 - 3);
+  const sp = supports(PG, frameAt, F.sup, tags, sky ? BLUE : METAL, frames);
+  const start = sky ? SKY.start : TRACK_SPEC.start;
+  // Track 2's start grid, four abreast in two rows behind the line (s along the lap, d across: + right), pole first.
+  const grid = sky ? [3, 10].flatMap((back) => [-1.5, -0.5, 0.5, 1.5].map((k) => ({ s: start - back, d: k * 5.5 }))) : [];
+  if (sky) {
+    gateWide(PG, frameAt, start, grid);
+    for (const g of tags) if (g.tag === 'bigjump') {
+      launchArchWide(PG, frameAt, g.s0 - 3);
+      // the hoop over the apex of the flight at the design speed
+      const lf = frameAt(g.s0), th = Math.asin(lf.t.y), V = SKYJ.speed, ta = (V * Math.sin(th)) / 24;
+      const dir = v3(lf.t.x, 0, lf.t.z).normalize();
+      const c = v3().copy(lf.p).addScaledVector(dir, V * Math.cos(th) * ta).add(v3(0, (V * Math.sin(th) * ta) / 2 + 0.7, 0));
+      hoop(PG, c, dir, 11.5, sp.posts);
+    }
+    // checkpoint arches: the stadium after the loop, the road's start, the top of the sky jump's in-run
+    const loop = tags.find((t) => t.tag === 'loop'), lip = tags.find((t) => t.tag === 'bigjump');
+    if (loop) checkpoint(PG, frameAt, loop.s1 + 26);
+    const road = frames.find((g, i) => i > 0 && g.surface === 'asphalt' && frames[i - 1].surface === 'plastic');
+    if (road) checkpoint(PG, frameAt, road.s + 24);
+    const run = tags.find((t) => t.tag === 'inrun');
+    if (run) checkpoint(PG, frameAt, run.s0 + 3); // (the drop-in: over the deck at the top of the in-run)
+    else if (lip) {
+      let first = lip.s0;
+      for (const g of pads) if (g.s0 < lip.s0 && lip.s0 - g.s0 < 100) first = Math.min(first, g.s0);
+      checkpoint(PG, frameAt, first - 10);
+    }
+  } else {
+    gate(PG, frameAt);
+    for (const g of tags) if (g.tag === 'bigjump') launchArch(PG, frameAt, g.s0 - 3);
+  }
   const br = barriers(PG, frames, frameAt, ds);
   const props = new THREE.Group(), propMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   props.name = 'props';
@@ -1461,6 +2147,6 @@ export function buildTrack(): Track {
 
   object.add(channel, boosters, road, props);
   const stacks: Stack[] = [];
-  object.userData = { stacks, posts: sp.posts, boosterTime: time, footprint, counts: { tabs: ch.tabs, curbs: rd.curbs, tyres: br.tyres, bales: br.bales } };
-  return { length: L, frames, object, collider: { positions, indices }, tags, start: TRACK_SPEC.start, frameAt, nearest, tagAt };
+  object.userData = { stacks, posts: sp.posts, boosterTime: time, footprint, grid, course, counts: { tabs: ch.tabs, curbs: rd.curbs, tyres: br.tyres, bales: br.bales, pads: nPads } };
+  return { length: L, frames, object, collider: { positions, indices }, tags, start, frameAt, nearest, tagAt };
 }

@@ -4,22 +4,23 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Track, TrackFrame, VehicleState } from './types';
 
 // The outdoor world of the drive page: a sunny meadow round any course (roads and orange plastic set pieces), made
-// entirely in code (no asset files) and drawn in at most 15 calls (the scenery's CHUNKS area chunks, the pond and the
-// banner are frustum-culled: what the camera looks away from is not drawn):
+// entirely in code (no asset files) and drawn in at most 15 calls (the scenery's area chunks, the pond and the boards
+// are frustum-culled: what the camera looks away from is not drawn):
 //   ground   one square (the pond cut out): tiling grass detail x non-repeating noise patches x a painted map
-//            (~1.4 u/px) of baked sun shadows (the track's own meshes, trees, rocks), ambient occlusion, worn grass and
-//            dirt round the course's footprint (the roads' verges and banks are the track's), the start yard, run-off
-//            outside tight bends and the pond's trodden shore
-//   scenery  flat-shaded, vertex-coloured meshes in CHUNKS area chunks (k-means on the items, weighted by their
-//            triangles): groves of round / pine / poplar / blossom trees, rocks, bushes, flowers and grass tufts, the
-//            pond's banks, reeds, lily pads and stones, the big jump's pennants and the banner's scaffold towers. Trees
-//            get cheaper with distance from the course and the grass gathers along it, where the camera goes (~41k
-//            triangles on any course). Canopies, grass, reeds and pennants sway in the vertex shader
+//            (~1.4 u/px) of baked sun shadows (the track's own meshes, trees, rocks, grandstands), ambient occlusion,
+//            worn grass and dirt round the course's footprint (the roads' verges and banks are the track's), the start
+//            yard, run-off outside tight bends and the pond's trodden shore
+//   scenery  flat-shaded, vertex-coloured meshes in area chunks (k-means on the items, weighted by their triangles):
+//            groves of round / pine / poplar / blossom trees, rocks, bushes, flowers and grass tufts, the pond's banks,
+//            reeds, lily pads and stones, the big jump's pennants, the banner's scaffold towers (and track 2's dressing,
+//            below). Trees get cheaper with distance from the course and the grass gathers along it, where the camera
+//            goes (~41k triangles on the meadow). Canopies, grass, reeds and pennants sway in the vertex shader
 //   pond     by the big jump (track tag 'bigjump', the 'gap' it flies): a long, bent pond, as big as fits under the
-//            flight (or beside it, where a road takes the ground below) clear of everything on the ground; its water
-//            2.4 u down, in rings shaded by depth, with sky fresnel, drifting ripples and sun glints
-//   banner   RIPCARS on a board on scaffold towers off to the side of the landing, facing the flight (a canvas
-//            texture, unlit, printed both sides)
+//            flight (or beside it, where a road takes the ground below) clear of everything on the ground - a hoop's
+//            masts out under the flight too; its water 2.4 u down, in rings shaded by depth, with sky fresnel, drifting
+//            ripples and sun glints
+//   boards   RIPCARS printed on boards (a canvas texture, unlit), one mesh: the banner on scaffold towers off to the
+//            side of the landing, facing the flight (printed both sides); track 2's sign and ad boards
 //   hills    two low-poly rings (green hills, snow-capped mountains) that follow the car like a skybox
 //            layer, hazed by distance and less with height (the haze sits in the valleys)
 //   sky      inverted sphere: vertical gradient + sun glow, drawn last among the opaques on the far plane
@@ -32,8 +33,15 @@ import type { Track, TrackFrame, VehicleState } from './types';
 // Everything is keyed to track.frames and the track's meshes, so it fits any course, and the layout is seeded
 // (identical every load). The course's ground footprint is the track's userData.footprint where it gives one (surface,
 // verge, barrier strip and bank, per frame), else width / 2 + shoulder (or the rails, or a barrier). Nothing stands on
-// it (props keep KEEP u beyond it, trees further), and trees keep off the sight lines across every bend: the chase
+// it (props keep KEEP u beyond it, trees further), nor in or under anything else the track builds (the plan of its
+// meshes: a tower off the course, a hoop's masts), and trees keep off the sight lines across every bend: the chase
 // camera always sees the road ahead.
+// Each course has its own style (STYLES, by track.object.userData.course): the meadow's as above; track 2's (the Sky
+// Tower) is later in the day - a lower, warmer sun throwing the tower's and the decks' shadows long, a golden haze - over
+// an open, stadium-like meadow on a smaller budget (its track is heavier, and from up on its decks the camera sees most
+// of the meadow at once): fewer trees, the ground cover gathered where the lap runs low, 6 chunks - and dressed like
+// Trackmania's stadium in a toy's meadow: grandstands (a crowd, ad boards, a roof with pennants) beside the booster
+// stadium, beside the double jump and across the spiral facing the tower, and the RIPCARS sign on the tower's crown.
 
 export interface World {
   update(state: VehicleState, dt: number): void;
@@ -50,13 +58,32 @@ const LOOK = {
   sun: '#fff0da',
   sunIntensity: 2.4,
   sunElevation: 50, // deg
-  sunFrom: [-90, 130] as const, // plan direction toward the sun (x, z): high front-left in world terms
+  sunFrom: [-90, 130] as [number, number], // plan direction toward the sun (x, z): high front-left in world terms (camera.ts SUN)
   hemiSky: '#b8dcff',
   hemiGround: '#6f9446',
   hemiIntensity: 0.7,
   envIntensity: 0.35,
   fogNear: 150,
   fogFar: 900,
+};
+// Track 2, the Sky Tower: later in the day. The sun sits lower (same bearing: the chase camera's ad shot picks its side
+// by it) and warmer, so the tower, the decks and their stilts throw long shadows across the meadow; a golden haze.
+const LOOK_SKY: typeof LOOK = {
+  zenith: '#2862bd',
+  sky: '#5e9ce2',
+  horizon: '#e4dccc',
+  warm: '#f3d5a8',
+  glow: '#ffdca0',
+  sun: '#ffe2b6',
+  sunIntensity: 2.65,
+  sunElevation: 38,
+  sunFrom: [-90, 130],
+  hemiSky: '#b2cdec',
+  hemiGround: '#7a8f45',
+  hemiIntensity: 0.62,
+  envIntensity: 0.35,
+  fogNear: 200,
+  fogFar: 1100,
 };
 const KEEP = 4; // u: props keep this far beyond the course's footprint
 const RAIL = 0.3; // u the plastic's rails reach beyond its driving surface (footprint fallback)
@@ -69,6 +96,20 @@ const NEAR = 60, MID = 160; // u beyond the course's footprint: tree detail tier
 /** Scenery budget: trees per detail tier, the rest by count. */
 const CAP = { trees: [170, 200, 240], bushes: 90, rocks: 80, flowers: 520, tufts: 1300 };
 const CHUNKS = 8; // the scenery's area chunks (draw calls at most; the ones out of view are culled)
+/** A course's world (track.object.userData.course; the meadow's by default). Track 2 is ridden high up on decks and
+ *  stilts and sees most of the meadow at once - from the top of the spiral, the whole of it - so it gets an open,
+ *  stadium-like meadow on a smaller budget (its own track is heavier than the meadow's): fewer trees, the flowers and
+ *  grass tufts gathered where the lap runs low (`low`: up on a deck nobody sees them), fewer chunks; and the dressing -
+ *  grandstands beside the booster stadium, the double jump and facing the tower, the RIPCARS sign on the tower's crown. */
+interface Style { look: typeof LOOK; cap: typeof CAP; chunks: number; low: boolean; dressing: boolean }
+const STYLES: Record<string, Style> = {
+  meadow: { look: LOOK, cap: CAP, chunks: CHUNKS, low: false, dressing: false },
+  sky: { look: LOOK_SKY, cap: { trees: [90, 100, 150], bushes: 45, rocks: 55, flowers: 260, tufts: 560 }, chunks: 6, low: true, dressing: true },
+};
+const LOW = 3.5; // u: the course runs low (ground cover gathers beside it, on a `low` course) up to this far over the meadow
+/** u/px of the structures' plan mask (what the track builds, seen from above), and the height over the meadow up to
+ *  which a part stands on it (STAND: posts, columns and their feet, decks on the ground). */
+const PLAN_PX = 1, STAND = 1.5;
 
 // ---- small helpers --------------------------------------------------------------------------------
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
@@ -169,6 +210,23 @@ function fillTri(mask: Uint8Array, n: number, k: number, ax: number, az: number,
   return true;
 }
 
+/** Raises mask pixels (n x n) whose centres lie within r px of the segment a-b to at least `val` (map-local world units,
+ *  k px/u): the plan of a triangle seen edge-on from above (a post's or a mast's side). */
+function fillSeg(mask: Uint8Array, n: number, k: number, ax: number, az: number, bx: number, bz: number, val: number, r: number) {
+  ax *= k, az *= k, bx *= k, bz *= k;
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+  const x0 = Math.max(0, Math.floor(Math.min(ax, bx) - r)), x1 = Math.min(n - 1, Math.floor(Math.max(ax, bx) + r));
+  const y0 = Math.max(0, Math.floor(Math.min(az, bz) - r)), y1 = Math.min(n - 1, Math.floor(Math.max(az, bz) + r));
+  for (let y = y0; y <= y1; y++) {
+    const py = y + 0.5, row = y * n;
+    for (let x = x0; x <= x1; x++) {
+      const px = x + 0.5, t = l2 > 0 ? clamp(((px - ax) * dx + (py - az) * dz) / l2, 0, 1) : 0;
+      const ex = ax + t * dx - px, ez = az + t * dz - py;
+      if (ex * ex + ez * ez <= r * r && mask[row + x] < val) mask[row + x] = val;
+    }
+  }
+}
+
 /** Footprint fallback: u from the centre line to the outer edge of what the course drives on at f (surface + verge),
  *  plus its rails or barrier. */
 const edgeOf = (f: TrackFrame) => f.width / 2 + (f.edge === 'grass' ? f.shoulder || 0 : f.edge === 'barrier' ? BARRIER : RAIL);
@@ -265,6 +323,29 @@ class Mesher {
       if (nx * mx + ny * my + nz * mz > 0) this.idx.push(i, j, j + 1, i, j + 1, i + 1);
       else this.idx.push(i, j + 1, j, i, i + 1, j + 1);
     }
+  }
+
+  /** A box with no bottom face (it stands on something), centre (x, y, z), sides sx x sy x sz in its own frame turned ry
+   *  about y (as add()); `top` colours its top face. */
+  box(x: number, y: number, z: number, sx: number, sy: number, sz: number, ry: number, side: THREE.Color, top = side) {
+    const c = Math.cos(ry), s = Math.sin(ry), hx = sx / 2, hy = sy / 2, hz = sz / 2;
+    const v = (lx: number, ly: number, lz: number, col: THREE.Color) => this.vert(x + lx * c + lz * s, y + ly, z - lx * s + lz * c, col);
+    // each face: its normal (local) and two in-face axes
+    for (const [nx, ny, nz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
+      const col = ny ? top : side, ux = ny || nz ? 1 : 0, uz = nx ? 1 : 0, wy = ny ? 0 : 1, wz = ny ? 1 : 0;
+      const ox = nx * hx, oy = ny * hy, oz = nz * hz, ax = ux * hx, az = uz * hz, by = wy * hy, bz = wz * hz;
+      const a = v(ox - ax, oy - by, oz - az - bz, col), b = v(ox + ax, oy - by, oz + az - bz, col);
+      const d = v(ox + ax, oy + by, oz + az + bz, col), e = v(ox - ax, oy + by, oz - az + bz, col);
+      this.quad(a, b, d, e, nx * c + nz * s, ny, -nx * s + nz * c);
+    }
+  }
+
+  /** A one-sided quad facing (nx, ny, nz) over four points in order round it: colour c0 along its first edge (a, b), c1
+   *  along the far one (a crowd's shirts and heads). */
+  face(ax: number, ay: number, az: number, bx: number, by: number, bz: number, qx: number, qy: number, qz: number, dx: number, dy: number, dz: number,
+    c0: THREE.Color, c1: THREE.Color, nx: number, ny: number, nz: number) {
+    const a = this.vert(ax, ay, az, c0), b = this.vert(bx, by, bz, c0), q = this.vert(qx, qy, qz, c1), d = this.vert(dx, dy, dz, c1);
+    this.quad(a, b, q, d, nx, ny, nz);
   }
 
   /** A two-sided triangle (grass blade / stem): base colour at a and b, tip colour at c. */
@@ -542,6 +623,10 @@ interface Bush { x: number; z: number; r: number; rot: number; seed: number; lea
 /** The big jump's pond: centre, unit long axis (ux, uz), semi-axes, harmonics on the rim (amplitude, phase per POND_HARM),
  *  and the bend of its long axis (the ends sit bend x a off to the side). */
 interface Pond { x: number; z: number; ux: number; uz: number; a: number; b: number; h: number[]; bend: number }
+/** A grandstand (track 2's dressing): centre, its front's unit normal (toward the track), length and depth (u). */
+interface Stand { x: number; z: number; nx: number; nz: number; L: number; D: number }
+const STAND_D = 12.5; // u: 7 rows of seats (1.5 u deep, 0.85 u up each), a walkway in front, the back wall
+const STAND_ROWS = 7;
 const POND_HARM = [2, 3, 5];
 const POND_DEPTH = 2.4; // u from the meadow down to the pond's water
 const POND_CLEAR = 2.5; // u its rim keeps from the course's footprint (the flight's aside)
@@ -568,6 +653,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   const root = new THREE.Group();
   root.name = 'world-outdoor';
   scene.add(root);
+  const ST = STYLES[(track.object.userData as { course?: string }).course ?? ''] ?? STYLES.meadow, LOOK = ST.look, CAP = ST.cap;
   const rnd = rngOf(SEED);
   const R = (a: number, b: number) => a + (b - a) * rnd();
   const pick = <T>(a: T[]) => a[Math.floor(rnd() * a.length) % a.length];
@@ -741,6 +827,25 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     occR.push(x, z, Math.min(r, OCC));
   };
 
+  // Track 2's tower stands in the middle of its spiral (tag 'helix'): the spiral's centre, a least-squares circle through
+  // its steady turns (their middle 70%). The cast pass below finds the crown at its top, where the sign goes.
+  let tower: { x: number; z: number; top: number; x0: number; x1: number; z0: number; z1: number } | null = null;
+  const helix = ST.dressing ? track.tags.find((g) => g.tag === 'helix') : undefined;
+  if (helix) {
+    const S = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // sums: xx xz x zz z n, x r2, z r2, r2 (r2 = x^2 + z^2)
+    const g = track.frameAt(0);
+    for (let s = helix.s0 + 0.15 * (helix.s1 - helix.s0); s < helix.s0 + 0.85 * (helix.s1 - helix.s0); s += 2) {
+      const p = track.frameAt(s, g).p, r2 = p.x * p.x + p.z * p.z;
+      S[0] += p.x * p.x, S[1] += p.x * p.z, S[2] += p.x, S[3] += p.z * p.z, S[4] += p.z, S[5]++, S[6] += p.x * r2, S[7] += p.z * r2, S[8] += r2;
+    }
+    // x^2 + z^2 + D x + E z + F = 0: [xx xz x; xz zz z; x z n] [D E F] = -[x r2; z r2; r2] (Cramer)
+    const a = [S[0], S[1], S[2], S[1], S[3], S[4], S[2], S[4], S[5]], b = [-S[6], -S[7], -S[8]];
+    const det3 = (m: number[]) => m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    const col3 = (k: number) => a.map((v, i) => (i % 3 === k ? b[(i / 3) | 0] : v));
+    const det = det3(a);
+    if (Math.abs(det) > 1e-9) tower = { x: -det3(col3(0)) / det / 2, z: -det3(col3(1)) / det / 2, top: -Infinity, x0: 0, x1: 0, z0: 0, z1: 0 };
+  }
+
   // ---- the track's own meshes: shadows, occlusion, footprints ----------------------------------
   // Generic, so it fits whatever the track builds (the raised plastic, supports, towers, barriers): every triangle
   // standing more than LIFT u off the ground and turned to the sun is projected along the sun onto the ground, and
@@ -748,15 +853,29 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   // cast their oriented boxes, plenty at the map's ~1.4 u/px, mark occlusion where they stand and claim their
   // footprint. Triangles are rasterized into coverage masks (pixel centres, the sun's at 2x and averaged down): the
   // union of any number of them, no double darkening, a few ms where canvas paths take ~0.5 s.
+  // The plan of everything the track builds goes into a 1 u mask too (bit 1; bit 2: the parts standing on the meadow -
+  // posts, columns, masts and their feet, decks on the ground): nothing grows in or under the track's structures (a
+  // tower stands off its deck, a hoop's masts out under a flight), and the pond keeps clear of whatever stands there.
   const MN = 1024, MS = clamp(span + 760, 900, 2400), mx0 = cx - MS / 2, mz0 = cz - MS / 2, mk = MN / MS;
   const SUN_N = 2 * MN, SKY_N = MN >> 2, ks = SUN_N / MS, ka = SKY_N / MS;
   const sunMask = new Uint8Array(SUN_N * SUN_N), lowMask = new Uint8Array(SKY_N * SKY_N), highMask = new Uint8Array(SKY_N * SKY_N);
+  const PN = Math.ceil(MS / PLAN_PX), kp = PN / MS, plan = new Uint8Array(PN * PN);
   const feet: number[] = []; // x, z, r: where an instance stands on the ground
   let castTris = 0;
   const tCast = performance.now();
   {
     const tri = (mask: Uint8Array, n: number, k: number, ax: number, az: number, bx: number, bz: number, qx: number, qz: number) => {
       if (fillTri(mask, n, k, ax, az, bx, bz, qx, qz, 1, mask === sunMask ? 0.5 : 0)) castTris++;
+    };
+    /** The plan of a triangle (map-local x, z) into the plan mask, conservatively (half a pixel round it); seen edge-on,
+     *  its longest side. `low`: it reaches down to the meadow. */
+    const planTri = (ax: number, az: number, bx: number, bz: number, qx: number, qz: number, low: boolean) => {
+      const val = low ? 3 : 1;
+      if (fillTri(plan, PN, kp, ax, az, bx, bz, qx, qz, val, 0.5)) return;
+      const ab = (bx - ax) ** 2 + (bz - az) ** 2, bq = (qx - bx) ** 2 + (qz - bz) ** 2, qa = (ax - qx) ** 2 + (az - qz) ** 2;
+      if (ab >= bq && ab >= qa) fillSeg(plan, PN, kp, ax, az, bx, bz, val, 0.75);
+      else if (bq >= qa) fillSeg(plan, PN, kp, bx, bz, qx, qz, val, 0.75);
+      else fillSeg(plan, PN, kp, qx, qz, ax, az, val, 0.75);
     };
     const poly = (mask: Uint8Array, n: number, k: number, p: number[], cnt: number) => {
       const h = hull(p, cnt);
@@ -795,6 +914,9 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
             mx += v.x / 8;
             mz += v.z / 8;
           }
+          for (let c = 0; c < 8; c++) (pp[2 * c] = corner[3 * c] - mx0), (pp[2 * c + 1] = corner[3 * c + 2] - mz0);
+          const ph = hull(pp, 8);
+          for (let i = 2; i < ph.length; i++) planTri(pp[2 * ph[0]], pp[2 * ph[0] + 1], pp[2 * ph[i - 1]], pp[2 * ph[i - 1] + 1], pp[2 * ph[i]], pp[2 * ph[i] + 1], bot - groundY < STAND);
           if (top - groundY < LIFT) continue;
           let rad = 0;
           for (let c = 0; c < 8; c++) {
@@ -829,6 +951,17 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
       for (let t = 0; t < nt; t++) {
         const a = idx ? idx[3 * t] : 3 * t, b = idx ? idx[3 * t + 1] : 3 * t + 1, c = idx ? idx[3 * t + 2] : 3 * t + 2;
         const hi = Math.max(above[a], above[b], above[c]);
+        planTri(W[3 * a] - mx0, W[3 * a + 2] - mz0, W[3 * b] - mx0, W[3 * b + 2] - mz0, W[3 * c] - mx0, W[3 * c + 2] - mz0, Math.min(above[a], above[b], above[c]) < STAND);
+        if (tower && hi - Math.min(above[a], above[b], above[c]) < 0.01 && hi + groundY > tower.top - 0.01) {
+          // the tower's crown: the highest level face within 12 u of the spiral's centre (its extent, axis-aligned)
+          let near = true;
+          for (const i of [a, b, c]) near &&= Math.hypot(W[3 * i] - tower.x, W[3 * i + 2] - tower.z) < 12;
+          if (near) {
+            const T = tower, y = hi + groundY;
+            if (y > T.top + 0.01) (T.top = y), (T.x0 = T.z0 = Infinity), (T.x1 = T.z1 = -Infinity);
+            for (const i of [a, b, c]) (T.x0 = Math.min(T.x0, W[3 * i])), (T.x1 = Math.max(T.x1, W[3 * i])), (T.z0 = Math.min(T.z0, W[3 * i + 2])), (T.z1 = Math.max(T.z1, W[3 * i + 2]));
+          }
+        }
         if (hi < LIFT) continue;
         const ux = W[3 * b] - W[3 * a], uy = W[3 * b + 1] - W[3 * a + 1], uz = W[3 * b + 2] - W[3 * a + 2];
         const wx = W[3 * c] - W[3 * a], wy = W[3 * c + 1] - W[3 * a + 1], wz = W[3 * c + 2] - W[3 * a + 2];
@@ -842,6 +975,20 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     });
   }
   const castMs = Math.round(performance.now() - tCast);
+  /** Whether the track builds anything within r u of (x, z) - with bit 2, anything standing on the meadow there. */
+  const struct = (x: number, z: number, r: number, bit = 1) => {
+    const px = (x - mx0) * kp, pz = (z - mz0) * kp, rp = r * kp + 0.5;
+    const i0 = Math.max(0, Math.floor(px - rp)), i1 = Math.min(PN - 1, Math.floor(px + rp));
+    const j0 = Math.max(0, Math.floor(pz - rp)), j1 = Math.min(PN - 1, Math.floor(pz + rp));
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        if (!(plan[j * PN + i] & bit)) continue;
+        const dx = i + 0.5 - px, dz = j + 0.5 - pz;
+        if (dx * dx + dz * dz <= rp * rp) return true;
+      }
+    }
+    return false;
+  };
 
   // ---- the big jump's pond --------------------------------------------------------------------
   // A pond by the big jump: long and gently bent like a stretch of river, as wide and then as long as fits clear of
@@ -889,6 +1036,8 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
         for (let i = i0; i <= i1; i++) if ((gx0 + i - SX[k]) ** 2 + (gz0 + j - SZ[k]) ** 2 < r * r) taken[j * gn + i] = 1;
       }
     }
+    // ... and whatever stands on the meadow out under the flight (track 2's hoop has its masts there)
+    for (let j = 0; j < gn; j++) for (let i = 0; i < gn; i++) if (!taken[j * gn + i] && struct(gx0 + i, gz0 + j, POND_CLEAR, 2)) taken[j * gn + i] = 1;
     const free = (x: number, z: number) => {
       const i = Math.round(x - gx0), j = Math.round(z - gz0);
       return i >= 0 && j >= 0 && i < gn && j < gn && !taken[j * gn + i];
@@ -941,6 +1090,70 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     const n = Math.max(48, Math.round((2 * Math.PI * Math.hypot(pond.a, pond.b)) / Math.SQRT2 / 2.2));
     for (let i = 0; i < n; i++) rim.push(...rimAt(pond, (i / n) * Math.PI * 2));
   }
+  // Track 2's dressing (Trackmania's stadium, in a toy's meadow): grandstands where the action is - beside the stadium's
+  // chained boosters, beside the double jump between its kickers, and across the spiral facing the tower - each on the
+  // side where its crowd faces the sun (lit, never backlit), its front KEEP + 2 u beyond the course's footprint, moved
+  // along and out until nothing of the course or the pond is in its way. They claim their ground (the scatter, the
+  // pennants keep off it, and off the view from the seats) before anything else is placed.
+  const stands: Stand[] = [];
+  if (ST.dressing && M) {
+    const sunX = sunH.x, sunZ = sunH.y, Lt = track.length;
+    const clear = (S: Stand) => {
+      const ux = S.nz, uz = -S.nx, na = Math.ceil(S.L / 3), nd = Math.ceil(S.D / 3);
+      for (let i = 0; i <= na; i++) {
+        for (let j = 0; j <= nd; j++) {
+          const a = -S.L / 2 + (S.L * i) / na, d = -S.D / 2 + (S.D * j) / nd, x = S.x + ux * a + S.nx * d, z = S.z + uz * a + S.nz * d;
+          if (edgeDist(x, z) < KEEP + 1 || struct(x, z, 2) || !isFree(x, z, 1) || inPond(x, z, 3)) return false;
+        }
+      }
+      return true;
+    };
+    const claim = (S: Stand) => {
+      stands.push(S);
+      const ux = S.nz, uz = -S.nx, hl = S.L / 2 + 1, hd = S.D / 2 + 1;
+      const cs = [[-hl, -hd], [hl, -hd], [hl, hd], [-hl, hd]].map(([a, d]) => [S.x + ux * a + S.nx * d - mx0, S.z + uz * a + S.nz * d - mz0]);
+      fillTri(plan, PN, kp, cs[0][0], cs[0][1], cs[1][0], cs[1][1], cs[2][0], cs[2][1], 1);
+      fillTri(plan, PN, kp, cs[0][0], cs[0][1], cs[2][0], cs[2][1], cs[3][0], cs[3][1], 1);
+      for (let a = -S.L / 2; a <= S.L / 2 + 1e-6; a += 6) occupy(S.x + ux * a, S.z + uz * a, S.D / 2 + 1);
+      for (let e = 6; e < 34; e += 9) for (const a of [-S.L / 4, S.L / 4]) occupy(S.x + ux * a + S.nx * (S.D / 2 + e), S.z + uz * a + S.nz * (S.D / 2 + e), 5);
+    };
+    /** A stand L u long beside the lap at s, on the side facing the sun, as near the course as it fits. */
+    const besideAt = (s: number, L: number) => {
+      for (const extra of [0, 4, 8, 13, 18]) {
+        for (const along of [0, 8, -8, 16, -16]) {
+          const k = Math.round((((s + along) % Lt) + Lt) % Lt / sds) % M, rx = -STZ[k], rz = STX[k];
+          const side = -rx * sunX - rz * sunZ > 0 ? 1 : -1; // its front faces the track: -side x right, toward the sun
+          const off = SE[k] + KEEP + 2 + STAND_D / 2 + extra;
+          const S: Stand = { x: SX[k] + rx * off * side, z: SZ[k] + rz * off * side, nx: -rx * side, nz: -rz * side, L, D: STAND_D };
+          if (clear(S)) return claim(S);
+        }
+      }
+    };
+    // the stadium: the longest run of chained boosters on the meadow (each within 40 u of the last)
+    const pads = track.tags.filter((g) => g.tag === 'booster' && g.d0 === undefined && track.frameAt(g.s0).p.y - groundY < LOW).sort((a, b) => a.s0 - b.s0);
+    let run: [number, number] | null = null;
+    for (let i = 0, j = 0; i < pads.length; i = j) {
+      for (j = i + 1; j < pads.length && pads[j].s0 - pads[j - 1].s1 < 40; j++);
+      if (!run || pads[j - 1].s1 - pads[i].s0 > run[1] - run[0]) run = [pads[i].s0, pads[j - 1].s1];
+    }
+    if (run) besideAt((run[0] + run[1]) / 2, 40);
+    // the double jump: between two kickers within 100 u of each other
+    const kick = track.tags.filter((g) => g.tag === 'kicker' && !(jump && g.s1 > jump.s0 - 60 && g.s0 < jump.s1)).sort((a, b) => a.s0 - b.s0);
+    for (let i = 1; i < kick.length; i++) if (kick[i].s0 - kick[i - 1].s1 < 100) {
+      besideAt((kick[i - 1].s1 + kick[i].s0) / 2, 36);
+      break;
+    }
+    // the tower: across the spiral from the sun, facing the tower (and the sun)
+    if (tower) {
+      for (let r = 40; r < 140; r += 4) {
+        const S: Stand = { x: tower.x - sunX * r, z: tower.z - sunZ * r, nx: sunX, nz: sunZ, L: 44, D: STAND_D };
+        if (clear(S)) {
+          claim(S);
+          break;
+        }
+      }
+    }
+  }
   // Spectator dressing (the course's footprint, the flight's included, keeps them clear): pennants on poles lining both
   // sides of the jump on the meadow, from the run-up to the end of the landing, and a banner on two scaffold towers
   // off to the side past the landing's start, facing the flight.
@@ -957,7 +1170,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
       const off = Math.max(SE[k], SF[k] ? wide : 0) + KEEP + 2.5 + 0.6 * clamp(12 - (fr.p.y - groundY), 0, 12);
       for (const side of [-1, 1]) {
         const x = fr.p.x + (fr.right.x / rl) * off * side, z = fr.p.z + (fr.right.z / rl) * off * side;
-        if (inPond(x, z, 2.5) || edgeDist(x, z) < KEEP + 1 || !isFree(x, z, 1)) continue;
+        if (inPond(x, z, 2.5) || edgeDist(x, z) < KEEP + 1 || !isFree(x, z, 1) || struct(x, z, 1.5)) continue;
         flags.push(x, z, 8 + 1.5 * hash3(Math.round(s), side, 61), c++ % 4);
         occupy(x, z, 1.2);
       }
@@ -977,7 +1190,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
           for (let e = -14; e <= 14; e += 3.5) spots.push(B.x + B.ux * e, B.z + B.uz * e);
           for (const e of [-11, 11]) spots.push(B.x + B.ux * e - nx * 1.2, B.z + B.uz * e - nz * 1.2); // its towers
           let ok = true;
-          for (let i = 0; i < spots.length && ok; i += 2) ok = edgeDist(spots[i], spots[i + 1]) > KEEP + 2 && !inPond(spots[i], spots[i + 1], 3) && isFree(spots[i], spots[i + 1], 2);
+          for (let i = 0; i < spots.length && ok; i += 2) ok = edgeDist(spots[i], spots[i + 1]) > KEEP + 2 && !inPond(spots[i], spots[i + 1], 3) && isFree(spots[i], spots[i + 1], 2) && !struct(spots[i], spots[i + 1], 3);
           if (!ok) continue;
           banner = B;
           for (let i = 0; i < spots.length; i += 2) occupy(spots[i], spots[i + 1], 2.5);
@@ -1038,7 +1251,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     const ch = dims[3] ? dims[3] * s : cr * R(1.45, 1.9);
     const reach = kind === ROUND || kind === BLOSSOM ? cr * 1.2 : cr;
     const ed = edgeDist(x, z, true);
-    if (ed < KEEP + 3 + reach || sightDist(x, z) < reach + 2.5 || inPond(x, z, reach + 3)) return -1;
+    if (ed < KEEP + 3 + reach || sightDist(x, z) < reach + 2.5 || inPond(x, z, reach + 3) || struct(x, z, reach + 1)) return -1;
     const tier = ed < NEAR ? 0 : ed < MID ? 1 : 2;
     if ((!tier && !nearOk) || tierN[tier] >= CAP.trees[tier] || !isFree(x, z, cr * 0.7)) return -1;
     tierN[tier]++;
@@ -1095,7 +1308,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
 
   function tryBush(x: number, z: number) {
     const r = R(1.1, 2.1);
-    if (bushes.length >= CAP.bushes || edgeDist(x, z) < KEEP + r || onDirt(x, z) || inPond(x, z, r + 1.5) || !isFree(x, z, r * 0.8)) return;
+    if (bushes.length >= CAP.bushes || edgeDist(x, z) < KEEP + r || onDirt(x, z) || inPond(x, z, r + 1.5) || !isFree(x, z, r * 0.8) || struct(x, z, r + 0.5)) return;
     bushes.push({ x, z, r, rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), leaf: col(pick(BUSH)).offsetHSL(0, 0, R(-0.03, 0.03)) });
     occupy(x, z, r * 0.8);
   }
@@ -1116,7 +1329,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   function tryRock(x: number, z: number, r: number, big: boolean) {
     if (rocks.length >= CAP.rocks) return false;
     const ed = edgeDist(x, z);
-    if (ed < KEEP + r * 1.2 + (big ? 4 : 0) || (big && sightDist(x, z) < r + 1) || onDirt(x, z) || inPond(x, z, r + 1.5) || !isFree(x, z, r)) return false;
+    if (ed < KEEP + r * 1.2 + (big ? 4 : 0) || (big && sightDist(x, z) < r + 1) || onDirt(x, z) || inPond(x, z, r + 1.5) || !isFree(x, z, r) || struct(x, z, r + 0.5)) return false;
     const f = big && ed < NEAR && fine < 6;
     if (f) fine++;
     rocks.push({ x, z, r, sy: R(0.5, 0.85), sz: R(0.75, 1.15), rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), fine: f, col: col(pick(ROCK)).offsetHSL(R(-0.02, 0.02), 0, R(-0.04, 0.04)) });
@@ -1139,24 +1352,28 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     tryRock(pt[0], pt[1], R(0.4, 1.3), false);
   }
 
-  // Flowers and tufts gather along the course (where they are seen), just beyond its footprint, in patches and clumps.
+  // Flowers and tufts gather along the course (where they are seen), just beyond its footprint, in patches and clumps -
+  // on a `low` course only beside the stretches that run on the meadow (up on a deck the camera never sees them).
+  const lowK: number[] = [];
+  if (ST.low) for (let k = 0; k < M; k++) if (SY[k] - groundY < LOW) lowK.push(k);
+  const kCover = (u: number) => (lowK.length ? lowK[Math.min(lowK.length - 1, Math.floor(u * lowK.length))] : kAt(u));
   const flowers: number[] = []; // x, z, colour index, size
   const tufts: number[] = []; // x, z, scale
   for (let p = 0; p < 46 && M; p++) {
-    beside(kAt((p + rnd()) / 46), 3 + expo(12));
+    beside(kCover((p + rnd()) / 46), 3 + expo(12));
     const px = pt[0], pz = pt[1], main = Math.floor(rnd() * FLOWER.length), n = 8 + Math.floor(rnd() * 14), pr = R(2.5, 7);
     for (let i = 0; i < n && flowers.length < CAP.flowers * 4; i++) {
       const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * pr, x = px + Math.cos(a) * r, z = pz + Math.sin(a) * r;
       const sz = R(0.8, 1.2), c = rnd() < 0.72 ? main : Math.floor(rnd() * 2);
-      if (edgeDist(x, z) < 2.5 || onDirt(x, z) || inPond(x, z, 1.5)) continue;
+      if (edgeDist(x, z) < 2.5 || onDirt(x, z) || inPond(x, z, 1.5) || struct(x, z, 0.6)) continue;
       flowers.push(x, z, c, sz);
     }
   }
   const tuft = (x: number, z: number, s: number, minEdge: number) => {
-    if (tufts.length < CAP.tufts * 3 && edgeDist(x, z) > minEdge && !onDirt(x, z) && !inPond(x, z, 1)) tufts.push(x, z, s);
+    if (tufts.length < CAP.tufts * 3 && edgeDist(x, z) > minEdge && !onDirt(x, z) && !inPond(x, z, 1) && !struct(x, z, 0.6)) tufts.push(x, z, s);
   };
   for (let c = 0; c < 190 && M; c++) {
-    beside(kAt((c + rnd()) / 190), 1.5 + expo(9));
+    beside(kCover((c + rnd()) / 190), 1.5 + expo(9));
     const px = pt[0], pz = pt[1], n = 3 + Math.floor(rnd() * 6), pr = R(1.2, 3.5);
     for (let i = 0; i < n; i++) {
       const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * pr;
@@ -1294,6 +1511,25 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   for (const b of bushes) {
     blob(gao, b.x, b.z, b.r * 1.8, AO, 0.6);
     castDisc(b.x, b.z, b.r * 0.4, b.r, 0.6);
+  }
+  for (const S of stands) {
+    // the stand's block (to its roof) thrown along the sun: the hull of its foot and its top's shadow; AO round its foot
+    const ux = S.nz, uz = -S.nx, H = 1.2 + 0.85 * (STAND_ROWS - 1) + 4.2, pts: number[] = [];
+    for (const [a, d] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const x = S.x + ux * a * (S.L / 2) + S.nx * d * (S.D / 2), z = S.z + uz * a * (S.L / 2) + S.nz * d * (S.D / 2);
+      pts.push(x, z, x - sunH.x * H * sunOff, z - sunH.y * H * sunOff);
+    }
+    const h = hull(pts, 8);
+    for (const [g, rgb, a, grow] of [[gsh, SH, 0.78, 0], [gao, AO, 0.5, 2.5]] as const) {
+      g.fillStyle = `rgba(${rgb},${a})`;
+      g.beginPath();
+      for (const i of grow ? [0, 1, 2, 3].map((q) => 2 * q) : h) {
+        const px = grow ? pts[2 * i] + Math.sign(pts[2 * i] - S.x) * grow : pts[2 * i], pz = grow ? pts[2 * i + 1] + Math.sign(pts[2 * i + 1] - S.z) * grow : pts[2 * i + 1];
+        g.lineTo((px - mx0) * mk, (pz - mz0) * mk);
+      }
+      g.closePath();
+      g.fill();
+    }
   }
   if (rim.length) { // the banks shade the meadow's edge a little
     rimPath(gao);
@@ -1669,7 +1905,18 @@ void main() {
     m.beam(x, groundY - 0.2, z, x, top + 0.3, z, 0.16, enamel);
     m.blade(x, top, z, x, top - 1.5, z, x + windX * 3.4, top - 0.85, z + windZ * 3.4, fc, fc, 1);
   }
-  let bannerFace: THREE.Mesh | null = null;
+  // Printed boards, one mesh (the banner's texture, unlit): the banner's board (both faces), and track 2's - the sign on
+  // the tower's crown (four boards facing out) and the ad boards along the grandstands' fronts. Each reads left to right
+  // from in front.
+  const bp: number[] = [], buv: number[] = [], bix: number[] = [];
+  const board = (x: number, y0: number, z: number, ux: number, uz: number, hw: number, h: number, nx: number, nz: number, o: number) => {
+    const b = bp.length / 3;
+    for (const [p, q] of [[-1, 0], [1, 0], [1, 1], [-1, 1]]) {
+      bp.push(x + ux * p * hw + nx * o, y0 + q * h, z + uz * p * hw + nz * o);
+      buv.push((p + 1) / 2, q);
+    }
+    bix.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  };
   if (banner) {
     const B = banner, nx = -B.uz, nz = B.ux, top = B.y0 + B.h, metal = col('#b4bac2');
     for (const e of [-1, 1]) { // a 2 u square scaffold tower under each end
@@ -1684,23 +1931,88 @@ void main() {
         m.beam(b[0], groundY + 1.2, b[1], a[0], top - 0.4, a[1], 0.11, metal);
       }
     }
-    // the board's frame; the board is printed on both faces (its own mesh: two quads, each reading left to right)
+    // the board's frame; the board is printed on both faces (two quads, each reading left to right)
     const hw = B.w / 2;
     m.item(B.x, B.z);
     for (const [p0, y0, p1, y1] of [[-1, B.y0, 1, B.y0], [-1, top, 1, top], [-1, B.y0, -1, top], [1, B.y0, 1, top]])
       m.beam(B.x + B.ux * p0 * hw, y0, B.z + B.uz * p0 * hw, B.x + B.ux * p1 * hw, y1, B.z + B.uz * p1 * hw, 0.3, enamel);
-    const bp: number[] = [], buv: number[] = [];
-    for (const side of [1, -1]) { // front (facing n), then back
-      const o = side > 0 ? 0.02 : -0.06;
-      for (const [p, q] of [[-1, 0], [1, 0], [1, 1], [-1, 1]]) {
-        bp.push(B.x + B.ux * p * side * hw + nx * o, B.y0 + q * B.h, B.z + B.uz * p * side * hw + nz * o);
-        buv.push((p + 1) / 2, q);
+    for (const side of [1, -1]) board(B.x, B.y0, B.z, B.ux * side, B.uz * side, hw, B.h, nx, nz, side > 0 ? 0.02 : -0.06); // front (facing n), back
+  }
+  // The sign on track 2's tower: four boards standing on the crown's edges, facing out, in white frames on posts.
+  let sign = false;
+  if (tower && tower.top > -Infinity && tower.x1 - tower.x0 > 6 && tower.z1 - tower.z0 > 6) {
+    const T = tower, mxT = (T.x0 + T.x1) / 2, mzT = (T.z0 + T.z1) / 2, hx = (T.x1 - T.x0) / 2, hz = (T.z1 - T.z0) / 2;
+    const w = 2 * Math.min(hx, hz) - 1.6, h = w / 4, y0 = T.top + 1.4, metal = col('#d9dde2');
+    m.item(mxT, mzT);
+    for (const [nx, nz, e] of [[1, 0, hx], [-1, 0, hx], [0, 1, hz], [0, -1, hz]]) {
+      const x = mxT + nx * (e - 0.7), z = mzT + nz * (e - 0.7), ux = nz, uz = -nx; // (seen from outside: its right)
+      board(x, y0, z, ux, uz, w / 2, h, nx, nz, 0.04);
+      for (const [p0, a0, p1, a1] of [[-1, 0, 1, 0], [-1, 1, 1, 1], [-1, 0, -1, 1], [1, 0, 1, 1]])
+        m.beam(x + ux * p0 * (w / 2 + 0.1), y0 + a0 * h, z + uz * p0 * (w / 2 + 0.1), x + ux * p1 * (w / 2 + 0.1), y0 + a1 * h, z + uz * p1 * (w / 2 + 0.1), 0.32, enamel);
+      for (const p of [-0.6, 0.6]) m.beam(x + ux * p * (w / 2), T.top - 0.1, z + uz * p * (w / 2), x + ux * p * (w / 2), y0, z + uz * p * (w / 2), 0.3, metal);
+    }
+    sign = true;
+  }
+  // Track 2's grandstands: seven rows of seats stepping back from a walkway (a crowd on them, people ~1 u apart, a few
+  // seats empty), white walls, a blue roof over the top rows on the back wall, pennants on it, and a parapet of ad boards
+  // along the front.
+  const shirts = ['#e53935', '#fdd835', '#1e88e5', '#f4f4f2', '#43a047', '#fb8c00', '#8e24aa', '#26262b', '#ec407a', '#ff6b00', '#00acc1'].map(col);
+  const heads = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#3b2a20', '#d9a066'].map(col);
+  const seatCols = ['#2f72f0', '#ff6b00', '#2f72f0'].map(col), riser = col('#8d939c'), wall = col('#c7cad0'), roof = col('#2a63d4'), roofTop = col('#3a73e0');
+  for (const [si, S] of stands.entries()) {
+    const ry = Math.atan2(S.nx, S.nz), c = Math.cos(ry), sn = Math.sin(ry), D2 = S.D / 2, L2 = S.L / 2;
+    const at = (lx: number, lz: number) => [S.x + lx * c + lz * sn, S.z - lx * sn + lz * c];
+    const top = 1.2 + 0.85 * (STAND_ROWS - 1), roofY = top + 4.2, seat = seatCols[si % seatCols.length];
+    m.item(S.x, S.z);
+    for (let i = 0; i < STAND_ROWS; i++) {
+      const yi = 1.2 + 0.85 * i, zf = D2 - 1.5 - 1.5 * i; // the row's top and front edge
+      const [bx, bz] = at(0, zf - 0.75);
+      m.box(bx, groundY + yi / 2, bz, S.L, yi, 1.5, ry, riser, seat);
+      for (let j = 0, nj = Math.floor((S.L - 1.2) / 1.0); j < nj; j++) {
+        const hsh = hash3(si * 31 + i, j, 77);
+        if (hsh < 0.12) continue; // an empty seat
+        // a body in its shirt, a head on it (each a quad facing the track)
+        const lx = -L2 + 0.6 + (j + 0.5) * ((S.L - 1.2) / nj) + (hash3(i, j, 78) - 0.5) * 0.18, lz = zf - 0.55, y = groundY + yi;
+        const tall = 0.5 + 0.14 * hash3(i, j, 79), shirt = shirts[Math.floor(hsh * 97) % shirts.length], head = heads[Math.floor(hash3(j, i, 80) * heads.length) % heads.length];
+        let [x0, z0] = at(lx - 0.33, lz), [x1, z1] = at(lx + 0.33, lz);
+        C.copy(shirt).multiplyScalar(0.8);
+        m.face(x0, y, z0, x1, y, z1, x1, y + tall, z1, x0, y + tall, z0, C, shirt, S.nx, 0, S.nz);
+        [x0, z0] = at(lx - 0.16, lz + 0.02), [x1, z1] = at(lx + 0.16, lz + 0.02);
+        m.face(x0, y + tall + 0.03, z0, x1, y + tall + 0.03, z1, x1, y + tall + 0.33, z1, x0, y + tall + 0.33, z0, head, head, S.nx, 0, S.nz);
       }
     }
+    const nb = Math.max(1, Math.floor(S.L / 5.2)), bw = S.L / nb, bh = (bw - 0.24) / 4; // the parapet's ad boards (4:1)
+    let [x, z] = at(0, -D2 + 0.25);
+    m.box(x, groundY + roofY / 2, z, S.L + 0.8, roofY, 0.5, ry, wall); // the back wall, up to the roof
+    for (const e of [-1, 1]) {
+      // the side walls step up with the rows: from the parapet's height at the front to over the top row at the back
+      const hf = groundY + bh + 0.5, hb = groundY + top + 1.4, g = groundY, ux = c * e, uz = -sn * e;
+      const [ofx, ofz] = at(e * (L2 + 0.4), D2), [obx, obz] = at(e * (L2 + 0.4), -D2), [ifx, ifz] = at(e * L2, D2), [ibx, ibz] = at(e * L2, -D2);
+      m.face(ofx, g, ofz, obx, g, obz, obx, hb, obz, ofx, hf, ofz, wall, wall, ux, 0, uz);
+      m.face(ibx, g, ibz, ifx, g, ifz, ifx, hf, ifz, ibx, hb, ibz, wall, wall, -ux, 0, -uz);
+      m.face(ofx, hf, ofz, obx, hb, obz, ibx, hb, ibz, ifx, hf, ifz, riser, riser, 0, 1, 0);
+      m.face(ifx, g, ifz, ofx, g, ofz, ofx, hf, ofz, ifx, hf, ifz, wall, wall, S.nx, 0, S.nz);
+    }
+    [x, z] = at(0, -D2 + 3.9);
+    m.box(x, groundY + roofY + 0.18, z, S.L + 1.2, 0.36, 7.8, ry, roof, roofTop);
+    [x, z] = at(0, D2 - 0.12);
+    m.box(x, groundY + (bh + 0.15) / 2, z, S.L, bh + 0.15, 0.24, ry, wall);
+    for (const e of [-1 / 3, 0, 1 / 3]) { // pennants on the roof's front edge
+      const [px, pz] = at(e * S.L, -D2 + 7.6), y = groundY + roofY + 0.36, fc = pennant[(si + Math.round(e * 3) + 4) % 4];
+      m.beam(px, y, pz, px, y + 4.2, pz, 0.14, enamel);
+      m.blade(px, y + 3.9, pz, px, y + 2.6, pz, px + windX * 2.8, y + 3.3, pz + windZ * 2.8, fc, fc, 1);
+    }
+    for (let b = 0; b < nb; b++) { // the ad boards on the parapet, facing the track
+      const [bx, bz] = at(-L2 + (b + 0.5) * bw, D2);
+      board(bx, groundY + 0.05, bz, c, -sn, bw / 2 - 0.12, bh, S.nx, S.nz, 0.02);
+    }
+  }
+  let bannerFace: THREE.Mesh | null = null;
+  if (bp.length) {
     const bg = new THREE.BufferGeometry();
     bg.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3));
     bg.setAttribute('uv', new THREE.Float32BufferAttribute(buv, 2));
-    bg.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+    bg.setIndex(bix);
     bg.computeBoundingSphere();
     bannerFace = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ map: bannerTexture(aniso), toneMapped: false }));
     bannerFace.name = 'banner';
@@ -1726,7 +2038,7 @@ void main() {
   sceneryMat.customProgramCacheKey = () => 'world-outdoor-scenery';
   const scenery = new THREE.Group();
   scenery.name = 'scenery';
-  m.chunks(CHUNKS).forEach((g, i) => {
+  m.chunks(ST.chunks).forEach((g, i) => {
     const chunk = new THREE.Mesh(g, sceneryMat); // frustum-culled by its bounding sphere
     chunk.name = `scenery-${i}`;
     scenery.add(chunk);
@@ -1904,6 +2216,7 @@ void main() {
     flags: flags.length / 4, banner: !!banner,
     castTris, castMs,
   };
+  if (ST.dressing) root.userData.dressing = { stands: stands.map((S) => ({ x: +S.x.toFixed(1), z: +S.z.toFixed(1), L: S.L })), sign, tower: tower && { x: +tower.x.toFixed(2), z: +tower.z.toFixed(2), top: +tower.top.toFixed(2) } };
 
   const boosterTime = track.object.userData.boosterTime as { value: number } | undefined; // the pads' chevrons
   const WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -1923,6 +2236,7 @@ void main() {
     let h = P.y - floor;
     n.copy(WORLD_UP);
     at.set(P.x, floor, P.z);
+    let roll = 0; // (sin of the track's bank under the car)
     if (N) {
       const hit = track.nearest(P, state.trackS, 25);
       const f = hit.frame;
@@ -1932,6 +2246,7 @@ void main() {
       if (Math.abs(lat) < reach && hs > -0.6 && hs < 14 && track.tagAt(hit.s) !== 'gap') {
         h = Math.max(0, hs);
         n.copy(f.up);
+        roll = Math.abs(f.right.y);
         at.copy(P).addScaledVector(n, -hs);
       }
     }
@@ -1948,7 +2263,7 @@ void main() {
     fw.normalize();
     rt.crossVectors(fw, n);
     const grow = 1 + 0.06 * h;
-    at.addScaledVector(n, 0.04);
+    at.addScaledVector(n, 0.04 + 0.04 * smooth(0.5, 0.75, roll)); // (higher on track 2's wall ride, over its floor's chords)
     fw.multiplyScalar(SHADOW_SIZE[0] * grow);
     rt.multiplyScalar(SHADOW_SIZE[1] * grow);
     blobShadow.matrix.makeBasis(fw, n, rt).setPosition(at);

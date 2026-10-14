@@ -9,48 +9,69 @@ import { createHud, type RaceResult } from './hud';
 import { createInput } from './input';
 import { startLoop } from './loop';
 import { loadRig, type Rig } from './rig';
-import { buildTrack } from './track';
+import { buildTrack, COURSES, isCourse, type CourseId } from './track';
 import type { DriveInput, TrackFrame, VehicleFactory, VehicleState } from './types';
 import { VEHICLES } from './vehicles';
 import { buildWorld } from './world-outdoor';
 
-// /drive.html?car=<id>: take the car you just ripped for a spin round a meadow course - country roads, a dirt stretch
-// and orange Hot Wheels set pieces (the start gate, the big jump, a loop). The car waits in the start gate; the first
-// key, tap or button drops it (and unlocks audio). 3 laps, splits against your best lap, results with Again (instant,
-// no reload) / Rip a pack. R restarts any time. WRONG WAY when you drive against the lap (the car puts itself back
-// after a few seconds of it).
+// /drive.html?car=<id>[&track=sky]: take the car you just ripped for a spin. Two courses (track.ts COURSES): the meadow
+// (the default) - country roads, a dirt stretch and orange Hot Wheels set pieces (the start gate, the big jump, a loop) -
+// and the Sky Tower, the crazy one. The top bar's track switch and the results card's "Try <the other one>" reload
+// the page on the other course with the same car and knobs; the bar's car picker and Random car keep the course. The
+// car waits in the start gate; the first key, tap or button drops it (and unlocks audio). 3 laps, splits against your
+// best lap (per car and course), results with Again (instant, no reload) / Rip a pack / Try <the other course>. R
+// restarts any time. WRONG WAY when you drive against the lap (the car puts itself back after a few seconds of it).
 // Game time never slows or stops (no slow-mo, no hit-stop: the sim stays fixed-step, deterministic and input-driven,
 // ready for lockstep multiplayer); a hard hit's drama is the camera's kick and shake, the sound, sparks and haptics.
-// URL knobs: ?model=arcade  ?auto=1 autopilot  ?tune=1 driving sliders (?tune=camera: camera)  ?fps=1  ?laps=<1-9>
-//            ?fast=<2-16> runs the sim N x real time (tests)
-// For scripts: window.__ready after 3 frames; window.__drive = { state, lap (completed), laps, model, car, time, phase,
-// lapTimes, stats, info (renderer.info), timeScale(x), frozen } (tests: set frozen + timeScale(0) to hold a frame for a
-// screenshot).
+// URL knobs: ?track=meadow|sky  ?model=arcade  ?auto=1 autopilot  ?tune=1 driving sliders (?tune=camera: camera)  ?fps=1
+//            ?laps=<1-9>  ?fast=<2-16> runs the sim N x real time (tests)
+// For scripts: window.__ready after 3 frames; window.__drive = { state, lap (completed), laps, model, car, course, time,
+// phase, lapTimes, stats, info (renderer.info), timeScale(x), frozen } (tests: set frozen + timeScale(0) to hold a frame
+// for a screenshot).
 
 const q = new URLSearchParams(location.search);
 const CAR = q.get('car') ?? 'skyline-hck01';
+const trackQ = q.get('track');
+const COURSE: CourseId = isCourse(trackQ) ? trackQ : 'meadow'; // ?track=<id> (track.ts COURSES); anything else: the meadow
+const COURSE_NAME = COURSES.find((c) => c.id === COURSE)!.name;
+/** The course's colour: its dot in the top bar's switch and its "Try" button on the results card. */
+const COURSE_COLOR: Record<CourseId, string> = { meadow: '#6fd35a', sky: '#ff6b00' }; // the grass; the orange plastic
 const MODEL = VEHICLES[q.get('model') ?? ''] ? q.get('model')! : 'arcade';
 const AUTO = q.get('auto') === '1';
 const LAPS = Math.min(9, Math.max(1, Math.round(Number(q.get('laps')) || 3)));
 const FAST = Math.min(16, Math.max(1, Math.round(Number(q.get('fast')) || 1))); // tests: run the sim N x real time
 const KMH = 4.3; // u/s -> km/h at toy scale
-// u/s: the autopilot's average over 3 laps of the 2,740 u course, per car (each drives its own way: PROFILES in
-// vehicles/arcade.ts; a car without a profile drives the stock car's, 42.1); medals at x1.03 / 1.10 / 1.20 of
-// laps x length / PAR
-const PARS: Record<string, number> = {
-  skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26,
-  civic: 42.64, mustang: 43.18,
+// u/s: the autopilot's average speed over 3 laps (3 x the lap's length / its 3-lap total in node laps.ts 'auto'), per
+// course and car (each drives its own way: PROFILES in vehicles/arcade.ts; a key is any word of the car's id, '*' the
+// stock car's, for a car without a profile); medals at x1.03 / 1.10 / 1.20 of laps x length / PAR. A course without a
+// car's number takes the meadow's: the same pace, so its par time is the meadow's scaled by the lap's length. Each row
+// is one line keyed like the meadow's ('*': the stock car's run); remeasure a course's row whenever its layout changes.
+const PARS: Record<CourseId, Record<string, number>> = {
+  meadow: { skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26, civic: 42.64, mustang: 43.18, '*': 42.1 },
+  sky: { skyline: 47.21, impala: 46.23, roxy: 47.17, gt3: 47.17, '964': 46.68, firebird: 46.56, beach: 45.39, civic: 46.02, mustang: 47.04, '*': 46.58 },
 };
-const PAR = CAR.toLowerCase().split('-').map((w) => PARS[w]).find((x) => x !== undefined) ?? 42.1;
+const parIn = (row: Record<string, number>): number | undefined =>
+  CAR.toLowerCase().split('-').map((w) => row[w]).find((x) => x !== undefined) ?? row['*'];
+const PAR = parIn(PARS[COURSE]) ?? parIn(PARS.meadow)!;
 const HARD_HIT = 25; // u/s square into a wall: an extra camera kick and a hard buzz (the camera scales its own shake by the hit)
 const BOOST_NAMES = ['', 'Boost', 'Super boost', 'Ultra boost', 'Hyper boost!']; // 4: the hidden 'magic max' tier
 /** Hay bales are the wall here (the dirt's barriers, and the far edge of every verge; as the vehicle's wallOf). */
 const isHay = (f: TrackFrame) => f.edge === 'grass' || (f.edge === 'barrier' && f.surface === 'dirt');
 
 interface Best { lap?: number; total?: number; splits?: number[] }
-/** Bests are kept per car and per course: the key carries the lap's length, so a new layout starts afresh (a best from
- *  an older, shorter course would stand unbeatable and skew every split). */
-const bestKey = (lapLength: number) => `ripcars.drive.${CAR}.${Math.round(lapLength)}`;
+/** Bests are kept per car and per course: the key carries the course (the meadow's has none - it predates track 2, and
+ *  keeps the bests already set: ripcars.drive.<car>.<length>, the sky's ripcars.drive.<car>.sky.<length>) and the lap's
+ *  length, so a new layout starts afresh (a best from an older, shorter course would stand unbeatable and skew every
+ *  split). */
+const bestKey = (lapLength: number) => `ripcars.drive.${CAR}.${COURSE === 'meadow' ? '' : `${COURSE}.`}${Math.round(lapLength)}`;
+/** This page on a course: the same car and knobs (the meadow is the bare URL, as before track 2). */
+function courseHref(id: CourseId) {
+  const p = new URLSearchParams(location.search);
+  if (id === 'meadow') p.delete('track');
+  else p.set('track', id);
+  const s = p.toString();
+  return `${location.pathname}${s ? `?${s}` : ''}`;
+}
 function loadBest(key: string): Best {
   try {
     return JSON.parse(localStorage.getItem(key) ?? '{}') ?? {};
@@ -68,7 +89,10 @@ function saveBest(key: string, b: Best) {
 
 async function main() {
   const hud = createHud(document.getElementById('hud')!);
-  mountNav('drive').then((n) => n.setCar(CAR));
+  hud.setCourse(COURSE_NAME, COURSE_COLOR[COURSE]);
+  // the top bar: a track switch before the car picker (both reload the page, keeping the other's pick and the knobs)
+  const options = COURSES.map((c) => ({ name: c.name, href: courseHref(c.id), on: c.id === COURSE, title: c.blurb, color: COURSE_COLOR[c.id] }));
+  mountNav('drive', { switch: { label: 'Track', options } }).then((n) => n.setCar(CAR));
   const canvas = document.getElementById('c') as HTMLCanvasElement;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -79,7 +103,7 @@ async function main() {
   renderer.setClearColor('#0d0e12');
 
   const scene = new THREE.Scene();
-  const track = buildTrack();
+  const track = buildTrack(COURSE);
   scene.add(track.object);
   const world = buildWorld(scene, renderer, track);
 
@@ -102,7 +126,7 @@ async function main() {
   const tier = tierOf(String(meta.rarity ?? 'common'));
   const carName = [meta.make, meta.model].filter(Boolean).join(' ') || CAR;
   hud.setCar(carName, tier.color);
-  document.title = `Drive · ${carName} · RIPCARS`;
+  document.title = `Drive · ${carName} · ${COURSE_NAME} · RIPCARS`;
 
   const cam = createChaseCamera();
   scene.add(cam.camera); // anything parented to the camera renders too
@@ -166,7 +190,7 @@ async function main() {
   const L = track.length;
   const rel = (s: number) => (((s - track.start) % L) + L) % L;
   const drive = {
-    state: st, lap: 0, laps: LAPS, model: MODEL, car: CAR, time: 0, phase: phase as string, lapTimes,
+    state: st, lap: 0, laps: LAPS, model: MODEL, car: CAR, course: COURSE, time: 0, phase: phase as string, lapTimes,
     timeScale(_x: number) {}, // tests: slow or stop the sim
     frozen: false, // tests: hold the frame exactly as it is (sim, camera and effects) for a screenshot
     stats: { respawn: 0, air: 0, perfect: 0, hardHit: 0, spinOut: 0, wrongWay: 0 }, // tests: event counts (per rendered frame)
@@ -230,7 +254,9 @@ async function main() {
       newBestTotal: newBestTotal && bestAtStart.total != null,
       medal: ratio <= 1.03 ? 'gold' : ratio <= 1.1 ? 'silver' : ratio <= 1.2 ? 'bronze' : null,
     };
-    hud.results(result, () => reset(true), () => (location.href = `/?car=${encodeURIComponent(CAR)}`));
+    const next = COURSES[(COURSES.findIndex((c) => c.id === COURSE) + 1) % COURSES.length]; // the other course
+    const other = next.id === COURSE ? undefined : { name: next.name, href: courseHref(next.id), color: COURSE_COLOR[next.id] };
+    hud.results(result, () => reset(true), () => (location.href = `/?car=${encodeURIComponent(CAR)}`), other);
     fx.confetti(st.position, 160);
   }
 

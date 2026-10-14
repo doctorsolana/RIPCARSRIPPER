@@ -1,7 +1,7 @@
-// The drive page's overlay: lap and times (top left), speed (bottom right), the gate prompt, toasts
-// (PERFECT!, BOOST, BEST LAP, the hidden tier's rainbow MAX DRIFT!; outlined, so they read on the sky and the grass), split
-// deltas, a big WRONG WAY sign, a dip to black on respawn, the results card,
-// and an FPS readout with ?fps=1. Self-contained styles; text only changes when its value does.
+// The drive page's overlay: lap and times (top left), speed (bottom right), the gate prompt (under the course's name),
+// toasts (PERFECT!, BOOST, BEST LAP, the hidden tier's rainbow MAX DRIFT!; outlined, so they read on the sky and the
+// grass), split deltas, a big WRONG WAY sign, a dip to black on respawn, the results card (with a button to try the
+// other track), and an FPS readout with ?fps=1. Self-contained styles; text only changes when its value does.
 
 export interface RaceResult {
   total: number;
@@ -14,6 +14,8 @@ export interface RaceResult {
 
 export interface Hud {
   setCar(name: string, color: string): void;
+  /** The course: its name, with a dot in its colour, over the start prompt. */
+  setCourse(name: string, color: string): void;
   /** The start prompt (before the drop). */
   gate(show: boolean, touch: boolean): void;
   setLap(lap: number, laps: number): void;
@@ -27,7 +29,8 @@ export interface Hud {
   toast(text: string, color?: string, kind?: 'max'): void;
   /** The WRONG WAY sign (shown while on; only touches the DOM when it changes). */
   wrongWay(on: boolean): void;
-  results(r: RaceResult, onAgain: () => void, onRip: () => void): void;
+  /** `other`: a link to try another track (a full-width button under Again / Rip a pack, in the track's colour). */
+  results(r: RaceResult, onAgain: () => void, onRip: () => void, other?: { name: string; href: string; color?: string }): void;
   hideResults(): void;
   /** A quick dip to black (respawn). */
   flash(): void;
@@ -97,6 +100,10 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .wrong svg { width: 0.8em; height: 0.8em; flex: none; }
 #hud .gate { position: absolute; left: 0; right: 0; top: 21%; display: none; justify-items: center; text-align: center; padding: 0 16px; }
 #hud .gate.on { display: grid; }
+#hud .gate i { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 12px; font: 700 11px/1 Inter, system-ui, sans-serif;
+  font-style: normal; letter-spacing: 0.32em; text-transform: uppercase; opacity: 0.9; }
+#hud .gate i:empty { display: none; }
+#hud .gate i::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--crs, #fff); box-shadow: 0 0 10px var(--crs, #fff); }
 #hud .gate b { display: block; font: 400 clamp(40px, 9vw, 84px)/1 Anton, Impact, sans-serif; letter-spacing: 0.04em; animation: hud-pulse 1.1s ease-in-out infinite; }
 #hud .gate p { margin: 14px 0 0; font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.8; line-height: 1.9; }
 @keyframes hud-pulse { 50% { transform: scale(1.06); } }
@@ -120,14 +127,38 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
   font: 700 12px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; }
 #hud .card button { color: #0b0b0d; background: #fff; }
 #hud .card a { color: #fff; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); }
+#hud .card a.try { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; color: #fff;
+  background: color-mix(in srgb, var(--try) 30%, rgba(255, 255, 255, 0.04)); border: 1px solid var(--try); box-shadow: 0 0 18px color-mix(in srgb, var(--try) 30%, transparent); }
+#hud .card a.try:hover { background: color-mix(in srgb, var(--try) 45%, rgba(255, 255, 255, 0.04)); }
+#hud .card a.try svg { width: 13px; height: 13px; flex: none; }
 #hud .card .hint { margin-top: 10px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.45; }
 #hud .err { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 0 16px; pointer-events: auto;
   font: 600 15px/1.5 Inter, system-ui, sans-serif; color: rgba(244, 245, 247, 0.7); }
 #hud .err a { color: #fff; }
 #hud .fpsr { position: absolute; right: max(16px, env(safe-area-inset-right)); top: 62px; font: 600 11px/1 ui-monospace, monospace; opacity: 0.8; }
+/* under 1200 px the top bar's track switch hangs below the bar's right end (nav.ts): the readout goes under it */
+@media (max-width: 1199px) { body.nav-on #hud .fpsr { top: 92px; } }
 @media (max-width: 560px) {
   #hud .lap { font-size: 30px; }
   #hud .spd b { font-size: 52px; }
+}
+/* short screens (a phone on its side): a tighter results card, centred under the top bar, so the medal clears the bar
+   (the try-the-other-track button made it ~350 px tall); past that (laps=9) it scrolls */
+@media (max-height: 520px) {
+  #hud .card { padding: 14px 20px; max-height: calc(100% - 64px); overflow-y: auto; }
+  body.nav-on #hud .card { top: calc(50% + 24px); }
+  #hud .card .total { font-size: 42px; margin-top: 4px; }
+  #hud .card ol { margin-top: 8px; gap: 2px; }
+  #hud .card li { padding: 4px; }
+  #hud .card .btns { margin-top: 12px; }
+  #hud .card button, #hud .card a { padding: 11px 10px; }
+  #hud .card a.try, #hud .card .hint { margin-top: 8px; }
+}
+@media (max-height: 400px) { #hud .card .hint { display: none; } } /* the smallest phones on their side: keys hint out */
+/* ... and with the card up there's no room round it: the bar's track tab (the card has its own Try button) and the
+   car-name row with the mute button (M still mutes) step aside while it shows */
+@media (max-height: 520px) {
+  body.results-on #nav .seg, body.results-on #hud .car { visibility: hidden; opacity: 0; }
 }
 `;
 
@@ -156,7 +187,7 @@ export function createHud(root: HTMLElement): Hud {
     <div class="split"></div>
     <div class="wrong" role="alert"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"
       stroke-linejoin="round" aria-hidden="true"><path d="M7 21V10a5.5 5.5 0 0 1 11 0v7.5"/><path d="M14 14l4 4 4-4"/></svg>Wrong way</div></div>
-    <div class="gate"><div><b></b><p></p></div></div>
+    <div class="gate"><div><i></i><b></b><p></p></div></div>
     <div class="card"></div>
     <div class="fade"></div>`;
   const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector(sel) as T;
@@ -190,6 +221,10 @@ export function createHud(root: HTMLElement): Hud {
     setCar(name, color) {
       set($('.cn'), name);
       root.style.setProperty('--car', color);
+    },
+    setCourse(name, color) {
+      set($('.gate i'), name);
+      gateEl.style.setProperty('--crs', color);
     },
     gate(show, touch) {
       gateEl.classList.toggle('on', show);
@@ -248,7 +283,7 @@ export function createHud(root: HTMLElement): Hud {
       wrongOn = on;
       wrongEl.classList.toggle('on', on);
     },
-    results(r, onAgain, onRip) {
+    results(r, onAgain, onRip, other) {
       const best = r.laps.indexOf(r.bestLap);
       card.style.setProperty('--m', r.medal ? MEDAL_COLOR[r.medal] : '#9fb3c8');
       card.innerHTML = `
@@ -257,8 +292,14 @@ export function createHud(root: HTMLElement): Hud {
         ${r.newBestTotal ? '<div class="nb">New personal best</div>' : r.newBestLap ? '<div class="nb">New best lap</div>' : ''}
         <ol>${r.laps.map((t, i) => `<li class="${i === best ? 'best' : ''}"><span>Lap ${i + 1}</span><b>${fmtTime(t)}</b></li>`).join('')}</ol>
         <div class="btns"><button type="button">Again</button><a href="#">Rip a pack</a></div>
+        ${other ? `<a class="try">Try ${other.name}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>` : ''}
         <div class="hint">R or Enter to go again</div>`;
-      const again = card.querySelector('button')!, rip = card.querySelector('a')!;
+      if (other) {
+        card.querySelector<HTMLAnchorElement>('.try')!.href = other.href; // a plain link: the other track reloads the page
+        card.style.setProperty('--try', other.color ?? '#ff6b00');
+      }
+      const again = card.querySelector('button')!, rip = card.querySelector<HTMLAnchorElement>('.btns a')!;
       again.addEventListener('click', (e) => {
         e.stopPropagation();
         again.blur();
@@ -269,9 +310,11 @@ export function createHud(root: HTMLElement): Hud {
         onRip();
       });
       card.classList.add('on');
+      document.body.classList.add('results-on');
     },
     hideResults() {
       card.classList.remove('on');
+      document.body.classList.remove('results-on');
     },
     flash() {
       fade.classList.add('on');

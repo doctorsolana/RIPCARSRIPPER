@@ -43,7 +43,9 @@ import type { Track, TrackFrame, VehicleState } from './types';
 //         the chase position. The time left in the air is predicted every frame from the car's ballistic path against
 //         the track (or the meadow, short of it or beside it). The side is the one with the clearer view (no other part
 //         of the course in the way), then the one with the sun behind the camera; the car's centre is held inside the
-//         frame throughout
+//         frame throughout. Track 2's sky jump flies through a hoop over the apex of its flight (track.ts hoop()): side-on
+//         the ring is edge-on as the car goes through, then its near side sweeps between the camera and the car, so there
+//         the dolly holds back (adHoopLag) - the car flies on into the open ring, through it and out
 // Pass the interpolated render pose (e.g. the rig root) as `pose`, or the car jitters against the
 // camera whenever frames and fixed steps don't line up.
 
@@ -110,6 +112,8 @@ export const CAMERA: Record<string, number> = {
   adLead: 0.14, // the camera aims ahead of the car along its flight by this x its distance ...
   adAim: 5, // ... and this many deg under it (the car flies high in the frame, the ground below)
   adKeep: 0.6, // the car's centre stays within this share of the half view (the narrower way)
+  adHoopLag: 18, // u: through a hoop (track 2's sky jump) the dolly holds back so the car passes the flight's apex at least
+  // this far ahead of the camera - the ring seen open, not edge-on, and its near side never between the camera and the car
 };
 
 const DEG = Math.PI / 180;
@@ -180,19 +184,20 @@ export function createChaseCamera(): ChaseCamera {
   // ---- the big jump's ad shot
   // the track's 'bigjump' spans [s0, s1, ...] and the meadow's height (the course is scanned once per track)
   const jumps: number[] = [];
-  let scanned: Track | null = null, groundY = 0;
+  let scanned: Track | null = null, groundY = 0, hoop = false; // hoop: the big jump flies through a hoop at its apex
   // the shot: launch point and velocity, flight direction (plan), the side the camera is on, the flight's plan length,
   // the camera's distance and height; time since launch and the predicted time left; the blend weight
   const adP0 = new THREE.Vector3(), adV0 = new THREE.Vector3(), adG = new THREE.Vector3(), adS = new THREE.Vector3();
   const adPos = new THREE.Vector3(), adLook = new THREE.Vector3(), carC = new THREE.Vector3(), camUp = new THREE.Vector3();
   const oc = new THREE.Vector3(), oa = new THREE.Vector3(), xp = new THREE.Vector3(), xq = new THREE.Vector3();
-  let adOn = false, adT = 0, adLeft = Infinity, adW = 0, adDx = 0, adD = 20, adY = 0, adFlight = 1, landS = 0;
+  let adOn = false, adT = 0, adLeft = Infinity, adW = 0, adDx = 0, adD = 20, adY = 0, adFlight = 1, landS = 0, adApex = -1;
   let landMiss = false; // the last prediction came down on the meadow, not the track
 
   function scan(track: Track) {
     scanned = track;
     jumps.length = 0;
     for (const g of track.tags) if (g.tag === 'bigjump') jumps.push(g.s0, g.s1);
+    hoop = (track.object.userData as { course?: string }).course === 'sky'; // (track 2: the hoop over its sky jump)
     let minY = 0;
     for (const f of track.frames) minY = Math.min(minY, f.p.y);
     groundY = Math.min(0, minY - 0.3); // as world-outdoor's meadow
@@ -252,7 +257,12 @@ export function createChaseCamera(): ChaseCamera {
    *  car's pace (from AD_FROM to AD_TO of the flight), round toward the rear quarter in portrait. */
   function adCamAt(k: number, sg: number, out: THREE.Vector3) {
     const az = (C.adAz + (C.adAzPortrait - C.adAz) * portrait) * DEG;
-    const u0 = AD_FROM[0] + (AD_FROM[1] - AD_FROM[0]) * portrait, u1 = AD_TO[0] + (AD_TO[1] - AD_TO[0]) * portrait;
+    let u0 = AD_FROM[0] + (AD_FROM[1] - AD_FROM[0]) * portrait, u1 = AD_TO[0] + (AD_TO[1] - AD_TO[0]) * portrait;
+    if (adApex >= 0) {
+      // through a hoop at the apex: at least adHoopLag behind the car as it gets there (the portrait's rear quarter is)
+      const behind = (adApex - u0 - (u1 - u0) * adApex) * adDx + adD * Math.cos(az);
+      if (behind < C.adHoopLag) (u0 -= (C.adHoopLag - behind) / adDx), (u1 -= (C.adHoopLag - behind) / adDx);
+    }
     out.copy(adP0).addScaledVector(adG, adDx * (u0 + (u1 - u0) * k) - adD * Math.cos(az));
     out.x += adS.x * sg * adD * Math.sin(az);
     out.z += adS.z * sg * adD * Math.sin(az);
@@ -295,6 +305,7 @@ export function createChaseCamera(): ChaseCamera {
     adV0.copy(V);
     adFlight = left;
     adDx = vh * left;
+    adApex = hoop && V.y > 0 && V.y / G_AIR < left ? V.y / G_AIR / left : -1; // the apex's share of the flight
     const yLand = P.y + V.y * left - 0.5 * G_AIR * left * left;
     adY = Math.min(P.y, Math.max(yLand, P.y - 6)) + C.adHeight;
     // ... but over every real surface the flight passes, and well out beside it (a landing deck higher than the lip, or

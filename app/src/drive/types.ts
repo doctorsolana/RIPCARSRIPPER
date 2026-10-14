@@ -42,14 +42,19 @@ export interface TrackFrame {
   shoulder: number; // grass verge beyond each side of the surface (edge 'grass'), 0 otherwise; hard limit = width/2 + shoulder
 }
 
-export type TrackTag = 'gate' | 'drop' | 'booster' | 'kicker' | 'gap' | 'loop' | 'helix' | 'finish' | 'bigjump'; // bigjump: launch ramp lip -> end of its landing ramp
+// bigjump: launch ramp lip -> end of its landing ramp; inrun: a big jump's in-run (the descent that builds its speed,
+// to the lip): a respawn never lands inside one; climb: track 2's climb up the wall, over the top and the half roll out
+// (the speed brought to it carries the car; too slow, it falls off and is put back before its pads)
+export type TrackTag = 'gate' | 'drop' | 'booster' | 'kicker' | 'gap' | 'loop' | 'helix' | 'finish' | 'bigjump' | 'inrun' | 'climb';
 
 export interface Track {
   readonly length: number; // closed lap length (s wraps)
   readonly frames: TrackFrame[]; // every 0.5 u
   readonly object: THREE.Object3D; // the track's meshes (channel, tabs, boosters)
   readonly collider: { positions: Float32Array; indices: Uint32Array }; // channel surface + rails (for a physics engine)
-  readonly tags: { tag: TrackTag; s0: number; s1: number }[]; // tagged ranges along s
+  // tagged ranges along s; a booster with d0..d1 (lateral, + right) is a narrow pad: only a car over it boosts (none:
+  // the pad spans the track)
+  readonly tags: { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number }[];
   readonly start: number; // s of the start line (in the gate)
   frameAt(s: number, out?: TrackFrame): TrackFrame; // interpolated frame at s (wraps)
   nearest(p: THREE.Vector3, hintS: number, window?: number): { s: number; frame: TrackFrame; offset: THREE.Vector3 }; // search near hintS

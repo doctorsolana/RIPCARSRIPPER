@@ -5,8 +5,8 @@ import type { CarSpec, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, V
 // (d), heading relative to the track (psi), slip (beta = heading minus travel), speed (v), yaw rate (omega) - so the
 // track's own frames carry slopes, banks and the loop: gravity is projected onto the surface plane, and the car stays
 // on while the surface can hold it (v^2 kappaN against g plus a little toy-track "magnet"). Only a gap off a kicker
-// (or a loop's ceiling taken too slow) launches it into a ballistic flight in world space - crests anywhere else hold
-// it, so it never jumps by accident. In the air the nose follows the flight path and the car levels itself to what it
+// (or a loop's ceiling taken too slow, or track 2's climb - up the wall and over - taken too slow) launches it into a
+// ballistic flight in world space - crests anywhere else hold it, so it never jumps by accident. In the air the nose follows the flight path and the car levels itself to what it
 // comes down on (gently, never a flip); it lands back into track space with a graded landing. Every jump, the big one
 // (tag 'bigjump') too, flies off whatever the car brings to the lip - its speed, line and heading. Nothing lines it up
 // or sets its speed: too slow, too fast or crooked and it misses (and is put back before the run-up).
@@ -154,6 +154,8 @@ const K = {
   railHeight: 0.8, // a car in the air this low still hits the rails ...
   barrierHeight: 1.2, // ... or a tyre wall / hay bales
   bankAssist: 1.5, // banks hold the car harder than gravity alone would
+  steepBank: 40, // deg: a bank steeper than this (track 2's wall ride; fully 10 deg on) holds the car up only as hard
+  bankGrip: 1.1, // as the tyres grip on the load - bankGrip x (g up + the speed pressing it in): slower, it slides down
   airYaw: 2, // rad/s, max yaw rate in the air
   airVane: 3, // per s: the nose swings into the flight path ...
   airLean: 25, // ... offset by up to this (deg) with full steer: steer to aim, let go for a PERFECT
@@ -167,12 +169,16 @@ const K = {
   okKeep: 0.95,
   badKeep: 0.75,
   respawnBack: 24, // u behind the last safe spot ...
-  respawnClear: 60, // ... with this much track before a booster, kicker or gap (time to line up: no miss loop) ...
+  respawnClear: 60, // ... with this much track before a booster (not a narrow one), kicker or gap (time to line up: no
+  // miss loop) - and never inside a big jump's in-run (tag 'inrun'): back to its top ...
   respawnSpeed: 0.75, // ... at least this x vtop, plus a second of boost
   wrongTime: 1, // s driving nose first against the lap direction: WRONG WAY ...
   wrongRespawn: 4, // ... and after this long, put back on the track facing the right way
   stuckSpeed: 2, // u/s: slower than this while trying to drive ...
   stuckTime: 4, // ... for this long (s) is stuck: put back on the track
+  wallCrawl: 8, // u/s: on a bank past steepBank, slower than this for 1.5 s is stuck too (slid off the wall ride)
+  climbPeel: 6, // u/s: up track 2's climb (tag 'climb') slower than this, the car peels off the wall (or, low on its
+  climbBack: 0.6, // pull-up, rolls back) and is put back before the run-up this many s later (0.9 s off the wall)
 };
 
 /** Live-tunable numbers (?tune=1), shared by every car. Each car's profile multiplies on top and is not in here. */
@@ -346,6 +352,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   // walls: the yaw a hit kicked in (it dies away by itself, apart from the steering's omega), the stun and spin-out
   // timers, how far the slip may go (a hit can leave it past slipMax), time since the corner last touched a wall
   let kick = 0, stunT = 0, spinT = 0, slipLim = K.slipMax * DEG, wallAgo = 1, wallSide = 0, airYawRate = 0, hayT = 0;
+  let sag = 0; // u/s: sliding sideways down a steep bank (+ right), the tyres short of grip there
   let oT = 0, oR = 0; // impact()'s result: the velocity along / across the track after the hit
   // the surface under the wheels, blended: grip, drift grip, turn, top speed, drag, bumps, looseness (dirt)
   let sGrip = 1, sDrift = 1, sYaw = 1, sCap = 1, sDrag = 0, sBump = 0, sLoose = 0;
@@ -382,6 +389,22 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const gap = track.tags.find((g) => g.tag === 'gap' && (ahead(lip, g.s0) < span || ahead(g.s0, lip) < 4));
     if (gap) jumps.push({ lip, land: gap.s1, end: b.s1 });
   }
+
+  // ---- Booster pads: any number of 'booster' tags. One with a lateral extent (d0..d1, track 2's narrow pad before the
+  // wall ride) boosts only a car whose centre is over it; the rest span the track. A big jump's in-run (tag 'inrun':
+  // the descent that builds its speed) is never cut short by a respawn.
+  const pads = track.tags.filter((g) => g.tag === 'booster'), narrow = pads.some((g) => g.d0 !== undefined);
+  const inruns = track.tags.filter((g) => g.tag === 'inrun'), climbs = track.tags.filter((g) => g.tag === 'climb');
+  /** On a booster pad at (s, d)? (only asked where tagAt says 'booster') */
+  function overPad(ss: number, dd: number) {
+    for (let i = 0; i < pads.length; i++) {
+      const g = pads[i];
+      if (ahead(g.s0, ss) < g.s1 - g.s0 && (g.d0 === undefined || (dd >= g.d0 && dd <= (g.d1 ?? g.d0)))) return true;
+    }
+    return false;
+  }
+  /** A full-width pad at s? (a narrow one needs no run-up kept clear before it: it launches nothing) */
+  const widePadAt = (ss: number) => pads.some((g) => g.d0 === undefined && ahead(g.s0, ss) < g.s1 - g.s0);
 
   /** Blend the surface numbers toward what's under the wheels (h = 0 snaps): the frame's surface (the dirt's as this
    *  car copes with it), and grass for each wheel out on a verge. */
@@ -440,7 +463,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     state.quaternion.setFromRotationMatrix(m4.makeBasis(fwd, up, right));
     state.position.copy(pR).lerp(pF, -geo.xr / (geo.xf - geo.xr)).addScaledVector(up, geo.ride);
     const ph = psi - beta;
-    state.velocity.copy(f.t).multiplyScalar(v * Math.cos(ph)).addScaledVector(f.right, v * Math.sin(ph));
+    state.velocity.copy(f.t).multiplyScalar(v * Math.cos(ph)).addScaledVector(f.right, v * Math.sin(ph) + sag);
   }
 
   function place(s0: number) {
@@ -455,7 +478,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     slide = looseT = straightT = settleT = turbo = 0;
     turboK = 1;
     aY = 0;
-    kick = stunT = spinT = airYawRate = hayT = 0;
+    kick = stunT = spinT = airYawRate = hayT = sag = 0;
     slipLim = K.slipMax * DEG;
     wallAgo = 1;
     onPad = track.tagAt(s) === 'booster';
@@ -469,21 +492,34 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     // The last safe spot on the ground, stepped back past anything tricky and far enough before a jump (and the
     // booster that launches it) to line up for it (put back just before the lip, a car still wobbling from the miss
     // launches crooked and misses again). A car that had landed a big jump (its last safe spot on the landing ramp or
-    // not far past it) doesn't jump it again: stepping back stops at the foot of the landing ramp.
+    // not far past it) doesn't jump it again: stepping back stops at the foot of the landing ramp. Likewise one that
+    // had made it over track 2's climb (tag 'climb') isn't sent back up it: stepping back stops at its end; one that
+    // didn't make it goes back a clear run before the climb and its pads.
     let landed: Jump | null = null;
     for (const J of jumps) if (ahead(J.land, safeS) < ahead(J.land, J.end) + 120) landed = J;
+    let over: { s0: number; s1: number } | null = null;
+    for (const c of climbs) if (ahead(c.s1, safeS) < 120) over = c;
     let rs = wrapS(safeS - K.respawnBack);
     for (let i = 0; i < 120; i++) {
       if (landed && ahead(landed.lip, rs) < ahead(landed.lip, landed.end) + 2) {
         rs = wrapS(landed.end + 2);
         break;
       }
+      if (over && ahead(over.s0, rs) < ahead(over.s0, over.s1) + 2) {
+        rs = wrapS(over.s1 + 2);
+        break;
+      }
+      const run = inruns.find((g) => ahead(g.s0, rs) < g.s1 - g.s0);
+      if (run) {
+        rs = wrapS(run.s0 - 4); // the whole in-run again, from the top
+        continue;
+      }
       const tg = track.tagAt(rs);
-      let ok = frame(rs, fA).up.y > 0.8 && tg !== 'gap' && tg !== 'kicker' && tg !== 'loop' && tg !== 'bigjump' &&
+      let ok = frame(rs, fA).up.y > 0.8 && tg !== 'gap' && tg !== 'kicker' && tg !== 'loop' && tg !== 'climb' && tg !== 'bigjump' &&
         tg !== 'booster';
       for (let x = 4; ok && x <= K.respawnClear; x += 4) {
         const tx = track.tagAt(rs + x);
-        ok = tx !== 'kicker' && tx !== 'gap' && tx !== 'bigjump' && tx !== 'booster';
+        ok = tx !== 'kicker' && tx !== 'gap' && tx !== 'bigjump' && tx !== 'climb' && (tx !== 'booster' || (narrow && !widePadAt(rs + x)));
       }
       if (ok) break;
       rs = wrapS(rs - 2);
@@ -779,6 +815,17 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       airStep(h, inp);
       return;
     }
+    // Up track 2's climb (tag 'climb': up the wall, over the top and a half roll out) too slow: nothing presses the car
+    // onto a wall it can't drive up - it peels off and falls, or low on the pull-up rolls back - and it is put back
+    // before the run-up (respawn: never inside the climb, a clear run to its pads), so the next go has the speed.
+    if (tag0 === 'climb' && vt < K.climbPeel && (f.t.y > 0.17 || f.up.y < 0.5) && respawnIn <= 0) {
+      respawnIn = K.climbBack;
+      if (f.up.y < 0.5) {
+        launch(true); // (put back 0.9 s later)
+        airStep(h, inp);
+        return;
+      }
+    }
 
     // ---- what's under the wheels
     surfaceAt(f, h);
@@ -832,19 +879,37 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const gPerp = -gT * sph + gR * cph;
     const gTurn = v > 0 ? (K.bankAssist * gPerp * v) / (v * v + 25) : 0; // ~ gPerp / v, fading out at a standstill
 
+    // ---- a steep bank (track 2's wall ride) holds the car only as hard as the tyres grip: following the track takes
+    // a push across it of v^2 kappa less the bank's pull, and they manage bankGrip x the load (g up.y plus the speed
+    // pressing the car into the bank's dip). Short of that - too slow for the wall - the rest slides it sideways down
+    // the bank (sag), to its low edge, where the rail catches it; with grip to spare the slide stops. Nothing on a bank
+    // under steepBank (all of the meadow) ever runs this.
+    const sb = -f.right.y; // the bank's sine (+: the right side is the low one)
+    const steep0 = Math.sin(K.steepBank * DEG), steep1 = Math.sin((K.steepBank + 10) * DEG);
+    if (sag !== 0 || sb > steep0 || sb < -steep0) {
+      const w = smooth(steep0, steep1, Math.abs(sb));
+      const need = vt * vt * f.kappa - g * sb; // the push the tyres must give (+ right) to follow the track
+      const held = K.bankGrip * P.grip * sGrip * Math.max(0, g * f.up.y - vt * vt * crest);
+      const over = (Math.abs(need) - held) * w;
+      if (over > 0) sag -= Math.sign(need) * over * h;
+      else sag = sag > 0 ? Math.max(0, sag + over * h - (1 - w) * 20 * h) : Math.min(0, sag - over * h + (1 - w) * 20 * h);
+    }
+
     // ---- speed: the throttle pushes along the car's curve up to its top speed on this surface (the surface sets it;
     // the verge drags). Over it the surface's share bleeds off firmly, and over the car's own top speed - a hill's, a
     // boost's - only the air drags it back, gently.
-    const top = K.vtop * P.top, vtop = top * sCap;
+    // (up track 2's climb the tyres push less the steeper it gets, and not at all up the wall or upside down: it's the
+    // speed brought to it that carries the car up and over)
+    const top = K.vtop * P.top, vtop = top * sCap, drive = tag0 === 'climb' ? clamp(f.up.y, 0, 1) : 1;
     let a = gAlong;
     if (v > -0.5 && v < vtop) {
       const x = Math.max(0, v) / vtop;
-      a += thr * K.accel * P.pull * (1 - x ** P.rev) * (1 - P.spool * (1 - smooth(0.1, 0.5, x)));
+      a += drive * thr * K.accel * P.pull * (1 - x ** P.rev) * (1 - P.spool * (1 - smooth(0.1, 0.5, x)));
     }
     if (brk > 0 && v < 0.5) a -= brk * K.accel * 0.5 * Math.max(0, 1 + v / K.reverse); // reverse
     // a booster's push, or a drift's mini-turbo
     const push = boost > 0 ? K.boostAccel : turbo > 0 ? K.turboAccel * turboK : 0;
-    if (push > 0 && v > -0.5) a += push * Math.max(0, 1 - (v / (K.vboost * sCap)) ** 2);
+    if (push > 0 && v > -0.5) a += drive * push * Math.max(0, 1 - (v / (K.vboost * sCap)) ** 2);
     let fr = c * Math.abs(Math.sin(beta)) * av; // friction-like: never reverses the motion
     fr += (1 - thr) * (K.coast + K.drag * v * v); // part throttle: a lower top speed
     fr += sDrag * av;
@@ -923,12 +988,15 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     psi = wrapA(psi + yawRel * h);
     f = frame(s, fM);
 
+    if (sag !== 0) d += sag * h; // (sliding down a steep bank)
+
     // ---- walls: the half-width the car needs depends on its heading; a corner past the edge's limit is on the wall
     const ext = geo.hl * Math.abs(Math.sin(psi)) + geo.hw * Math.abs(Math.cos(psi));
     const dMax = Math.max(0, limitOf(f) - ext);
     if (d > dMax || d < -dMax) {
       const side = d > 0 ? 1 : -1;
       d = side * dMax;
+      if (sag * side > 0) sag = 0; // the rail stops the slide
       const ph = psi - beta;
       impact(side, f, v * Math.cos(ph), v * Math.sin(ph), yawRel);
       // back to speed and slip (a hit can turn the travel past side-on: then it's going backwards)
@@ -963,7 +1031,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
 
     // ---- boosters
     const tag = track.tagAt(s);
-    const pad = tag === 'booster';
+    const pad = tag === 'booster' && (!narrow || overPad(s, d));
     if (pad && !onPad && v > 0) {
       v += K.padKick;
       boost = Math.min(K.boostCap, Math.max(boost, K.padBoost));
@@ -976,11 +1044,12 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     // been driving the wrong way too long: nose first against the lap direction (backing up the right way doesn't
     // count, and clears it, as does turning round)
     const av3 = Math.abs(v);
-    if (f.up.y > 0.8 && tag !== 'kicker' && tag !== 'loop' && Math.abs(psi) < 0.6 && v > 5 && Math.abs(d) < f.width * 0.5 && ctl > 0.99) {
+    if (f.up.y > 0.8 && tag !== 'kicker' && tag !== 'loop' && tag !== 'climb' && Math.abs(psi) < 0.6 && v > 5 && Math.abs(d) < f.width * 0.5 && ctl > 0.99) {
       safeS = s;
       safeV = v;
     }
-    stuck = av3 < K.stuckSpeed && (f.up.y < 0.5 || thr > 0.5 || brk > 0.5) ? stuck + h : 0;
+    const crawl = sb > steep0 || sb < -steep0 ? K.wallCrawl : K.stuckSpeed; // (too slow to climb back up a wall)
+    stuck = av3 < crawl && (f.up.y < 0.5 || thr > 0.5 || brk > 0.5) ? stuck + h : 0;
     const facing = Math.cos(psi), along = v * Math.cos(psi - beta); // nose against the lap; speed along it
     if (facing < -0.17 && v > 3) wrongT += h;
     else if (facing > 0.17 || along > 3) wrongT = 0;
