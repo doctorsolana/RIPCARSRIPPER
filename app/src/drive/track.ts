@@ -15,10 +15,11 @@ import type { Edge, Surface, Track, TrackFrame, TrackTag } from './types';
 // cars abreast; SKY) but for the classic 9 u channel where the squeeze is the point: the gate deck on a blue lattice
 // tower 42 u up with a start grid, a 40 deg plunge in the narrow channel into its loop, a stadium with chained boosters,
 // a 30 deg banked 180, a double jump, a 70 deg wall ride ridden UP onto from the meadow (one narrow booster pad in the
-// middle of its approach), esses and a chicane on the road, the climb - chained pads into a pull-up past vertical, over
-// the top upside down and a half roll out into a banked right-hander, onto a deck 41 u up (CLIMB, Path.immelmann) - the
-// sky jump's in-run - a long descending curve, a row of pads at its foot - and the jump itself (3+ s of air through a
-// hoop: SKYJ), and a 2.5-turn spiral round the tower back up to the gate.
+// middle of its approach), a rounded crest off it, esses and a chicane on the road, three rhythm humps on the straight
+// east (SKY_BUMPS: hopped at speed, rolled over slowly), the climb - chained pads into a pull-up
+// past vertical, over the top upside down and a half roll out into a banked right-hander, onto a deck 41 u up (CLIMB,
+// Path.immelmann) - the sky jump's in-run - a long descending curve, a row of pads at its foot - and the jump itself
+// (3+ s of air through a hoop: SKYJ), and a 2.5-turn spiral round the tower back up to the gate.
 
 /** The courses (?track=<id>): the meadow lap, and track 2 - the sky tower. */
 export type CourseId = 'meadow' | 'sky';
@@ -232,6 +233,12 @@ class Path {
   /** Gentle humps (crest to crest ~wave u, amp u high) from s0 to here: the dirt's washboard, never a launch crest. */
   bumps(amp: number, wave: number, s0: number) {
     this.humps.push({ s0, s1: this.s, amp, wave });
+    return this;
+  }
+  /** `n` rounded humps (raised cosines, `wave` u crest to crest, `amp` u high) from s0 on, over track still to come:
+   *  track 2's bumps - rolled over slowly, hopped at speed. */
+  humpsAt(s0: number, n: number, wave: number, amp: number) {
+    this.humps.push({ s0, s1: s0 + n * wave, amp, wave });
     return this;
   }
 
@@ -507,6 +514,14 @@ export const SKY = {
   floorY: 0.3,
 };
 
+/** Track 2's bumps (u): rounded humps in the plastic, `at` u into their straight. The rhythm section - `n` humps on the
+ *  wide straight east before the climb's SE corner - and a single crest on the straight off the wall ride. A car at
+ *  race speed (~40+ u/s) hops from crest to crest, ~0.4-0.7 s in the air each; slower, it rolls over them. */
+export const SKY_BUMPS = {
+  wall: { at: 10, n: 1, wave: 32, amp: 1.6 },
+  east: { at: 4, n: 2, wave: 46, amp: 2.0 }, // (founder: fewer, bigger, softer - two long rollers, ~0.5 s of air at speed)
+};
+
 /** The double jump: two kickers back to back (lip, gap, landing as JUMP, bigger), 18 u wide. */
 export const DOUBLE = { lip: 12, lipLen: 8, gap: 26, land: -12, hold: 10, out: 16, between: 14, width: 18, catch: 24, y: 4.5 };
 
@@ -602,6 +617,8 @@ function layoutSky(A: number, B: number) {
   P.wallArc(K.wallR, -180, { bank: K.wallBank, ease: K.wallEase, w: K.wallW, lift: K.wallLift, drop: K.wallDrop });
   P.support('stilts', s0);
   P.widen(K.wide, 20);
+  const BW = SKY_BUMPS.wall;
+  P.humpsAt(P.s + BW.at, BW.n, BW.wave, BW.amp); // (SKY_BUMPS)
   P.seg(50);
   // ---- Technical, on the road: esses between grass verges, a chicane between tyre walls, eastward
   P.seg(6).toRoad('asphalt', 5, 16).seg(FLARE + GROW);
@@ -618,7 +635,9 @@ function layoutSky(A: number, B: number) {
   // onto the deck 41 u up (A). Its rig: a lattice tower behind the wall and one beside the roll (supports 'climb')
   P.seg(CLOSE(6) + 4).toPlastic(J2.width);
   s0 = P.s;
-  P.seg(FLARE).seg(C.east);
+  P.seg(FLARE);
+  const BE = SKY_BUMPS.east;
+  P.humpsAt(P.s + BE.at, BE.n, BE.wave, BE.amp).seg(C.east); // (SKY_BUMPS)
   P.arc(J2.cornerR, -90, { bank: 6, ease: 16 });
   P.seg(C.pre);
   for (let i = 0; i < C.pads; i++) P.booster(24, 8);

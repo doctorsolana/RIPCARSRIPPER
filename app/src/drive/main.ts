@@ -23,11 +23,12 @@ import { buildWorld } from './world-outdoor';
 // restarts any time. WRONG WAY when you drive against the lap (the car puts itself back after a few seconds of it).
 // Game time never slows or stops (no slow-mo, no hit-stop: the sim stays fixed-step, deterministic and input-driven,
 // ready for lockstep multiplayer); a hard hit's drama is the camera's kick and shake, the sound, sparks and haptics.
-// URL knobs: ?track=meadow|sky  ?model=arcade  ?auto=1 autopilot  ?tune=1 driving sliders (?tune=camera: camera)  ?fps=1
+// URL knobs: ?track=meadow|sky  ?model=arcade
+//            ?auto=1 autopilot  ?tune=1 driving sliders (?tune=camera: camera)  ?fps=1
 //            ?laps=<1-9>  ?fast=<2-16> runs the sim N x real time (tests)
-// For scripts: window.__ready after 3 frames; window.__drive = { state, lap (completed), laps, model, car, course, time,
-// phase, lapTimes, stats, info (renderer.info), timeScale(x), frozen } (tests: set frozen + timeScale(0) to hold a frame
-// for a screenshot).
+// For scripts: window.__ready after 3 frames; window.__drive = { state, lap (completed), laps, model, car, course,
+// time, phase, lapTimes, stats, info (renderer.info), timeScale(x), frozen } (tests: set frozen + timeScale(0) to hold a
+// frame for a screenshot).
 
 const q = new URLSearchParams(location.search);
 const CAR = q.get('car') ?? 'skyline-hck01';
@@ -48,7 +49,7 @@ const KMH = 4.3; // u/s -> km/h at toy scale
 // is one line keyed like the meadow's ('*': the stock car's run); remeasure a course's row whenever its layout changes.
 const PARS: Record<CourseId, Record<string, number>> = {
   meadow: { skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26, civic: 42.64, mustang: 43.18, '*': 42.1 },
-  sky: { skyline: 47.21, impala: 46.23, roxy: 47.17, gt3: 47.17, '964': 46.68, firebird: 46.56, beach: 45.39, civic: 46.02, mustang: 47.04, '*': 46.58 },
+  sky: { skyline: 47.17, impala: 46.15, roxy: 47.12, gt3: 47.13, '964': 46.64, firebird: 46.52, beach: 45.34, civic: 46.00, mustang: 46.98, '*': 46.58 },
 };
 const parIn = (row: Record<string, number>): number | undefined =>
   CAR.toLowerCase().split('-').map((w) => row[w]).find((x) => x !== undefined) ?? row['*'];
@@ -63,7 +64,8 @@ interface Best { lap?: number; total?: number; splits?: number[] }
  *  keeps the bests already set: ripcars.drive.<car>.<length>, the sky's ripcars.drive.<car>.sky.<length>) and the lap's
  *  length, so a new layout starts afresh (a best from an older, shorter course would stand unbeatable and skew every
  *  split). */
-const bestKey = (lapLength: number) => `ripcars.drive.${CAR}.${COURSE === 'meadow' ? '' : `${COURSE}.`}${Math.round(lapLength)}`;
+const bestKey = (lapLength: number) =>
+  `ripcars.drive.${CAR}.${COURSE === 'meadow' ? '' : `${COURSE}.`}${Math.round(lapLength)}`;
 /** This page on a course: the same car and knobs (the meadow is the bare URL, as before track 2). */
 function courseHref(id: CourseId) {
   const p = new URLSearchParams(location.search);
@@ -190,7 +192,8 @@ async function main() {
   const L = track.length;
   const rel = (s: number) => (((s - track.start) % L) + L) % L;
   const drive = {
-    state: st, lap: 0, laps: LAPS, model: MODEL, car: CAR, course: COURSE, time: 0, phase: phase as string, lapTimes,
+    state: st, lap: 0, laps: LAPS, model: MODEL, car: CAR, course: COURSE, time: 0, phase: phase as string,
+    lapTimes,
     timeScale(_x: number) {}, // tests: slow or stop the sim
     frozen: false, // tests: hold the frame exactly as it is (sim, camera and effects) for a screenshot
     stats: { respawn: 0, air: 0, perfect: 0, hardHit: 0, spinOut: 0, wrongWay: 0 }, // tests: event counts (per rendered frame)

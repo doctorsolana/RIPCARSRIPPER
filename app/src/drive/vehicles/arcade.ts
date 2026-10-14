@@ -4,12 +4,16 @@ import type { CarSpec, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, V
 // "arcade": the hand-written driving model. On the track it lives in track space - distance along (s), offset across
 // (d), heading relative to the track (psi), slip (beta = heading minus travel), speed (v), yaw rate (omega) - so the
 // track's own frames carry slopes, banks and the loop: gravity is projected onto the surface plane, and the car stays
-// on while the surface can hold it (v^2 kappaN against g plus a little toy-track "magnet"). Only a gap off a kicker
-// (or a loop's ceiling taken too slow, or track 2's climb - up the wall and over - taken too slow) launches it into a
-// ballistic flight in world space - crests anywhere else hold it, so it never jumps by accident. In the air the nose follows the flight path and the car levels itself to what it
-// comes down on (gently, never a flip); it lands back into track space with a graded landing. Every jump, the big one
-// (tag 'bigjump') too, flies off whatever the car brings to the lip - its speed, line and heading. Nothing lines it up
-// or sets its speed: too slow, too fast or crooked and it misses (and is put back before the run-up).
+// on while the surface can hold it (v^2 kappaN against g plus a little toy-track "magnet"). A gap off a kicker (or a
+// loop's ceiling taken too slow, or track 2's climb - up the wall and over - taken too slow) launches it into a
+// ballistic flight in world space, and so does any other crest the surface can't hold it on - a bump, a hump, the top
+// of a hill - with only a little toy-track magnet (hopStick) to stay on: it hops, flies the same ballistics and comes
+// down with the same landings (a short hop lands quietly: only real air is graded). The set pieces - a big jump's
+// in-run, lip, gap and landing, the kickers, the loops, the climb, the start drops - fly, fall or hold as they're
+// built to (a crest there never throws the car). In the air the nose follows the flight path and the car levels itself to
+// what it comes down on (gently, never a flip); it lands back into track space with a graded landing. Every jump, the
+// big one (tag 'bigjump') too, flies off whatever the car brings to the lip - its speed, line and heading. Nothing lines
+// it up or sets its speed: too slow, too fast or crooked and it misses (and is put back before the run-up).
 // Grip turns the direction of travel toward the heading but keeps |v|. A drift is a loose car, not a hop and not a
 // button held: a tap of Space at speed (holding it is the same) lets the rear go loose over a fifth of a second, and
 // the slide is then the driving's own - the steering yaws the car, the loose rear lets the travel lag behind the nose
@@ -179,6 +183,17 @@ const K = {
   wallCrawl: 8, // u/s: on a bank past steepBank, slower than this for 1.5 s is stuck too (slid off the wall ride)
   climbPeel: 6, // u/s: up track 2's climb (tag 'climb') slower than this, the car peels off the wall (or, low on its
   climbBack: 0.6, // pull-up, rolls back) and is put back before the run-up this many s later (0.9 s off the wall)
+  // Off a crest (not a jump's lip or gap: those are as above) the car flies once the surface can't hold
+  // it - g up.y + hopStick g less the speed's v^2 crest - and the track isn't banked past hopBank (deg: a banked turn
+  // holds it). A hop needs hopRearm s on the ground since the last landing (no buzz over rough ground); it counts as
+  // airborne (sound, dust, camera, the autopilot) once hopShow s or hopClear u clear of the surface - a skim under that
+  // lands silently - and its landing is graded (PERFECT, ok, bad) only past hopGrade s of air.
+  hopStick: 0.15,
+  hopBank: 15,
+  hopRearm: 0.1,
+  hopShow: 0.1,
+  hopClear: 0.25,
+  hopGrade: 0.9,
 };
 
 /** Live-tunable numbers (?tune=1), shared by every car. Each car's profile multiplies on top and is not in here. */
@@ -356,6 +371,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   let oT = 0, oR = 0; // impact()'s result: the velocity along / across the track after the hit
   // the surface under the wheels, blended: grip, drift grip, turn, top speed, drag, bumps, looseness (dirt)
   let sGrip = 1, sDrift = 1, sYaw = 1, sCap = 1, sDrag = 0, sBump = 0, sLoose = 0;
+  // this flight is a hop off a crest (not a jump), shown yet as airborne; s on the ground since landing
+  let hop = false, shown = true, groundT = 0;
 
   /** The track frame at s, written into `o` (whatever frameAt does with `out`). */
   function frame(ss: number, o: TrackFrame): TrackFrame {
@@ -402,6 +419,15 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       if (ahead(g.s0, ss) < g.s1 - g.s0 && (g.d0 === undefined || (dd >= g.d0 && dd <= (g.d1 ?? g.d0)))) return true;
     }
     return false;
+  }
+  // Where a crest never throws the car - a big jump (lip to the end of its landing ramp) and its in-run, a kicker and
+  // its gap, a loop, the climb, a start drop (the Sky Tower's plunge would throw a car at speed 1.3-1.7 s down the tower
+  // into its loop's mouth): those fly (or fall, or hold) as they're built to (per frame of the track)
+  const dsF = LEN / track.frames.length, noHop = new Uint8Array(track.frames.length);
+  for (const g of track.tags) {
+    if (!['bigjump', 'inrun', 'kicker', 'gap', 'loop', 'climb', 'drop'].includes(g.tag)) continue;
+    const n = noHop.length;
+    for (let x = g.s0 - 1; x <= g.s0 + ahead(g.s0, g.s1) + 1; x += dsF / 2) noHop[Math.round(wrapS(x) / dsF) % n] = 1;
   }
   /** A full-width pad at s? (a narrow one needs no run-up kept clear before it: it launches nothing) */
   const widePadAt = (ss: number) => pads.some((g) => g.d0 === undefined && ahead(g.s0, ss) < g.s1 - g.s0);
@@ -472,6 +498,9 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     grounded = true;
     falling = false;
     respawnIn = airTime = stuck = wrongT = 0;
+    hop = false;
+    shown = true;
+    groundT = 0;
     drifting = slid = spun = false;
     tier = 0;
     charge = 0;
@@ -645,17 +674,20 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   }
 
   /** Leave the surface with the current pose and velocity - exactly what the car brought, nothing added. A drift held
-   *  carries on when it lands; one being let go of is over. */
-  function launch(stall: boolean) {
+   *  carries on when it lands; one being let go of is over. A hop off a crest only shows as airborne
+   *  once it's clear of the surface (airStep). */
+  function launch(stall: boolean, crest = false) {
     grounded = false;
     airTime = 0;
     falling = stall;
+    hop = crest;
+    shown = !crest;
     if (!drifting) slide = 0;
     if (stall) respawnIn = 0.9; // fell off the loop's ceiling
     airP.copy(state.position);
     airV.copy(state.velocity);
     airQ.copy(state.quaternion);
-    state.events.airborne = true;
+    if (!crest) state.events.airborne = true;
   }
 
   /** Where the flight comes down: the arc stepped ahead (1/30 s steps, up to `horizon` s) against the track under it.
@@ -704,7 +736,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       v = -sp; // landed going backwards
       b = wrapA(b + Math.PI);
     }
-    if (airTime > 0.3) {
+    if (airTime > (hop ? K.hopGrade : 0.3)) {
       // graded on the worse of tilt (car up vs track up) and yaw (nose vs flight path)
       const err = Math.max(Math.acos(clamp(up.dot(f.up), -1, 1)), Math.abs(b)) / DEG;
       if (err <= K.perfectDeg) {
@@ -718,9 +750,12 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       }
     }
     beta = clamp(b, -K.slipMax * DEG, K.slipMax * DEG);
-    ev.landed = Math.max(ev.landed ?? 0, -vn);
+    if (shown) ev.landed = Math.max(ev.landed ?? 0, -vn); // (a hop that never cleared the surface lands silently)
     grounded = true;
     airTime = 0;
+    hop = false;
+    shown = true;
+    groundT = 0;
     vPrev = v;
     const ext = geo.hl * Math.abs(Math.sin(psi)) + geo.hw * Math.abs(Math.cos(psi));
     const dMax = Math.max(0, limitOf(f) - ext);
@@ -737,14 +772,21 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     d = off.dot(f.right);
     const hb = off.dot(f.up) - geo.ride; // tyres above the surface
     const tag = track.tagAt(s);
+    if (!shown && (airTime >= K.hopShow || hb > K.hopClear)) {
+      shown = true; // a hop clear of the surface: now it's in the air
+      state.events.airborne = true;
+    }
     const fwd = v2.copy(X).applyQuaternion(airQ);
     const up = v3.copy(Y).applyQuaternion(airQ);
     psi = Math.atan2(fwd.dot(f.right), fwd.dot(f.t));
     if (!falling) {
-      // the nose swings into the flight path, offset by the steer (aim the landing), plus what a hit kicked in
+      // the nose swings into the flight path, offset by the steer (aim the landing), plus what a hit kicked in - but a
+      // hop's short flight isn't aimed: the wheel held through it doesn't twist the car (it lands
+      // straight and steers on), and only a hop that turns into real air (hopGrade) takes the steer
       const right = v4.crossVectors(fwd, up);
       const toPath = Math.atan2(airV.dot(right), Math.max(Math.abs(airV.dot(fwd)), 1e-3));
-      airYawRate = clamp((toPath + inp.steer * K.airLean * DEG) * K.airVane, -K.airYaw, K.airYaw) + kick;
+      const aim = hop ? smooth(K.hopGrade - 0.4, K.hopGrade, airTime) : 1;
+      airYawRate = clamp((toPath + inp.steer * aim * K.airLean * DEG) * K.airVane, -K.airYaw, K.airYaw) + kick;
       q1.setFromAxisAngle(up, -airYawRate * h); // +angle about up turns the nose left
       airQ.premultiply(q1);
       // Pitch and roll: the nose follows the flight path (the world's up square to the flight: no roll), so a long arc
@@ -812,6 +854,16 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const hold = g * f.up.y - vt * vt * crest + K.stick * g;
     if (tag0 === 'gap' || (hold < 0 && (tag0 === 'kicker' || tag0 === 'loop' || f.up.y < 0.5))) {
       launch(hold < 0 && f.up.y < 0.2);
+      airStep(h, inp);
+      return;
+    }
+    // Any other crest the surface can't hold the car on throws it - with only hopStick of magnet, on
+    // ground that isn't banked into a turn (that holds it), and never on a set piece (noHop: a big jump, a kicker, a
+    // loop, the climb, a start drop), which fly, fall or hold exactly as above. Not again within hopRearm of landing.
+    groundT += h;
+    if (groundT >= K.hopRearm && vt > 0 && Math.abs(f.right.y) < Math.sin(K.hopBank * DEG) &&
+      g * f.up.y - vt * vt * crest + K.hopStick * g < 0 && !noHop[Math.round(s / dsF) % noHop.length]) {
+      launch(false, true);
       airStep(h, inp);
       return;
     }
@@ -1134,7 +1186,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       state.drifting = drifting;
       state.driftTier = tier;
       state.boosting = boost > 0 || turbo > 0;
-      state.grounded = grounded;
+      state.grounded = grounded || !shown; // (a hop skimming the surface still counts as on it)
       state.steerVisual = steerVis;
       state.wheelSpinRate = spin;
       state.wrongWay = wrongT > K.wrongTime;
