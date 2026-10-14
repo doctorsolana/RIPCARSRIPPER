@@ -1,0 +1,109 @@
+{
+  "car": "pontiac-firebird-htf40",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      1.0123,
+      1.0054,
+      1.0019
+    ],
+    "offset_xy": [
+      0.0295,
+      -0.0042
+    ],
+    "side+top_iou": 1.9233
+  },
+  "glass_source": {
+    "side": "traced",
+    "left": "traced",
+    "top": "traced",
+    "front": "traced",
+    "rear": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.0492,
+    "height": 1.1367,
+    "width": 1.6646
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.161,
+        0.3137,
+        0.6615
+      ],
+      "r": 0.3254,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.161,
+        0.3137,
+        -0.6615
+      ],
+      "r": 0.3254,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.1464,
+        0.3566,
+        0.6564
+      ],
+      "r": 0.3561,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.1464,
+        0.3566,
+        -0.6564
+      ],
+      "r": 0.3561,
+      "pieces": 1
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9635,
+    "top": 0.9724,
+    "left": 0.9563,
+    "front": 0.8975,
+    "rear": 0.945
+  },
+  "proportions_vs_sheet": {
+    "length": 1.007,
+    "width": 1.003,
+    "height": 1.004
+  },
+  "glb": {
+    "bytes": 1288540,
+    "triangles": 16965
+  }
+}

@@ -1,21 +1,34 @@
 {
   "schema_version": 2,
-  "version": 2,
-  "status": "needs_correction",
+  "version": 3,
+  "status": "accepted",
   "view_count": 5,
+  "reviewed_on": "2026-10-14",
+  "acceptance_scope": "Independent visual acceptance of both strict side profiles, complete five-view layout, white exterior and dimensional materials. Front/rear and texture limitations remain below.",
   "tool": "image_gen.imagegen (built-in)",
-  "generation_strategy": "direct_from_real_photos",
+  "generation_strategy": "edit_existing_sheet",
+  "provenance_note": "User-requested side-camera correction of a previously generated sheet, not source-only generation. Ordered generated inputs and the exact prompts required for the retained edit chain are recorded below. Original base sheets are recoverable from Git; unused attempts and intermediate images are not retained in the current repository. Real source photos were reviewed as evidence but were not direct inputs to the selected edit calls.",
   "prompt_file": "generation.prompt.txt",
-  "prompt_sha256": "37c89692e02eb33a9f2fdd8c8bebb1bdc3fd78356dff4338346dd7bebf05eaf6",
-  "saved_output": "generated/draft-sheet.png",
+  "prompt_sha256": "542df69fcc0ef9ca8433c6aa79eb5719e30b068c2e349e03df302874d5977ea3",
+  "saved_output": "generated/reference-sheet.png",
   "output_metadata": {
     "width": 1024,
     "height": 1536,
     "format": "PNG",
-    "bytes": 2585133,
-    "sha256": "51b53e4723278918616a774f06c7a030304edb87669ad42e92343c4d12e12ae9"
+    "bytes": 2247949,
+    "sha256": "160493daa7f5b7788fe7dd2b78601e4dd2845267df7c2624b066d1d4f15758ed"
   },
-  "real_inputs": [
+  "real_inputs": [],
+  "generated_inputs": [
+    {
+      "sha256": "b2d173def41ca55528b219b1c39f41f55fb682ee4de95c307d0beea92c47b76f",
+      "edit_chain_output": 1,
+      "role": "Previous correction output; retired intermediate, identified by hash",
+      "input_order": 1,
+      "kind": "generated_image"
+    }
+  ],
+  "inherited_reference_inputs": [
     {
       "file": "reference/catalog-01.jpg",
       "role": "Vehicle-right front-quarter; right fuel flap, wheels and cabin",
@@ -37,123 +50,137 @@
       "sha256": "8ac0dc72b29bf474190d4ebd1aa4e694f7d1d2ee92a3c1f49edae5d0dd3693f6"
     }
   ],
+  "edit_chain": [
+    {
+      "attempt": 1,
+      "generation_strategy": "edit_existing_sheet",
+      "prompt": "Use case: precise-object-edit.\nInput 1 is the existing five-view sheet to correct. Produce a full edited sheet of the SAME toy. Preserve the established layout and identity.\n\nReplace the upper two views with physically correct orthographic lateral elevations: top row VEHICLE-RIGHT nose RIGHT; second row VEHICLE-LEFT nose LEFT. Camera precisely perpendicular to the doors, at mid-door height, horizontal, ZERO pitch/yaw/roll. Do NOT copy the current elevated angle.\nIn each side row: no broad roof, hood/cowl, rear-deck or wing TOP surface; only curved edge contours. No downward view into seat cushions. No front grille/bumper FACE or rear lamp-panel FACE: those planes collapse edge-on. Rotate the camera; do NOT erase graphics or squash body height. Wing supports and near/far wheels align in projection. Circular near wheel faces, level axle baseline. Preserve actual roof height, hood slope, wheelbase, ride height, wheel size, fender overlap and body shape.\nAlso correct the bottom FRONT and REAR cameras to horizontal orthographic elevations at mid-body height, rather than looking down: roof and horizontal hood/deck surfaces seen as narrow contours, no large top planes. Keep genuine sloping surfaces and material depth.\nKeep the true overhead panel facing right, its artwork and proportions, except the specifically requested corrections below.\n\nCAR-SPECIFIC INVARIANTS\nTurquoise metallic 1993 Mustang Cobra R HGK61, pale blue cabin, black ten-spoke wheels with chrome rim lips, black side-window trim, Cobra fender badges, normal readable MUSTANG quarter-window marks. Square fuel flap ONLY on vehicle-RIGHT, top row. Opposite side has none. Hood must be fully shut, flush rear edge and no opening gap in ALL views; keep raised central hood molding only where real. Preserve the rear wing silhouette but hide its top surface in both side rows. Dual rear exhaust and KOIBRA plate unchanged.\n\nPhotographic physical die-cast miniature: retain rounded metallic highlights, recessed wheel spokes, rubber tire volume, glazing thickness and cabin depth. Orthographic camera must NOT produce flat vector/sprite materials.\nExactly five complete silhouettes in four rows, equal scale for the two sides and overhead, equal width/scale front/rear, generous white gutters. Do not crop tires or wings. Opaque pure WHITE #FFFFFF outside the silhouettes, no floor, cast/contact shadows, halos or floor reflections. No text labels, packaging, borders or sixth panel.\n",
+      "prompt_sha256": "c23ec268ccd3199bdc9e2192373331be34554ff9bc31a4bbfde697886072d751",
+      "ordered_inputs": [
+        {
+          "git_commit": "0262e055c1c369cd2def0207715f1bd571aad1e7",
+          "file": "reference-collector/cars/mustang-cobra-r-hgk61/generated/draft-sheet.png",
+          "sha256": "51b53e4723278918616a774f06c7a030304edb87669ad42e92343c4d12e12ae9",
+          "input_order": 1,
+          "kind": "generated_image"
+        }
+      ],
+      "output_sha256": "b2d173def41ca55528b219b1c39f41f55fb682ee4de95c307d0beea92c47b76f"
+    },
+    {
+      "attempt": 2,
+      "generation_strategy": "edit_existing_sheet",
+      "prompt": "Edit the supplied five-view sheet. Replace ONLY the top two side views. Keep the lower three views, layout and colors unchanged.\n\nThe two side views must become TRUE ENGINEERING SIDE ELEVATIONS rendered in photographic materials. Top row nose RIGHT, second row nose LEFT. Move the cameras DOWN to axle-center height and aim EXACTLY HORIZONTALLY across the car, perpendicular to the doors, with orthographic projection. Zero downward tilt and zero front-corner reveal. A headlamp or front-bumper FACE must collapse to a thin edge at the nose. The front and rear planes have ZERO visible width in a lateral elevation. Do not just paint over their markings.\nThe hood/cowl, roof, rear deck and wing TOPS must collapse to thin contours. NO transverse roof/hood bands, NO top-facing hood artwork, NO windshield width, NO looking down into the cabin. Near/far wing supports and wheels align in projection. The body remains its real full height and width: change ONLY the virtual camera, never squash the body or lower the roof.\n\nKeep the photographic metal gradients, glass, rubber, tire thickness and recessed spokes. Preserve the toy's actual wheelbase, fenders, wheel diameters, stance, sculpted side details and all side graphics. Do not substitute a flat illustration. Do not mirror one side to make the other.\nTurquoise metallic 1993 Mustang Cobra R HGK61, pale blue cabin, black ten-spoke wheels with chrome rim lips, black side-window trim, Cobra fender badges, normal readable MUSTANG quarter-window marks. Square fuel flap ONLY on vehicle-RIGHT, top row. Opposite side has none. Hood must be fully shut, flush rear edge and no opening gap in ALL views; keep raised central hood molding only where real. Preserve the rear wing silhouette but hide its top surface in both side rows. Dual rear exhaust and KOIBRA plate unchanged.\nKeep exactly five full views in four rows. All exterior space pure white with no ground/contact/cast shadows or halos. No labels. Output the corrected full sheet.\n",
+      "prompt_sha256": "542df69fcc0ef9ca8433c6aa79eb5719e30b068c2e349e03df302874d5977ea3",
+      "ordered_inputs": [
+        {
+          "sha256": "b2d173def41ca55528b219b1c39f41f55fb682ee4de95c307d0beea92c47b76f",
+          "edit_chain_output": 1,
+          "role": "Previous correction output; retired intermediate, identified by hash",
+          "input_order": 1,
+          "kind": "generated_image"
+        }
+      ],
+      "output_sha256": "160493daa7f5b7788fe7dd2b78601e4dd2845267df7c2624b066d1d4f15758ed"
+    }
+  ],
   "review": {
-    "level_side_camera": {
-      "result": "fail",
-      "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface. Left side still reveals hood top, cowl grid and spoiler surface."
-    },
-    "top_planes_hidden": {
-      "result": "fail",
-      "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface. Left side still reveals hood top, cowl grid and spoiler surface."
-    },
-    "front_rear_faces_hidden": {
-      "result": "uncertain",
-      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
-    },
-    "interior_at_side_height": {
-      "result": "uncertain",
-      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
-    },
-    "wheel_projection": {
-      "result": "pass",
-      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
-    },
-    "shape_and_stance_preserved": {
-      "result": "uncertain",
-      "observation": "Broad turquoise hood top and spoiler upper face appear on the right. Left hood/cowl top and spoiler surface exposed."
-    },
     "sides": {
       "right": {
         "evidence_status": "real_reference",
         "level_side_camera": {
-          "result": "fail",
-          "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface."
+          "result": "pass",
+          "observation": "Nose-right level elevation; no oblique frontal reveal."
         },
         "top_planes_hidden": {
-          "result": "fail",
-          "observation": "Right side still reveals broad cowl/hood top and spoiler upper surface."
+          "result": "pass",
+          "observation": "Hood/cowl and roof are thin contours; spoiler presents its side silhouette, not a broad top."
         },
         "front_rear_faces_hidden": {
-          "result": "uncertain",
-          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+          "result": "pass",
+          "observation": "No grille or frontal headlight face; genuine narrow side lamp edges retained."
         },
         "interior_at_side_height": {
-          "result": "uncertain",
-          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+          "result": "pass",
+          "observation": "Blue seat back seen horizontally, without seat-cushion top exposure."
         },
         "wheel_projection": {
           "result": "pass",
-          "observation": "Near wheel faces approximately circular and axle baseline level."
+          "observation": "Round black wheel faces, chrome outer rings and level hub baseline."
         },
         "shape_and_stance_preserved": {
-          "result": "uncertain",
-          "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+          "result": "pass",
+          "observation": "Fox-body hatch/roof height, wheelbase and stance retained; right-only fuel flap present."
         }
       },
       "left": {
         "evidence_status": "real_reference",
         "level_side_camera": {
-          "result": "fail",
-          "observation": "Left side still reveals hood top, cowl grid and spoiler surface."
+          "result": "pass",
+          "observation": "Nose-left level elevation, checked separately; sill and axles horizontal."
         },
         "top_planes_hidden": {
-          "result": "fail",
-          "observation": "Left side still reveals hood top, cowl grid and spoiler surface."
+          "result": "pass",
+          "observation": "No broad cowl/hood plane or spoiler upper surface."
         },
         "front_rear_faces_hidden": {
-          "result": "uncertain",
-          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+          "result": "pass",
+          "observation": "Front fascia is edge-on; no grille/lamp face and no rear fascia width."
         },
         "interior_at_side_height": {
-          "result": "uncertain",
-          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+          "result": "pass",
+          "observation": "Seat back viewed at side height, no broad cushion top."
         },
         "wheel_projection": {
           "result": "pass",
-          "observation": "Near wheel faces approximately circular and axle baseline level."
+          "observation": "Round near wheels; matching level axle baseline and fender occlusion."
         },
         "shape_and_stance_preserved": {
-          "result": "uncertain",
-          "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+          "result": "pass",
+          "observation": "Roof height and hatch/wing profile preserved; no incorrectly mirrored fuel flap."
         }
       }
     },
     "five_view_layout": {
       "result": "pass",
-      "observation": "Five complete views in four rows with requested orientations."
+      "observation": "Five complete silhouettes: right, left, overhead facing right, front and rear; four rows with white gutters."
     },
     "ground_shadows": {
       "result": "pass",
-      "observation": "Pure-white exterior to silhouettes; no visible floor pools or ground reflections in all five panels."
+      "observation": "White exterior without visible cast/contact shadows, floor reflection or shadow pools in all five panels."
     },
     "material_depth": {
       "result": "pass",
-      "observation": "Curved metallic highlights, spoke recesses, tire and cabin shading preserve photographic volume."
+      "observation": "Rounded highlights, dark recessed spokes, tire volume and cabin depth remain photographic. Paint microtexture is synthetic; see limitations."
     },
     "identity_and_graphics": {
-      "result": "uncertain",
-      "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+      "result": "pass_with_limitations",
+      "observation": "Turquoise HGK61, black ten-spoke wheels with silver rings, blue cabin, Cobra badges and right-only fuel flap retained."
     },
     "opposite_side_identity": {
       "result": "pass",
-      "observation": "Separate side details and graphics provided, no whole-side pixel mirroring."
+      "observation": "Both sides independently compared with existing exact-release evidence; side-specific features retained. Tiny logos remain approximate."
     },
     "readable_not_mirrored_text": {
-      "result": "uncertain",
-      "observation": "Main text orientation normal; exact tiny marks not reliable."
-    },
-    "cross_view_consistency": {
-      "result": "uncertain",
-      "observation": "Metalflake cyan, right-only fuel flap, ten-spoke wheels and KOIBRA retained; hood still has a raised rear edge."
+      "result": "approximate",
+      "observation": "Tiny lettering and emblem shapes are synthesized; source photos remain authoritative."
     },
     "front_rear_cameras": {
-      "result": "fail",
-      "observation": "Bottom cameras expose broad hood or upper rear/roof surfaces."
+      "result": "approximate",
+      "observation": "Bottom front/rear panels remain somewhat elevated, especially the cowl in the front panel."
+    },
+    "cross_view_consistency": {
+      "result": "approximate",
+      "observation": "Main identity and mechanical pose agree; these synthesized projections are not a metrically calibrated camera set."
     },
     "limitations": [
-      "True overhead is inferred from elevated original photographs.",
-      "Fine printing and reconstructed dimensions are synthetic approximations."
+      "Some synthetic patterned blue microtexture remains; use originals for paint finish.",
+      "Bottom front/rear panels remain somewhat elevated, especially the cowl in the front panel.",
+      "Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.",
+      "True overhead geometry is partly inferred from elevated photographs.",
+      "No Tripo reconstruction or numerical camera calibration was performed in this correction task."
     ],
-    "selection_rationale": "Reject: both profiles remain elevated/oblique. White background and material depth now pass. Final source-only retry focuses on literal lateral projection."
-  }
+    "selection_rationale": "Selected focused second side edit for the clearest lateral projection; later reset improved surface grain but made the cowl/front-corner assessment less certain."
+  },
+  "user_direction": "User approved choosing the best available versions and ending further generation on 2026-10-14."
 }

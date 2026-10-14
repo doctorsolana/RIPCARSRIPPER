@@ -1,21 +1,43 @@
 {
   "schema_version": 2,
-  "version": 3,
-  "status": "needs_correction",
+  "version": 4,
+  "status": "accepted",
   "view_count": 5,
+  "reviewed_on": "2026-10-14",
+  "acceptance_scope": "Independent visual acceptance of both strict side profiles, complete five-view layout, white exterior and dimensional materials. Front/rear and texture limitations remain below.",
   "tool": "image_gen.imagegen (built-in)",
-  "generation_strategy": "direct_from_real_photos",
+  "generation_strategy": "edit_existing_sheet",
+  "provenance_note": "User-requested side-camera correction of a previously generated sheet, not source-only generation. Ordered generated inputs and the exact prompts required for the retained edit chain are recorded below. Original base sheets are recoverable from Git; unused attempts and intermediate images are not retained in the current repository. Real source photos were reviewed as evidence but were not direct inputs to the selected edit calls.",
   "prompt_file": "generation.prompt.txt",
-  "prompt_sha256": "a84459279d8a7333d65b4cd1ba378cb7ba74f9439b4675e443aca17aa5c3bc9b",
-  "saved_output": "generated/draft-sheet.png",
+  "prompt_sha256": "704c4aa9ce48213005615bc3cdf58c634c266ad15e7958b63591e43f6857717f",
+  "saved_output": "generated/reference-sheet.png",
   "output_metadata": {
     "width": 1024,
     "height": 1536,
     "format": "PNG",
-    "bytes": 2797311,
-    "sha256": "35757d3d5f7f8b93610729a9719eaefdc64c3b1e0ac4bc38cb9323cbf5eb82ad"
+    "bytes": 2712005,
+    "sha256": "0c9e8174872bcf77596118776e460aea9d4948993102ffe3e51b2a0cd2039b62"
   },
-  "real_inputs": [
+  "real_inputs": [],
+  "generated_inputs": [
+    {
+      "git_commit": "0262e055c1c369cd2def0207715f1bd571aad1e7",
+      "file": "reference-collector/cars/pontiac-firebird-htf40/generated/draft-sheet.png",
+      "sha256": "35757d3d5f7f8b93610729a9719eaefdc64c3b1e0ac4bc38cb9323cbf5eb82ad",
+      "role": "Edit target; original draft",
+      "input_order": 1,
+      "kind": "generated_image"
+    },
+    {
+      "file": "reference-collector/cars/skyline-hck01/generated/reference-sheet.png",
+      "sha256": "abd79a21bf914f11d7bea361ced5b15b1de93835ed0f2522aa691ab7d33fa044",
+      "git_commit": "0262e055c1c369cd2def0207715f1bd571aad1e7",
+      "role": "Different-car accepted sheet used ONLY as camera/projection example",
+      "input_order": 2,
+      "kind": "generated_image"
+    }
+  ],
+  "inherited_reference_inputs": [
     {
       "file": "reference/catalog-01.jpg",
       "role": "Vehicle-right front-quarter; right TH/Hot Wheels placement and wheels",
@@ -37,125 +59,130 @@
       "sha256": "4cb524e742775b5f80a4fba2f09e74dbcac2dc7fe3f258e95dc5d2f153d95450"
     }
   ],
+  "edit_chain": [
+    {
+      "attempt": 4,
+      "generation_strategy": "edit_existing_sheet",
+      "prompt": "Edit IMAGE 1, the five-view black Pontiac Firebird toy sheet.\nIMAGE 2 is a DIFFERENT CAR and is ONLY an approved CAMERA/PROJECTION EXAMPLE. Copy exactly the strict lateral camera of its upper two panels. DO NOT copy that car's design, colors, wheels, wing, graphics or proportions.\nThe output subject must remain the car in IMAGE 1, same physical casting and exact livery, in all five panels.\n\nCorrect the upper two panels of image 1 to match image 2's DEAD-LEVEL ENGINEERING SIDE ELEVATIONS: first nose-right, second nose-left, orthographic, camera horizontal and exactly perpendicular. In image 2 the hood/roof/deck are thin silhouette lines, the wheel faces are circles, wing supports overlap and the nose has no front-face width. Achieve that same camera on the subject. No visible hood/deck TOP, no look down through cabin, no frontal grille/headlamp surfaces. Use the real body shape; do not erase graphics, flatten body height or replace the bumper with a rectangular slab. Retain rounded and sloping nose/bumper contours and real side relief.\nBlack metallic '77 Pontiac Firebird T/A HTF40, tan cabin, T-top roof, bronze wheels with red outer rims, red/orange/gold lower stripes, small pillar birds and normally readable TH marks toward the rear of EACH door. Top-facing hood phoenix should be visible in overhead only, not spread over a plane in either side elevation. Preserve raised hood scoop's side silhouette. Keep genuine amber side markers and rear red side markers. Rear lamp relief is unpainted metallic/chrome on this toy; do not replace with full-size-car red lamp graphics.\n\nKeep the subject's overhead panel and two bottom fascia views, same layout and scale. No borrowed details from image 2. Keep the original subject's natural photographic metal gradients, smooth fine metallic flecks, rounded tire volume, recessed spokes, thick glazing and cabin depth. No vector/sprite style or engraved/paisley/swirled texture. Pure white outside silhouettes, no cast/contact shadows, no floor or halo. Five views, no labels or extra elements.\n",
+      "prompt_sha256": "704c4aa9ce48213005615bc3cdf58c634c266ad15e7958b63591e43f6857717f",
+      "ordered_inputs": [
+        {
+          "git_commit": "0262e055c1c369cd2def0207715f1bd571aad1e7",
+          "file": "reference-collector/cars/pontiac-firebird-htf40/generated/draft-sheet.png",
+          "sha256": "35757d3d5f7f8b93610729a9719eaefdc64c3b1e0ac4bc38cb9323cbf5eb82ad",
+          "role": "Edit target; original draft",
+          "input_order": 1,
+          "kind": "generated_image"
+        },
+        {
+          "file": "reference-collector/cars/skyline-hck01/generated/reference-sheet.png",
+          "sha256": "abd79a21bf914f11d7bea361ced5b15b1de93835ed0f2522aa691ab7d33fa044",
+          "git_commit": "0262e055c1c369cd2def0207715f1bd571aad1e7",
+          "role": "Different-car accepted sheet used ONLY as camera/projection example",
+          "input_order": 2,
+          "kind": "generated_image"
+        }
+      ],
+      "output_sha256": "0c9e8174872bcf77596118776e460aea9d4948993102ffe3e51b2a0cd2039b62"
+    }
+  ],
   "review": {
-    "level_side_camera": {
-      "result": "fail",
-      "observation": "Right profile retains elevated camera: broad hood surface with bird and rear deck are visible."
-    },
-    "top_planes_hidden": {
-      "result": "fail",
-      "observation": "Hood/deck top planes and wide windshield surface remain exposed."
-    },
-    "front_rear_faces_hidden": {
-      "result": "pass",
-      "observation": "Front/rear fascia faces are largely edge-on."
-    },
-    "interior_at_side_height": {
-      "result": "uncertain",
-      "observation": "Tan cabin and rear shelf retain downward exposure; not a confirmed strict side-height view."
-    },
-    "wheel_projection": {
-      "result": "pass",
-      "observation": "Near wheels are circular on a level axle baseline."
-    },
-    "shape_and_stance_preserved": {
-      "result": "pass",
-      "observation": "Main coupe, scoop, spoiler and wheels retain recognizable casting proportions."
-    },
     "sides": {
       "right": {
         "evidence_status": "real_reference",
         "level_side_camera": {
-          "result": "fail",
-          "observation": "Right profile retains elevated camera: broad hood surface with bird and rear deck are visible."
+          "result": "pass",
+          "observation": "Nose-right level elevation with horizontal sill and no apparent yaw."
         },
         "top_planes_hidden": {
-          "result": "fail",
-          "observation": "Hood/deck top planes and wide windshield surface remain exposed."
+          "result": "pass",
+          "observation": "Hood bird is absent from the side because hood is edge-on; scoop side and narrow roof/deck contours remain."
         },
         "front_rear_faces_hidden": {
           "result": "pass",
-          "observation": "Front/rear fascia faces are largely edge-on."
+          "observation": "No front grille/headlamp face or rear lamp-panel face; amber/red side markers remain."
         },
         "interior_at_side_height": {
-          "result": "uncertain",
-          "observation": "Tan cabin and rear shelf retain downward exposure; not a confirmed strict side-height view."
+          "result": "pass",
+          "observation": "Tan seat back is viewed laterally through window, without visible seat-cushion tops."
         },
         "wheel_projection": {
           "result": "pass",
-          "observation": "Near wheels are circular on a level axle baseline."
+          "observation": "Bronze/red-rim wheel faces are circular and hubs level."
         },
         "shape_and_stance_preserved": {
           "result": "pass",
-          "observation": "Main coupe, scoop, spoiler and wheels retain recognizable casting proportions."
+          "observation": "Rounded/sloping nose and tail restored; T-top roof height, scoop, fenders and wheelbase retained."
         }
       },
       "left": {
         "evidence_status": "real_reference",
         "level_side_camera": {
-          "result": "fail",
-          "observation": "Left profile retains downward pitch across the hood and rear deck."
+          "result": "pass",
+          "observation": "Nose-left elevation independently reviewed; no front-corner reveal."
         },
         "top_planes_hidden": {
-          "result": "fail",
-          "observation": "Broad hood top and top-facing red bird visible above front fender."
+          "result": "pass",
+          "observation": "No broad hood bird, windshield top or rear-deck plane; only thin contours and scoop side."
         },
         "front_rear_faces_hidden": {
           "result": "pass",
-          "observation": "No broad front grille/rear lamp-panel face."
+          "observation": "Front/rear fascia faces hidden; real side marker details retained."
         },
         "interior_at_side_height": {
-          "result": "uncertain",
-          "observation": "Cabin is improved but still has downward exposure, not a confirmed pass."
+          "result": "pass",
+          "observation": "Tan seat back at lateral height; no downward view into cabin."
         },
         "wheel_projection": {
           "result": "pass",
-          "observation": "Circular near wheel faces with level baseline."
+          "observation": "Circular bronze wheel faces with level axle baseline and normal fender overlap."
         },
         "shape_and_stance_preserved": {
           "result": "pass",
-          "observation": "Main roof/scoop/spoiler silhouette and wheelbase retained."
+          "observation": "Roof, rear spoiler lip and curved bumper outlines preserved; no rectangular slab replacement."
         }
       }
     },
     "five_view_layout": {
       "result": "pass",
-      "observation": "Five complete panels with specified side/nose directions and four-row placement."
+      "observation": "Five complete silhouettes: right, left, overhead facing right, front and rear; four rows with white gutters."
     },
     "ground_shadows": {
       "result": "pass",
-      "observation": "White background without visible exterior ground-shadow pools."
+      "observation": "White exterior without visible cast/contact shadows, floor reflection or shadow pools in all five panels."
     },
     "material_depth": {
       "result": "pass",
-      "observation": "Glossy fender gradients, bronze wheel-spoke recesses, round tires and tan cabin preserve physical toy depth."
+      "observation": "Rounded highlights, dark recessed spokes, tire volume and cabin depth remain photographic. Paint microtexture is synthetic; see limitations."
     },
     "identity_and_graphics": {
-      "result": "pass",
-      "observation": "Black HTF40 identity, lower stripes/TH, pillar birds, tan cabin and red-rim bronze wheels retained; micrographics approximate."
+      "result": "pass_with_limitations",
+      "observation": "Black metallic HTF40, tan cabin/T-tops, bronze wheels with red rims, lower stripes and pillar birds retained; rear lamp relief remains metallic/chrome."
     },
     "opposite_side_identity": {
       "result": "pass",
-      "observation": "Both sides use their real evidence with TH at the rear of each door."
+      "observation": "Both sides independently compared with existing exact-release evidence; side-specific features retained. Tiny logos remain approximate."
     },
     "readable_not_mirrored_text": {
-      "result": "pass",
-      "observation": "TH reads normally both sides; tiny Hot Wheels marks remain approximate."
-    },
-    "cross_view_consistency": {
-      "result": "uncertain",
-      "observation": "Main livery/pose consistent but overhead wheel projection and roof geometry remain synthesized."
+      "result": "approximate",
+      "observation": "Tiny lettering and emblem shapes are synthesized; source photos remain authoritative."
     },
     "front_rear_cameras": {
-      "result": "fail",
-      "observation": "Bottom rows look down across hood or rear-deck surface."
+      "result": "approximate",
+      "observation": "Front and rear views still show broad upper surfaces. Overhead projection and wheel-edge visibility are approximate."
+    },
+    "cross_view_consistency": {
+      "result": "approximate",
+      "observation": "Main identity and mechanical pose agree; these synthesized projections are not a metrically calibrated camera set."
     },
     "limitations": [
-      "Both side rows fail the strict camera gate: broad hood and rear-deck top planes remain visible.",
-      "Front and rear panels also retain elevated cameras.",
-      "Overhead geometry is synthesized; exposed wheel-face projections may not be consistent with a true vertical view.",
-      "Tiny logos/lettering and exact textures are generative approximations."
+      "Tiny TH/flame marks and hood phoenix are approximations; use source photos for exact printing.",
+      "Front and rear views still show broad upper surfaces. Overhead projection and wheel-edge visibility are approximate.",
+      "Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.",
+      "True overhead geometry is partly inferred from elevated photographs.",
+      "No Tripo reconstruction or numerical camera calibration was performed in this correction task."
     ],
-    "selection_rationale": "Do not select: source-only material depth improved, but two source-only retries did not resolve side-camera failure. Retain as draft; no generated/reference-sheet.png published."
-  }
+    "selection_rationale": "Selected the original-sheet edit using an accepted camera-only example: it removes the elevated side planes while retaining curved bumper outlines and photographic metal."
+  },
+  "user_direction": "User approved choosing the best available versions and ending further generation on 2026-10-14."
 }

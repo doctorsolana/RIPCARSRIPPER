@@ -1,24 +1,5 @@
-Create a PHOTOREALISTIC ORTHOGRAPHIC TURNAROUND of this physical die-cast toy using only the attached real photos as evidence. One finished five-view sheet. Reconstruct the toy, then choose NEW cameras; never retain the source photograph angles.
+Edit ONLY the bottom FRONT and REAR panels of this five-view gold Honda Civic, red cabin, painted headlights, six-spoke gold wheels, rear TH/RYU printing and right exhaust toy sheet. Preserve the upper two strict side elevations and middle overhead panel exactly, including all their silhouettes, positions, size, materials, colors and graphics.
 
-HARD CAMERA REQUIREMENT: both side images are exact lateral elevations. Camera X axis along car length; camera looks exactly along the lateral axis at mid-door height with ZERO elevation, ZERO yaw, ZERO roll. Parallel orthographic rays. Roof, hood and trunk top surfaces collapse to thin curved silhouette edges. The far wing support overlaps the near support. Grilles and front/rear lamp PANEL FACES are hidden edge-on. Only the side-turning edge of a lamp may show. No look-down cabin view. Preserve full roof height and actual curved cross-section. This is a shaded 3D object viewed sideways, not a flat drawing.
+Re-photograph the bottom two views as exact engineering FRONT and REAR ELEVATIONS with photographic 3D material depth. Put each orthographic camera at BUMPER HEIGHT, pointing EXACTLY HORIZONTALLY along the car length, with zero pitch/yaw/roll. The current view is from too high and sees far down across the hood. LOWER the camera until the hood/deck horizontal upper planes have effectively zero projected height; retain only a thin true slope/curved contour. No broad roof top or hood artwork surface visible. Rear view must not look down onto rear deck or wing. Do not flatten or squash the body or shorten the cabin. Preserve actual car height/width, wheel stance and all fascia details. This is an optical camera correction, not an erasing operation.
 
-HARD BACKGROUND REQUIREMENT: objects suspended in empty pure-white space. There is NO floor or shadow catcher. White #FFFFFF begins at the silhouette boundary including directly beneath the tires and chassis. Zero external cast shadows, zero contact shadow blobs, zero gray haze or ground reflection. Internal wheel, window and body recesses remain dark and volumetric. Do not remove the miniature's surface shading.
-
-LAYOUT portrait 2:3, four rows, exactly FIVE complete views: row1 vehicle-RIGHT side nose RIGHT; row2 vehicle-LEFT side nose LEFT; row3 vertical 90-degree TOP nose RIGHT; row4 level straight FRONT left and level straight REAR right. First three views matching car length. Ample blank white gutters, no labels or borders. The top view is a conservative synthesis from original photos. Front/rear cameras also horizontal, no looking down over hood/roof. All body panels closed.
-
-SOFTBOX MATERIALS: realistic shaded 3D miniature, metallic flakes and paint reflections, curved highlight gradients on fenders, round rubber tire walls, deep recessed spokes, glazing/cabin depth. Orthographic camera changes projection only; retain realistic physical volume. No flat fills, vector art, outlines, cel shading or sprites.
-
-SUBJECT-SPECIFIC CAMERA AND FIDELITY CHECK:
-Camera exactly at mid-door height, below window base; no visible upper hood plane. Preserve bright red seat back viewed horizontally, no cushion top. Square fuel flap vehicle-left only; exhaust vehicle-right only.
-
-EXACT RELEASE DETAILS
-HCY12 '99 Honda Civic Type R (EK9), 2022 Super Treasure Hunt, HW Hatchbacks 5/5. Small 3-door hatchback, bright reflective Spectraflame sunlight yellow/gold body, gold/bronze SIX-spoke wheels, black Real Riders tires and black base. Plain roof and hood with small red Honda badge, short body-colored roof spoiler. Bright RED seats and interior visible through clear lightly tinted windows. Small body-color side mirrors, molded door/side rub strips and handle, no side graphics or racing numbers. ASYMMETRY: small square fuel flap on vehicle-LEFT rear quarter; absent on right. Front silver/black printed headlights, small narrow upper grille, dark lower center opening. Rear red/white stacked lamps, red Honda emblem, TH and small Hot Wheels mark at left of hatch, Civic Type R marking at right, stylized red 'RYU' on black plate, single dark exhaust on vehicle-right. Keep actual stock miniature shape; do not swap to Civic Si, EG6, Spoon livery, black wheels or the regular opaque-yellow mainline car. Ignore the brown room/floor reflections in source photos; render the same yellow/gold finish under neutral softbox lighting.
-
-REAL INPUT PHOTOS IN ORDER
-1. Near-level vehicle-right side; no fuel flap
-2. Near-level vehicle-left side; fuel flap on rear quarter
-3. Front-quarter; headlights, red Honda badge and bumper
-4. Rear; red/white lamps, TH, RYU plate and exhaust
-5. Elevated top-quarter; plain roof, hood and spoiler
-
-Do not add a sixth view, packaging or source watermark. Do not mirror text. All source inputs are real photos, no generated sheet.
+Keep the same five-view layout, complete silhouettes, same front/rear scale, and all source toy simplifications. Keep dimensional softbox reflections on metal, shadowed recesses ON the toy, rounded tires and dark glazing. Smooth tiny metallic flecks, not decorative swirled paint. Pure white outside car silhouettes, no floor, contact/cast shadows, halos, labels or borders.

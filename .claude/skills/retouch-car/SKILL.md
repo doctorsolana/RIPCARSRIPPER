@@ -52,6 +52,7 @@ Check at least front three-quarter, rear three-quarter, nose-on and the landing.
 | Decals doubled or ghosted where views meet | `model.blend.agree` lower (20) sharpens; `power` higher (6) narrows the blend bands |
 | Car lands at a wrong angle (yaws or tips) | `landing`: `pitch_deg` / `yaw_deg` / `roll_deg` / `stretch`, plus `"lock": true` to fix them |
 | Pack-photo cut-out wrong | `carBox`, `wheels`, or `segModel` (`birefnet-general`) |
+| Cut-out still clips the car or takes in card art (a car on look-alike card art, like the Godzilla Skyline's tail) | `mask.add` / `mask.remove`: polygons `[[x, y], ...]` in photo px, drawn into / cut out of the segmented mask. Trace them on a zoomed ruler crop. |
 
 Rebuild only what changed: `model` and then `align` after shape or wheel changes, `align` alone after landing changes, and `extract` → `align` after photo hints.
 

@@ -1,0 +1,112 @@
+{
+  "car": "porsche-911-gt3-rs",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      1.0016,
+      0.9974,
+      1.0031
+    ],
+    "offset_xy": [
+      0.019,
+      0.0036
+    ],
+    "side+top_iou": 1.8651,
+    "by_hand": {
+      "width": 1.035
+    }
+  },
+  "glass_source": {
+    "side": "traced",
+    "left": "traced",
+    "top": "traced",
+    "front": "traced",
+    "rear": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.0063,
+    "height": 1.3234,
+    "width": 1.711
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.0895,
+        0.3527,
+        0.6735
+      ],
+      "r": 0.3435,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.0905,
+        0.3517,
+        -0.6682
+      ],
+      "r": 0.3442,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.1367,
+        0.3615,
+        0.692
+      ],
+      "r": 0.3579,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.1367,
+        0.3615,
+        -0.6884
+      ],
+      "r": 0.3579,
+      "pieces": 2
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9637,
+    "top": 0.9397,
+    "left": 0.9544,
+    "front": 0.8807,
+    "rear": 0.9276
+  },
+  "proportions_vs_sheet": {
+    "length": 1.008,
+    "width": 0.96,
+    "height": 1.011
+  },
+  "glb": {
+    "bytes": 1242040,
+    "triangles": 16443
+  }
+}

@@ -33,6 +33,8 @@ Review both actual side rows independently. Every condition must pass:
 - Circular wheel faces with appropriate near/far overlap and level axle baseline.
 - Real proportions, wheelbase, ride height, roof, fender occlusion and wing preserved; no squashing to fake the camera.
 
+Look at [level-side-example.jpg](references/level-side-example.jpg) before generating or reviewing a side row. Top: an accepted profile (`skyline-hck01`). The camera is at door height and dead side-on, so the roof and hood are thin outlines and the nose and tail end as a flat edge. Bottom: a failed draft (`godzilla-skyline-jhw90`). The camera sits slightly above and toward the front, so the hood's top with its stripe, a bit of the roof top, and the headlight and bumper face show. It looks like a fine photo, but it is not an elevation. The modelling pipeline reads length, height and side paint straight from these rows, so an elevated camera makes the model too tall and smears hood paint onto the doors.
+
 Do not hide hood artwork to disguise an elevated view. A failed or uncertain condition on either side prevents acceptance. Also check all five views for clipping, consistent identity and pose, readable non-mirrored graphics, white exterior background and photographic material depth. Record fine-text and inferred-geometry limitations honestly. This is synthetic reference material, not calibrated CAD or an exact albedo map.
 
 ## Publish only the current result

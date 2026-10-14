@@ -72,6 +72,6 @@ The site has two pages: `/` rips a pack (car picker, random pack) and `/inspect.
 
 ## The reference library
 
-Every car has one folder in the reference library. Use `cars/<car-id>/generated/reference-sheet.png` for its current reviewed sheet and `manifest.json` for the selected version, prompt and review. The library currently contains six accepted sheets plus six drafts requiring camera correction, with 105 original photos across 12 releases.
+Every car has one folder in the reference library. Use `cars/<car-id>/generated/reference-sheet.png` for its current reviewed sheet and `manifest.json` for the selected version, prompt and review. The library currently contains 12 accepted sheets, with 105 original photos across 12 releases.
 
 The current sheets provide right and left profiles, overhead, front and rear views. Both side profiles must pass a separate level-camera review. Both sides of the catalogued releases have real photo evidence; the source files and uncertain details are recorded per car. These remain synthetic references: geometry is not calibrated and fine graphics can drift, which is why stage 2 fits every model to the sheet and checks it view by view. Only the current sheet is kept in each folder; use the manifest's `view_count`, `layout` and review status when reading it. Per-car experiment archives and standalone Tripo image tests have been removed.

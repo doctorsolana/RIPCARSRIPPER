@@ -6,26 +6,27 @@
 
 ## Current multiview sheet
 
-**Draft — correction needed · v2 · 1024 × 1536 PNG**
+**Accepted · v3 · 1024 × 1536 PNG**
 
-This sheet is a draft. It has not passed the side-camera review and must not be treated as an accepted input.
+Both side profiles passed the level-camera review.
 
-[Open sheet](generated/draft-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
+[Open sheet](generated/reference-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
 
-![Current five-view sheet](generated/draft-sheet.png)
+![Current five-view sheet](generated/reference-sheet.png)
 
 Right profile facing right; left profile facing left; overhead facing right; front and rear below. Tripo multiview uses front, left, rear and right crops. The top view remains available for fitting and textures.
 
-Generated directly from real photographs.
+Finalized by editing an earlier generated sheet. The final prompt and original photographs are retained; superseded working images were removed.
 
 Right side: real reference. Left side: real reference. [Side evidence](reference/side-evidence.json).
 
-- Both sides still reveal front headlight faces, hood upper planes and offset wing supports.
-- Left-side sill exhaust is supported by real photos; v2 correctly locates it on the upper edge of the nose-right overhead.
-- Door badge printing, hood relief and wing geometry remain synthetic approximations.
-- True vertical top photo unavailable; overhead is inferred from elevated real photos.
-- Fine printing, reflections and reconstructed geometry are approximate, not a neutral albedo map or calibrated CAD.
-- No 3D reconstruction test was performed for this sheet.
+- Both physical sides independently pass the strict level-camera visual checks. This is visual acceptance, not numerical calibration.
+- Gold JKF36 chase, five-spoke wheels, Car Culture 10 badges, tall wing and left-only sill exhaust retained.
+- Fine gold surface has synthetic patterned grain; original photos remain the authority for paint finish.
+- Bottom fascia views remain elevated, with visible hood/wing upper surfaces.
+- Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.
+- True overhead geometry is partly inferred from elevated photographs.
+- No Tripo reconstruction or numerical camera calibration was performed in this correction task.
 
 ## Original photographs
 

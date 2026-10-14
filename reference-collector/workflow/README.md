@@ -13,7 +13,7 @@ python3 reference-collector/workflow/build_gallery.py
 python3 reference-collector/workflow/validate_assets.py
 ```
 
-Accepted sheets use `generated/reference-sheet.png`; drafts use `generated/draft-sheet.png` and `selected: null`. Consult each manifest before using a sheet. Six accepted sheets and six drafts are currently retained.
+Accepted sheets use `generated/reference-sheet.png`; drafts use `generated/draft-sheet.png` and `selected: null`. Consult each manifest before using a sheet. Twelve accepted sheets are currently retained. Acceptance covers the strict side-profile review; read each review for remaining texture and front/rear camera limitations.
 
 The older accepted sheets were finalized through generated-image edits; their reviews say so. The final prompts are preserved exactly, but retired intermediate images are not part of the current tree. New sheets use real photos directly.
 

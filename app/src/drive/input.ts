@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { DriveInput, Surface, Track, TrackFrame, VehicleState } from './types';
+import type { Profile } from './vehicles/arcade';
 
 // Keyboard, gamepad and touch merged into one DriveInput, plus an autopilot for ?auto=1 and tests.
 //   keys   A/D or arrows steer, W/up throttle, S/down brake (reverse), Space/Shift drift, R restart
@@ -224,52 +225,71 @@ function newFrame(): TrackFrame {
   };
 }
 
-// What the autopilot knows of the arcade model (its defaults; it only needs to be good, not optimal).
+// What the autopilot knows of the arcade model (its defaults; it only needs to be good, not optimal) - and of the car:
+// the profile the model hangs on its state (cornering, brakes, slide, steering; without one, the stock car's).
 const VTOP = 44, YAW_LOW = 3, YAW_HIGH = 1.3, YAW_RAMP = 3.2, G = 24, BANK_ASSIST = 1.5;
 const SURF_YAW: Record<Surface, number> = { plastic: 1, asphalt: 1.06, dirt: 0.93 };
 const GRASS_YAW = 0.75;
 // Loose (a drift), the travel bends at LOOSE_GRIP x the surface's share x the slip (rad/s per rad; x LOOSE_THR on the
 // throttle, LOOSE_LIFT off it) and the steering's yaw is LOOSE_YAW x grip's; it plans a drifted corner at PLAN_SLIP deg
-// on the throttle (the soft limit is ~35).
+// on the throttle (the soft limit is ~35; both x the car's angle).
 const LOOSE_GRIP = 3.2, LOOSE_THR = 0.8, LOOSE_LIFT = 1.3, LOOSE_YAW = 1.25, PLAN_SLIP = 28, MAX_SLIP = 33;
 const SURF_DRIFT: Record<Surface, number> = { plastic: 1, asphalt: 1.15, dirt: 0.9 };
 const DRIFT_TURN = 0.6; // rad: it drifts corners turning at least this far ...
 const DRIFT_R = 70; // ... at least this tight (u)
-const BRAKE = 42; // u/s^2 it plans to brake with (the car manages ~65)
+const BRAKE = 42; // u/s^2 it plans to brake with (the stock car manages ~65), x the car's brakes, less a downhill's pull
+const DEG = Math.PI / 180;
+type Sense = Pick<Profile, 'turn' | 'brake' | 'slide' | 'angle' | 'steer' | 'float' | 'dirt'>;
+const STOCK: Sense = { turn: 1, brake: 1, slide: 1, angle: 1, steer: 1, float: 1, dirt: 1 };
 
-/** The most yaw the car has in grip at speed v (rad/s), sy = the surface's share. */
-const yawCap = (v: number, sy: number) => sy * Math.min(v / YAW_RAMP, YAW_LOW + (YAW_HIGH - YAW_LOW) * Math.min(1, v / VTOP));
+/** A surface's share of the car's turn and of its slide's grip (the dirt's as this car copes with it). */
+const surfYaw = (s: Surface, c: Sense) => (s === 'dirt' ? Math.min(1, SURF_YAW.dirt * c.dirt) : SURF_YAW[s] ?? 1);
+const surfDrift = (s: Surface, c: Sense) => (s === 'dirt' ? Math.min(1, SURF_DRIFT.dirt * c.dirt) : SURF_DRIFT[s] ?? 1);
 
-/** The fastest a corner of curvature k (1/u) goes: in grip, v k <= yawCap(v) + the bank's help (~1.5 g sin(bank) / v)
- *  solved for v (sb = sin of the bank into the turn); in a drift (sd = the surface's drift share), if that's faster. */
-function cornerSpeed(k: number, sy: number, sb: number, sd: number) {
+/** The most yaw the car has in grip at speed v (rad/s), sy = the surface's share x the car's turn: down to YAW_HIGH at
+ *  VTOP, and past it as 1/v. */
+const yawCap = (v: number, sy: number) => sy * Math.min(v / YAW_RAMP, v < VTOP ? YAW_LOW + ((YAW_HIGH - YAW_LOW) * v) / VTOP : (YAW_HIGH * VTOP) / v);
+
+/** The fastest the yaw lets a corner of curvature k (1/u) go: v k <= yawCap(v) + the bank's help (~1.5 g sin(bank) / v)
+ *  solved for v (sb = sin of the bank into the turn). */
+function yawSpeed(k: number, sy: number, sb: number) {
   const a = k + (sy * (YAW_LOW - YAW_HIGH)) / VTOP, b = sy * YAW_LOW, c = BANK_ASSIST * G * Math.max(0, sb);
-  const grip = (0.97 * (b + Math.sqrt(b * b + 4 * a * c))) / (2 * a);
-  return sd > 0 ? Math.max(grip, (LOOSE_GRIP * LOOSE_THR * sd * PLAN_SLIP * (Math.PI / 180)) / k) : grip;
+  const v = (b + Math.sqrt(b * b + 4 * a * c)) / (2 * a);
+  return v < VTOP ? v : Math.sqrt((sy * YAW_HIGH * VTOP + c) / k);
+}
+
+/** The fastest a corner goes: in grip; in a drift (kl = the slide's grip on the throttle, 0: no drift) the travel bends
+ *  at kl x the planned slip (rad), if that's faster - as long as the nose, loose, keeps up. */
+function cornerSpeed(k: number, sy: number, sb: number, kl: number, slip: number) {
+  const grip = 0.97 * yawSpeed(k, sy, sb);
+  return kl > 0 ? Math.max(grip, Math.min((kl * slip) / k, 0.97 * yawSpeed(k, sy * LOOSE_YAW, sb))) : grip;
 }
 
 /** A driver for ?auto=1, lap tests and the victory lap. It holds the centre line in track space (so it works round the
  *  loop): the curvature just ahead fed forward, less what a bank turns by itself, plus a correction of heading and
  *  offset toward the line, looking further ahead (gentler) on the wide roads - it doesn't cut corners into the inside
- *  wall. It plans its speed from the curvature up to 72 u ahead - each corner's speed plus what braking can shed before
- *  it, skipping a jump's gap (no road there) - so it brakes into the tight ones. It drifts the corners that turn far
- *  enough and tight enough (drift: 'auto'; 'off' never, 'all' every corner it can): a tap of Space at the turn-in,
- *  then it drives the loose car - the slip that bends the travel as the road wants, steered for through the yaw - and
- *  straightens out of the corner, which ends the drift by itself (it never taps mid-drift: that keeps a drift going). Into a big jump it lines
- *  up on the centre line, runs flat out over the booster and holds it straight up the ramp (no drift, no brake: the
- *  jump is its own speed and line), and it never steers in the air. Deterministic: a function of the state and track. */
+ *  wall. It plans its speed from the curvature up to 72 u ahead - each corner's speed (with this car's grip) plus what
+ *  its brakes can shed before it, less a downhill's pull, skipping a jump's gap (no road there) - so it brakes into the
+ *  tight ones, and hard off a hill. It drifts the corners that turn far enough and tight enough, once each (drift:
+ *  'auto'; 'off' never, 'all' every corner it can; never one ending just before a big jump's run-up): a tap of Space
+ *  at the turn-in, then it drives the loose car - the slip that bends the travel as the road wants, steered for through
+ *  the yaw, gentler on a floaty car - and straightens out of the corner, which ends the drift by itself (it never taps
+ *  mid-drift: that keeps a drift going). Into a big jump it lines up on the centre line, runs flat out over the booster
+ *  and holds it straight up the ramp (no drift, no brake: the jump is its own speed and line), and it never steers in
+ *  the air. Deterministic: a function of the state and track. */
 export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
   const mode = opts.drift ?? 'auto';
   const out: DriveInput = { steer: 0, throttle: 1, brake: 0, drift: false };
   const f0 = newFrame(), f1 = newFrame();
   const nose = new THREE.Vector3(), tmp = new THREE.Vector3();
   let cur = -1, tapped = false;
-  // Per track, once: flags (a jump's gap, a big jump's run-up from 40 u before its booster to the lip) and the corners -
-  // runs of curvature one way (R < 150), each with its end, how far it turns and its tightest curvature - and which
-  // corner each frame is in (-1: none).
+  // Per track, once: flags (a jump's gap, a big jump's run-up from 40 u before its booster to the lip) and the
+  // corners - runs of curvature one way (R < 150), each with its end, how far it turns and its tightest curvature, and
+  // whether it ends close before a big jump's run-up (taken in grip: a slide still settling there launches crooked) -
+  // and which corner each frame is in (-1: none).
   const GAP = 1, RUN = 2;
   let prepped: Track | null = null, flags = new Uint8Array(0), corner = new Int16Array(0), ds = 0.5;
-  let cS1 = new Float64Array(0), cTurn = new Float64Array(0), cK = new Float64Array(0);
+  let cS1 = new Float64Array(0), cTurn = new Float64Array(0), cK = new Float64Array(0), cCalm = new Uint8Array(0);
   const idx = (s: number) => {
     const n = flags.length;
     return ((Math.round(s / ds) % n) + n) % n;
@@ -313,10 +333,15 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
       i = j;
     }
     cS1 = Float64Array.from(s1s), cTurn = Float64Array.from(turns), cK = Float64Array.from(ks);
+    cCalm = Uint8Array.from(s1s, (e) => {
+      for (let x = 0; x <= 90; x += 2) if (flags[idx(e + x)] & RUN) return 1;
+      return 0;
+    });
     prepped = track;
   };
   /** Whether it drifts corner c. */
-  const drifts = (c: number) => c >= 0 && mode !== 'off' && Math.abs(cTurn[c]) >= (mode === 'all' ? 0.3 : DRIFT_TURN) && cK[c] >= 1 / DRIFT_R;
+  const drifts = (c: number) =>
+    c >= 0 && mode !== 'off' && !cCalm[c] && Math.abs(cTurn[c]) >= (mode === 'all' ? 0.3 : DRIFT_TURN) && cK[c] >= 1 / DRIFT_R;
   /** How far (u) the end of corner c lies ahead of s. */
   const toEnd = (c: number, s: number, L: number) => {
     const x = (((cS1[c] - s) % L) + L) % L;
@@ -325,6 +350,7 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
 
   return (st: VehicleState, track: Track): DriveInput => {
     prep(track);
+    const car = (st as VehicleState & { profile?: Sense }).profile ?? STOCK;
     const L = track.length;
     const f = track.frameAt(st.trackS, f0);
     nose.set(1, 0, 0).applyQuaternion(st.quaternion);
@@ -333,11 +359,12 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
     const v = Math.max(st.speed, 1);
     const phi = psi - st.slip; // direction of travel relative to the track
     const verge = f.edge === 'grass' && Math.abs(d) > f.width * 0.5;
-    const yawMax = yawCap(v, verge ? GRASS_YAW : SURF_YAW[f.surface] ?? 1);
-    const sd = SURF_DRIFT[f.surface] ?? 1;
+    const yawMax = yawCap(v, (verge ? GRASS_YAW : surfYaw(f.surface, car)) * car.turn);
+    const sd = surfDrift(f.surface, car) * car.slide;
+    const maxSlip = ((MAX_SLIP + 1) * car.angle - 1) * DEG;
     // the curvature just ahead (past the yaw's lag; a drift's slip takes longer) to feed forward; a bank turns the car
     // by itself
-    const x0 = v * (st.drifting ? 0.16 : 0.07);
+    const x0 = v * (st.drifting ? 0.16 * car.float : 0.07 * car.steer);
     let kff = 0;
     for (let i = 0; i < 3; i++) kff += track.frameAt(st.trackS + x0 + i * 3, f1).kappa / 3;
     const bank = (BANK_ASSIST * G * -f.right.y * v) / (v * v + 25);
@@ -345,17 +372,19 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
     const la = f.surface === 'plastic' ? 7 + v * 0.1 : 10 + v * 0.2;
     const err = Math.atan2(-d, la) - phi;
 
-    // speed: the slowest of what the corners ahead allow, each plus what braking can shed before reaching it
+    // speed: the slowest of what the corners ahead allow, each plus what braking can shed before reaching it (less
+    // while a slope pulls the car on: past its top speed off a hill, the corners come up fast)
     let vWant = 99;
+    const brake = BRAKE * car.brake + G * Math.min(0, f.t.y);
     for (let x = 2; x <= 72; x += 2) {
       const i = idx(st.trackS + x);
       if (flags[i] & GAP) continue; // in the air there: nothing to corner on
       const g = track.frameAt(st.trackS + x, f1);
       const k = Math.abs(g.kappa);
       if (k < 0.012) continue; // R > 80: flat out
-      const sd = drifts(corner[i]) ? SURF_DRIFT[g.surface] ?? 1 : 0;
-      const vc = cornerSpeed(k, SURF_YAW[g.surface] ?? 1, -g.right.y * Math.sign(g.kappa), sd);
-      vWant = Math.min(vWant, Math.sqrt(vc * vc + 2 * BRAKE * Math.max(0, x - 6)));
+      const kl = drifts(corner[i]) ? LOOSE_GRIP * LOOSE_THR * surfDrift(g.surface, car) * car.slide : 0;
+      const vc = cornerSpeed(k, surfYaw(g.surface, car) * car.turn, -g.right.y * Math.sign(g.kappa), kl, PLAN_SLIP * car.angle * DEG);
+      vWant = Math.min(vWant, Math.sqrt(vc * vc + 2 * brake * Math.max(0, x - 6)));
     }
     const runUp = (flags[idx(st.trackS)] & RUN) !== 0; // a big jump's run-up: flat out, straight at the booster
 
@@ -372,23 +401,24 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
       // slide gives on the throttle: it lifts (the tail tucks in, the line tightens). Out of the corner the road wants
       // none: it straightens - its line corrected gently there (through the lagging slip a full correction weaves at
       // speed) - and the drift ends by itself once the slide has settled (a tap would keep it going).
-      const want = v * kff - bank + err * (corner[idx(st.trackS + x0)] < 0 ? 1 : 3);
-      const lim = MAX_SLIP * (Math.PI / 180);
-      if (Math.abs(want) > 0.85 * LOOSE_GRIP * sd * LOOSE_THR * lim) out.throttle = 0;
+      const want = v * kff - bank + (err * (corner[idx(st.trackS + x0)] < 0 ? 1 : 3)) / car.float;
+      if (Math.abs(want) > 0.85 * LOOSE_GRIP * sd * LOOSE_THR * maxSlip) out.throttle = 0;
       const kl = LOOSE_GRIP * sd * (out.throttle > 0 ? LOOSE_THR : LOOSE_LIFT);
-      const b = clamp(want / kl, -lim, lim);
-      steer = clamp((want + (b - st.slip) * 4) / (LOOSE_YAW * yawMax), -1, 1);
+      const b = clamp(want / kl, -maxSlip, maxSlip);
+      steer = clamp((want + ((b - st.slip) * 4) / car.float) / (LOOSE_YAW * yawMax), -1, 1);
     } else {
       steer = clamp((v * kff - bank) / yawMax + err * 2.5, -1, 1);
       // a tap at the turn-in of a corner it drifts: the corner starts within reach and the wheel is already turning in
+      // (one drift per corner: a slide that ended early - a floaty car caught it straight - isn't started again there)
       tapped = false;
+      if (cur >= 0 && toEnd(cur, st.trackS, L) < 0) cur = -1;
       const reach = 2 + v * 0.12;
       for (let x = 0; x <= reach && !out.drift; x += 2) {
         const c = corner[idx(st.trackS + x)];
-        if (c < 0 || !drifts(c) || toEnd(c, st.trackS, L) < v * 0.6) continue;
+        if (c < 0 || c === cur || !drifts(c) || toEnd(c, st.trackS, L) < v * 0.6) continue;
         // ... and the slide can hold the corner at this speed
         const g = track.frameAt(st.trackS + x, f1);
-        if (v * cK[c] > 1.1 * LOOSE_GRIP * LOOSE_THR * (SURF_DRIFT[g.surface] ?? 1) * MAX_SLIP * (Math.PI / 180)) continue;
+        if (v * cK[c] > 1.1 * LOOSE_GRIP * LOOSE_THR * surfDrift(g.surface, car) * car.slide * maxSlip) continue;
         const sg = Math.sign(cTurn[c]);
         if (!runUp && st.grounded && v > 18 && steer * sg > 0.15) (out.drift = true), (cur = c);
       }

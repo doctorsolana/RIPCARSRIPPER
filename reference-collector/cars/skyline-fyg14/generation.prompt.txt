@@ -1,42 +1,5 @@
-Use case: product-mockup
-Asset type: Photographic five-view die-cast toy reference sheet for Tripo multiview reconstruction.
-Target: Hot Wheels Nissan Skyline GT-R (BNR34), FYG14, 2019 Super Treasure Hunt, Spectraflame olive green, black 10-spoke Real Rider wheels with bright chrome outer lips. Reproduce this exact physical miniature.
+Edit ONLY the bottom FRONT and REAR panels of this five-view green Nissan Skyline, green unpainted molded headlights, black grille/lower lip, printed red rear lamps, left rear exhaust toy sheet. Preserve the upper two strict side elevations and middle overhead panel exactly, including all their silhouettes, positions, size, materials, colors and graphics.
 
-REAL PHOTO INPUTS, IN ORDER
-1. lamley-03.jpg: physical vehicle-RIGHT side, nose right. Primary proportions, stance, tire size, side shape and right fuel flap.
-2. lamley-05.jpg: vehicle-LEFT front three-quarter. Left side is plain green with NO fuel flap. Front mesh and molded green headlights.
-3. ebay-07.webp: close-up of the real hood from above. Two straight black stripes over molded transverse hood louvers, with small Hot Wheels / J-Liu / TH marks on vehicle-LEFT hood.
-4. ebay-04.webp: elevated front photo confirming toy headlamp relief, hood stripes, roof stripes and front shape.
-5. ebay-05.webp: elevated rear photo confirming roof stripes, plain green wing, rear lamps and left exhaust.
-All are real reference images, not edit targets. Generate the entire new sheet directly from these real photographs. No previous generated image is an input. Ignore photographic backgrounds, floors, roll and perspective: oblique source cameras are detail evidence only. Both physical sides have real photographic evidence. No complete vertical overhead photograph exists: conservatively infer its projection from the observed details.
+Re-photograph the bottom two views as exact engineering FRONT and REAR ELEVATIONS with photographic 3D material depth. Put each orthographic camera at BUMPER HEIGHT, pointing EXACTLY HORIZONTALLY along the car length, with zero pitch/yaw/roll. The current view is from too high and sees far down across the hood. LOWER the camera until the hood/deck horizontal upper planes have effectively zero projected height; retain only a thin true slope/curved contour. No broad roof top or hood artwork surface visible. Rear view must not look down onto rear deck or wing. Do not flatten or squash the body or shorten the cabin. Preserve actual car height/width, wheel stance and all fascia details. This is an optical camera correction, not an erasing operation.
 
-COMPOSITION: EXACTLY FIVE VIEWS IN FOUR ROWS
-Portrait sheet approximately 2:3, high native detail, opaque pure white.
-Row 1: full-width VEHICLE-RIGHT SIDE ELEVATION, nose RIGHT.
-Row 2: full-width VEHICLE-LEFT SIDE ELEVATION, nose LEFT.
-Row 3: full-width TRUE VERTICAL OVERHEAD, nose RIGHT.
-Row 4: STRAIGHT LEVEL FRONT at LEFT, STRAIGHT LEVEL REAR at RIGHT.
-The long views have the same car length, wheelbase and scale. Front and rear have equal scale and consistent width. One physical car, fixed pose, wheels straight, all panels closed. Whole silhouettes, generous white gutters, no cropped wing or tires. No labels, titles, borders, card art, packaging, scenery or sixth view.
-
-HIGHEST PRIORITY: EXACT ORTHOGRAPHIC CAMERAS, NOT SOURCE PHOTO ANGLES
-Set a virtual model with length axis X, width axis Y and vertical axis Z. For row 1 look EXACTLY along -Y; for row 2 look EXACTLY along +Y. Camera rays have NO X or Z component: the ENTIRE front and rear planes are edge-on and mathematically invisible. Lens is orthographic, not a long perspective lens. No near front corner visible, no front bumper width, no grille mesh or round fog-lamp face visible in side rows. Side silhouette terminates at the front bumper edge. Do not copy the small yaw in input 1.
-Rows 1 and 2 are photographic orthographic SIDE ELEVATIONS with camera horizontal at MID-DOOR HEIGHT, exactly perpendicular to the side, zero pitch, zero yaw, zero roll. Look horizontally THROUGH the side windows, not down through them. Do not look down onto seat cushions.
-The roof, hood, trunk and wing are seen only as narrow curved silhouette edges; NO broad upper planes. No hood stripes should be visible as a top surface in either profile. This must result from the actual camera projection, never erasing artwork or flattening geometry.
-Hide the entire front grille/headlamp FACE and rear lamp-panel FACE behind the exact side silhouette. Show only the body's genuine side relief. No three-quarter view at either end. The two wheel faces are circular, centers level, near/far wheels aligned in side projection.
-Preserve the miniature's actual roof height, fenders, wheelbase, hood slope, tire thickness, wheel-arch occlusion, sill and spoiler. Do not squash or stretch the body to meet the camera rule. Keep photographic volume and dimensional shading even in strict orthographic views.
-
-Front panel camera: exact horizontal along X at mid-height, no downward component. Hood and roof TOP surfaces collapse to their thin contour edges; no broad hood stripe panel. Rear camera is the exact opposite horizontal along X. Overhead camera looks straight along -Z, zero sideways offset; do not show one side door as a raised side wall. Maintain the same car proportions and wheels in every projection.
-
-IDENTITY AND MATERIAL DETAILS
-Reflective Spectraflame olive/apple-green paint over metal, with rich darker green and yellow-green highlights. Two-door R34 toy casting with a solid large green rear wing on two green supports, plain flanks, sculpted sills, black lower front splitter/base.
-Black 10-spoke Real Rider wheels, round chrome outer rims, small silver axle centers, black rubber tires with real thickness and restrained tread. Match source wheels; no large silver sports wheels.
-Vehicle-RIGHT only: square fuel flap above and just behind the rear wheel. Vehicle-LEFT: no fuel flap. Molded exhaust on vehicle-LEFT rear. Never mirror a profile to invent the opposite side.
-Dark smoked front/rear glazing and black interior; open side-window appearance, visible seat backs with depth, no invented bright cabin. Preserve toy simplifications: no added full-size mirrors.
-The ACTUAL toy's front headlights are unprinted body-color GREEN MOLDED RELIEF. Do not paint white/silver/clear headlights, red grille badges or illuminated lamps. Upper grille and central lower mesh are dark; other molded front vents and round auxiliary-light relief retain the observed green finish.
-Rear has four round red/orange lamps (outer larger), small red center brake marking, tiny Nissan badge and GT-R/red R mark, green license recess and left black exhaust.
-Top: TWO STRAIGHT BLACK LONGITUDINAL STRIPES separated by a narrow green gap, on hood and roof. Hood stripes cross transverse molded louvers: copy the real close-up, not stylized zigzags or a checkerboard. Roof has the same two straight black stripes. Glazing interrupts them; wing is plain green. Small stacked Hot Wheels, J-Liu and TH marks are on vehicle-LEFT hood, near windshield. With the top view facing RIGHT, vehicle-left is the TOP edge of that panel. Rotate the actual markings with the car; do not mirror letters. No invented side sponsors.
-
-PHOTOGRAPHIC DEPTH, WITHOUT GROUND SHADOWS
-Render a detailed physical 3D miniature photographed with broad studio softboxes. Rounded metallic body highlights, recessed spokes, tire sidewall curvature, subtle wheel-well self-occlusion, thick glazing and cabin depth must remain. This is not a drawing, vector fill, cel-shaded sprite or unlit texture.
-Outside every car silhouette use opaque PURE WHITE #FFFFFF right up to its edge: NO receiving floor, NO cast shadow, NO contact shadow, NO gray halo, NO floor reflection. Preserve shading and dark cavities ON/INSIDE the car only. Do not erase tires, splitters or real recesses.
-Before finishing, independently check both level side cameras, exact five-view layout, consistent physical car and white exterior. Prioritize faithful miniature proportions and observed details over photogenic perspective.
+Keep the same five-view layout, complete silhouettes, same front/rear scale, and all source toy simplifications. Keep dimensional softbox reflections on metal, shadowed recesses ON the toy, rounded tires and dark glazing. Smooth tiny metallic flecks, not decorative swirled paint. Pure white outside car silhouettes, no floor, contact/cast shadows, halos, labels or borders.

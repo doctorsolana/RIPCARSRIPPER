@@ -1,9 +1,18 @@
 import * as THREE from 'three';
-import type { DriveInput, Track, TrackFrame, VehicleState } from './types';
+import type { CarSpec, DriveInput, Track, TrackFrame, VehicleState } from './types';
 
 // Every sound is generated in code (no files):
-//   engine   2 detuned saws + a sub sine through a lowpass that opens with throttle (900 Hz -> 6 kHz);
-//            pitch from a fake 5-speed gearbox (shift at 92%, drop to 62%, 120 ms throttle dip)
+//   engine   built from its firing, per car (setCar; a neutral six until then - ENGINES below): one four-stroke cycle
+//            of exhaust pulses (one per cylinder at its firing angle, each its own size - the banks, the runners) as a
+//            periodic wave at the cycle rate, rpm / 120 Hz, so its harmonic `cyl` is the firing frequency (rpm / 60 x
+//            cyl / 2) and the uneven ones are the lump. Two of them in step, the throttle's sharp, even pulses and the
+//            overrun's soft, uneven ones, crossfaded by the load. No two cycles alike: a few cents of random timing,
+//            the pulses' sizes wobbling at about half the firing rate, and combustion noise let through on each
+//            pulse. Then the exhaust: three resonances (body, mid, a rasp that grows with load), a lowpass the
+//            throttle opens (a lift closes it: the burble), a gentle saturation, a highpass. Revs from the wheels
+//            through the car's gearbox (its gears, shift points and shift: a turbo's lift, an automatic's slur, a
+//            sequential's cut), a clutch / converter slipping at a standstill, free in the air; a turbo's whistle
+//            and blow-off, overrun pops (a race car's crackle, a V8's burble), auto-blips on the downshifts
 //   rolling  by what the tyres are on, crossfaded over ~0.2 s, silent in the air, and all of it dark - next to
 //            nothing above ~2 kHz (broadband hiss under a car reads as a TV off its channel, not as tyres):
 //            plastic  brown noise lowpassed at 200 + 18 v Hz (the hollow toy-track hum)
@@ -25,12 +34,12 @@ import type { DriveInput, Track, TrackFrame, VehicleState } from './types';
 //            wall (a plastic grind, a rubber rub, a straw rustle), chattering at 31 Hz, louder with speed
 //   wind     in the air: a rush of noise (a wide band rising with speed, buffeting) over a low roar of air, and a thin
 //            whistle on top, all building with time aloft and speed - a hop barely breathes, the big jump howls
-//   one-shots tier 'ting' (higher per tier), boost whump (sine 60 -> 30 Hz + whoosh), landing thud (with the
+//   one-shots tier 'ting' (higher per tier; the hidden tier 4 a glittering run onto a shimmering chord), boost whump (sine 60 -> 30 Hz + whoosh), landing thud (with the
 //            plastic's tick, a tyre chirp on asphalt, a spit of gravel on dirt, a swish on grass), wall impact
 //            by material (plastic clack, tyre-wall thump, hay thud with a straw rustle; a very hard hit adds a
 //            low crunch and a boom), spin-out screech (a resonant noise sweep falling an octave), perfect-landing chime
-//   big jump off a 'bigjump' lip: the launch roar (the engine flat out - two detuned saws sweeping up an octave
-//            through an opening filter - over a sub whump and a rising whoosh, the lip's plastic clack); the landing
+//   big jump off a 'bigjump' lip: the launch roar (the car's own engine flaring flat out - revs up, wide open, twice
+//            as loud for a second - over a sub whump and a rising whoosh, the lip's plastic clack); the landing
 //            slam after a long flight (a deep boom with the plastic rattling, bigger and lower the longer the air);
 //            a perfect one adds a third, higher chime. Any lift-off at speed is a soft whoosh
 // Surfaces and walls come from the track frame under the car (setTrack); without a track everything is the
@@ -43,14 +52,14 @@ export interface DriveAudio {
   setMuted(m: boolean): void;
   /** The track, so the tyres sound like what they roll on and the walls like what they're made of (call once). */
   setTrack(track: Track): void;
+  /** The car, so the engine is its own (call once, after loading it; a neutral six until then). */
+  setCar(car: CarSpec): void;
 }
 
 const JOINT = 17; // u between track connectors (track.ts's tabEvery) ...
 const CHANNEL = 8; // ... which sit where the plastic is its plain 8 u channel (not the funnels out to a road)
 const WHEELBASE = 2.3; // u between the axles (all three cars are 2.26-2.39)
 const HALF_L = 2, HALF_W = 0.8, TYRE_Y = 0.62; // u: the cars' footprint (~4 x 1.5-1.65) and their tyres off the centre
-const GEAR_TOP = [10.5, 15.5, 23, 34, 50]; // u/s at 92% rpm in gears 1-5 (each gear spans x1.48)
-const SHIFT_DIP = 0.12; // s of throttle cut on an upshift
 const TING = [0, 1318.5, 1661.2, 1975.5]; // E6, G#6, B6 for spark tiers 1-3
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -64,8 +73,8 @@ const RAIL = 0, TYRE = 1, HAY = 2, SOFT = 3;
 const SCRAPE = [
   [1500, 5, 3300, 7, 3.6], // plastic rail: a squeaky grind
   [420, 3, 900, 4, 5], // tyre wall: a rubbery rub
-  [3200, 0.8, 6000, 1, 0.9], // hay: a rustle
-  [2400, 0.7, 5000, 0.9, 0.9], // the verge's soft limit: a brush of grass
+  [700, 0.8, 1500, 0.9, 0.45], // hay: a muffled brush of straw (low and soft - a bright hiss here grated)
+  [800, 0.8, 1700, 0.9, 0.45], // the verge's soft limit: a brush of grass
 ];
 
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
@@ -239,14 +248,16 @@ const thumpFn = (t: number, rnd: () => number) =>
       0.45 * sin(TAU * 330 * t + 1.2) * e(t, 0.03) +
       0.3 * sin(TAU * 470 * t) * e(t, 0.015)) +
   0.4 * rnd() * e(t, 0.008);
-// Into hay: a soft, dull thud (100 -> 58 Hz) and a rustle of straw (high-passed noise, fluttering).
+// Into hay: a soft, dull thud (90 -> 55 Hz) and a short, dry crunch of straw - noise band-limited to ~300-2000 Hz (two
+// one-pole lowpasses, the slower one taken off), no high hiss and no flutter: a cushioned 'whumpf', never a scratch.
 function hayFn() {
-  let lp = 0;
+  let a = 0, b = 0;
   return (t: number, rnd: () => number) => {
     const x = rnd();
-    lp += 0.35 * (x - lp);
-    return 0.9 * Math.min(1, t / 0.004) * sin(TAU * (58 * t + 42 * 0.03 * (1 - e(t, 0.03)))) * e(t, 0.06) +
-      (x - lp) * (0.9 * e(t, 0.12) + 0.6 * e(t, 0.025)) * (0.6 + 0.4 * sin(TAU * 43 * t) * sin(TAU * 11 * t));
+    a += 0.25 * (x - a);
+    b += 0.04 * (x - b);
+    return 0.95 * Math.min(1, t / 0.006) * sin(TAU * (55 * t + 35 * 0.035 * (1 - e(t, 0.035)))) * e(t, 0.07) +
+      1.6 * (a - b) * Math.min(1, t / 0.004) * (0.7 * e(t, 0.05) + 0.3 * e(t, 0.015));
   };
 }
 
@@ -259,6 +270,295 @@ const slamFn = (t: number, rnd: () => number) =>
       (0.45 * sin(TAU * 380 * t) * e(t, 0.05) + 0.35 * sin(TAU * 720 * t + 1) * e(t, 0.035) + 0.25 * sin(TAU * 1350 * t + 2) * e(t, 0.02)) *
         (0.7 + 0.3 * sin(TAU * 31 * t))) +
   0.5 * rnd() * (e(t, 0.006) + 0.25 * e(t, 0.06));
+
+// Overrun pops (unburnt fuel lighting in the exhaust), by kind: 0 a race car's crack (a sharp bark of noise on a short
+// knock), 1 a pop, 2 a big V8's burble (a soft, low 'blub'); k picks the variant (pitch, length).
+const popFn = (kind: number, k: number) => {
+  const f = [150, 92, 58][kind] * (1 + 0.16 * k), tau = [0.005, 0.011, 0.026][kind] * (1 + 0.2 * k);
+  const rise = [0.0006, 0.0012, 0.003][kind], c = [0.35, 0.2, 0.08][kind], nz = 1.3 / Math.sqrt(c);
+  let a = 0, b = 0;
+  return (t: number, rnd: () => number) => {
+    a += c * (rnd() - a);
+    b += c * (a - b);
+    return Math.min(1, t / rise) * (nz * b * e(t, tau) + 0.8 * sin(TAU * f * t) * e(t, 2.5 * tau) + 0.3 * sin(TAU * 2.6 * f * t + 1) * e(t, tau));
+  };
+};
+
+// ---- the engine ---------------------------------------------------------------------------------------------------
+
+/** A car's engine. Revs in rpm, speeds in u/s (the arcade's top speed is 44, 56 boosting). */
+interface Engine {
+  cyl: number;
+  fire: number[]; // crank angle (deg of the cycle's 720) of each exhaust pulse at the tailpipe, in firing order ...
+  load: number[]; // ... each pulse's size on the throttle ...
+  lift: number[]; // ... and on the overrun (weak, uneven: the burble)
+  width: [number, number]; // the pulses' width (fraction of the cycle) on the throttle, on the overrun
+  idle: number;
+  redline: number;
+  launch: number; // the revs a standing start holds flat out (the clutch / the converter slipping)
+  gears: number[]; // u/s at the redline in each gear
+  up: number; // flat out, upshift at this fraction of the redline (part throttle earlier) ...
+  down: number; // ... and on the throttle downshift under this one (coasting x0.75)
+  shift: number; // s an upshift takes ...
+  cut: number; // ... keeping this much of the throttle (0: a lift or an ignition cut; an automatic slurs on)
+  inertia: number; // s: the revs' lag (the flywheel) ...
+  drop: number; // ... and onto the next gear in a shift
+  blip: number; // a downshift off the throttle blips it this hard (0: none)
+  body: [number, number, number][]; // the exhaust's resonances [Hz, Q, dB]: body, mid, rasp (the last grows with load)
+  lp: [number, number]; // its lowpass, Hz: off the throttle at idle .. flat out at the redline
+  noise: [number, number, number]; // combustion noise: band Hz, Q, level ...
+  rumble: [number, number]; // ... and its low rumble: lowpass Hz, level (both let through on each pulse)
+  vary: number; // cycle-to-cycle size wobble (more on the overrun)
+  jitter: number; // cents of random timing
+  lope: number; // an idle that hunts (a lumpy cam)
+  turbo: number; // the turbo's whistle and blow-off (0: none)
+  pops: number; // pops a second on a lift from high revs ...
+  popFade: number; // ... dying away over this (s) ...
+  pop: number; // ... and which: 0 a race car's crack, 1 a pop, 2 a big V8's burble
+  shiftPop: number; // a pop on each upshift (a sequential's ignition cut), this loud
+  level: number;
+}
+
+const ENGINES: Record<string, Engine> = {
+  // a neutral straight-six: any car without an engine of its own
+  default: {
+    cyl: 6, fire: [0, 121, 238, 362, 479, 602], load: [1, 0.84, 1.04, 0.9, 0.96, 0.85], lift: [0.6, 0.46, 0.62, 0.48, 0.58, 0.5], width: [0.024, 0.045],
+    idle: 850, redline: 7000, launch: 3800, gears: [13, 21, 30, 40, 54], up: 0.93, down: 0.42, shift: 0.18, cut: 0.15,
+    inertia: 0.07, drop: 0.07, blip: 0, body: [[150, 0.8, 6], [430, 1.5, 4], [1200, 2.2, 3]], lp: [550, 2400],
+    noise: [800, 0.7, 0.9], rumble: [200, 2], vary: 0.22, jitter: 36, lope: 0.01, turbo: 0, pops: 2, popFade: 0.5, pop: 1, shiftPop: 0, level: 0.149,
+  },
+  // Nissan RB26DETT twin-turbo straight-six: smooth and silky (even pulses, softened by the turbines; the front and
+  // rear turbos' halves alternate a touch), revs to 8000; a 5-speed, lifting for each shift (the blow-off sighs), the
+  // turbos whistling as they spool
+  'skyline-hck01': {
+    cyl: 6, fire: [0, 121, 239, 361, 480, 601], load: [1, 0.88, 1.03, 0.9, 0.97, 0.87], lift: [0.55, 0.48, 0.58, 0.46, 0.56, 0.49], width: [0.022, 0.045],
+    idle: 950, redline: 8000, launch: 4200, gears: [14, 22.5, 32, 42, 56], up: 0.95, down: 0.4, shift: 0.22, cut: 0,
+    inertia: 0.06, drop: 0.08, blip: 0.35, body: [[170, 0.8, 6], [480, 1.4, 4], [1350, 2.5, 3.5]], lp: [600, 2600],
+    noise: [950, 0.6, 1], rumble: [200, 2], vary: 0.2, jitter: 30, lope: 0.006, turbo: 1, pops: 1.5, popFade: 0.4, pop: 1, shiftPop: 0, level: 0.108,
+  },
+  // 1964 Chevrolet big-block V8, cross-plane: each bank fires 270-180-90-180 (firing order 1-8-4-3-6-5-7-2, the near
+  // bank louder, the far one a touch late), so it lopes - a deep, lumpy burble; low revs (5400), big torque; a lazy
+  // 3-speed automatic that slurs its shifts; it burbles on a lift
+  'chevy-impala-jkb99': {
+    cyl: 8, fire: [0, 98, 188, 270, 368, 450, 540, 638], load: [1, 0.7, 0.66, 0.94, 0.72, 1.04, 0.97, 0.68],
+    lift: [0.85, 0.3, 0.26, 0.7, 0.38, 0.92, 0.72, 0.28], width: [0.018, 0.035],
+    idle: 620, redline: 5400, launch: 2300, gears: [17, 30, 60], up: 0.9, down: 0.3, shift: 0.42, cut: 0.6,
+    inertia: 0.12, drop: 0.22, blip: 0, body: [[85, 0.9, 8], [260, 1.3, 5], [780, 2, 2]], lp: [400, 1800],
+    noise: [450, 0.7, 0.8], rumble: [160, 1.5], vary: 0.36, jitter: 40, lope: 0.06, turbo: 0, pops: 4, popFade: 1.2, pop: 2, shiftPop: 0, level: 0.191,
+  },
+  // Porsche 911 GT3 R flat-six race engine: sharp pulses (the banks alternate, the far one's headers a touch longer),
+  // a warm body under the rasp, a wail to 9300; a 6-speed sequential (60 ms ignition-cut shifts with a crack,
+  // auto-blips down), crackling on a lift
+  'roxy-porsche-hrv96': {
+    cyl: 6, fire: [0, 124, 240, 364, 480, 604], load: [1, 0.82, 1.03, 0.83, 0.99, 0.81], lift: [0.6, 0.38, 0.64, 0.4, 0.58, 0.36],
+    width: [0.02, 0.04], idle: 1250, redline: 9300, launch: 5200, gears: [14.5, 20.5, 27, 34, 42.5, 56], up: 0.97, down: 0.5,
+    shift: 0.06, cut: 0, inertia: 0.035, drop: 0.025, blip: 0.75, body: [[190, 0.9, 5], [640, 1.6, 4], [1600, 2.2, 4]],
+    lp: [800, 3000], noise: [1200, 0.8, 1.1], rumble: [250, 2], vary: 0.22, jitter: 36, lope: 0.02, turbo: 0, pops: 16, popFade: 0.9, pop: 0,
+    shiftPop: 0.5, level: 0.109,
+  },
+  // Porsche 911 GT3 RS (997) road flat-six: the GT3 R's sharp alternating banks with more muffler - less rasp, a
+  // hard metallic edge to 8400; a 6-speed manual (clean quick shifts, a heel-and-toe blip down), a few pops on a lift
+  'porsche-911-gt3-rs': {
+    cyl: 6, fire: [0, 123, 240, 363, 480, 603], load: [1, 0.85, 1.03, 0.86, 0.99, 0.84], lift: [0.58, 0.42, 0.62, 0.42, 0.57, 0.4],
+    width: [0.021, 0.042], idle: 1000, redline: 8400, launch: 4600, gears: [14, 21, 28.5, 36, 45, 57], up: 0.96, down: 0.46,
+    shift: 0.13, cut: 0, inertia: 0.045, drop: 0.05, blip: 0.55, body: [[180, 0.9, 5], [560, 1.5, 4], [1450, 2.2, 3.4]],
+    lp: [700, 2800], noise: [1100, 0.8, 1], rumble: [230, 2], vary: 0.22, jitter: 34, lope: 0.012, turbo: 0, pops: 6, popFade: 0.7, pop: 1,
+    shiftPop: 0, level: 0.112,
+  },
+  // Porsche 964 air-cooled flat-six: a dry mechanical rasp (the fan, the valvetrain: more combustion noise, a
+  // looser cycle), revs to 6800; a 5-speed manual with a slow throw, a crackle or two on the overrun
+  'porsche-964-gdf88': {
+    cyl: 6, fire: [0, 122, 241, 361, 481, 600], load: [1, 0.8, 1.02, 0.82, 0.97, 0.8], lift: [0.62, 0.4, 0.64, 0.42, 0.6, 0.38],
+    width: [0.023, 0.046], idle: 900, redline: 6800, launch: 3900, gears: [13, 21, 30, 40, 54], up: 0.93, down: 0.42,
+    shift: 0.24, cut: 0, inertia: 0.06, drop: 0.08, blip: 0.4, body: [[160, 0.8, 5], [520, 1.4, 4.5], [1500, 1.8, 4]],
+    lp: [650, 2500], noise: [1300, 0.6, 1.3], rumble: [210, 2], vary: 0.28, jitter: 44, lope: 0.015, turbo: 0, pops: 4, popFade: 0.6, pop: 1,
+    shiftPop: 0, level: 0.118,
+  },
+  // '77 Firebird Trans Am's 6.6 V8: the cross-plane lope of the Impala's big-block but angrier - a shaker hood
+  // breathing, more rasp, revs a little higher (5800); a 4-speed manual, a pop and burble on a lift
+  'pontiac-firebird-htf40': {
+    cyl: 8, fire: [0, 97, 187, 271, 367, 451, 541, 637], load: [1, 0.72, 0.68, 0.95, 0.74, 1.04, 0.98, 0.7],
+    lift: [0.85, 0.32, 0.28, 0.72, 0.4, 0.92, 0.74, 0.3], width: [0.019, 0.036],
+    idle: 700, redline: 5800, launch: 2800, gears: [16, 26, 38, 58], up: 0.92, down: 0.34, shift: 0.26, cut: 0,
+    inertia: 0.1, drop: 0.14, blip: 0.3, body: [[95, 0.9, 8], [300, 1.3, 5], [900, 2, 3]], lp: [450, 2100],
+    noise: [520, 0.7, 0.9], rumble: [170, 1.6], vary: 0.34, jitter: 40, lope: 0.05, turbo: 0, pops: 5, popFade: 1, pop: 2, shiftPop: 0, level: 0.178,
+  },
+  // Beach Bomb Too (VW bus): an air-cooled flat-four putter - even pulses with the boxer's slight unevenness, low
+  // revs (4800), a whiny cooling fan in the mid; a 4-speed with long slow shifts; barely pops
+  'beach-bomb-too-k3370': {
+    cyl: 4, fire: [0, 182, 358, 541], load: [1, 0.86, 0.97, 0.84], lift: [0.62, 0.5, 0.6, 0.48], width: [0.03, 0.055],
+    idle: 900, redline: 4800, launch: 2600, gears: [14, 24, 36, 54], up: 0.92, down: 0.38, shift: 0.32, cut: 0,
+    inertia: 0.09, drop: 0.12, blip: 0, body: [[130, 0.8, 6], [420, 1.6, 4], [1100, 2.4, 2.5]], lp: [500, 2000],
+    noise: [900, 0.7, 1.1], rumble: [180, 2], vary: 0.26, jitter: 40, lope: 0.02, turbo: 0, pops: 1, popFade: 0.4, pop: 1, shiftPop: 0, level: 0.16,
+  },
+};
+
+/** The car's engine: its own by id, else one like it by make, else the neutral six. */
+function engineFor(car: CarSpec): Engine {
+  const own = ENGINES[car.id];
+  if (own) return own;
+  const m = (car.meta ?? {}) as { make?: unknown; model?: unknown };
+  const s = `${m.make ?? ''} ${m.model ?? ''}`.toLowerCase();
+  if (/porsche/.test(s)) return ENGINES['roxy-porsche-hrv96'];
+  if (/skyline|gt-?r\b|supra/.test(s)) return ENGINES['skyline-hck01'];
+  if (/chevrolet|chevy|ford|dodge|plymouth|pontiac|buick|cadillac|oldsmobile|mercury|lincoln|chrysler|amc/.test(s)) return ENGINES['chevy-impala-jkb99'];
+  return ENGINES.default;
+}
+
+/** The gear a car at vEng would be in (the one an acceleration on `want` would have reached, or a cruise's). */
+function pickGear(P: Engine, vEng: number, want: number) {
+  const at = want > 0.05 ? 0.9 * P.up : 0.75;
+  for (let i = 0; i < P.gears.length - 1; i++) if (vEng < at * P.gears[i]) return i + 1;
+  return P.gears.length;
+}
+
+/** One four-stroke cycle of exhaust pulses as a PeriodicWave at the cycle rate (rpm / 120 Hz), so its harmonic `cyl` is
+ *  the firing frequency. Each pulse is z^2 e^(2 - 2z), z = t / w (a quick rise, a slower fall), at its firing angle and
+ *  its own size; the series is closed-form: c_k = 2e^2 w / (2 + 2 pi k w i)^3 x sum_j a_j e^(-2 pi i k phi_j). Scaled to a
+ *  peak of 1, with its RMS, and the curve of a gate that opens on each pulse (its top two thirds) for the noise. */
+function cycleWave(ctx: BaseAudioContext, fire: number[], size: number[], w: number, N = 320) {
+  const re = new Float32Array(N + 1), im = new Float32Array(N + 1), E2 = 2 * Math.E * Math.E * w;
+  for (let k = 1; k <= N; k++) {
+    const x = TAU * k * w, dr = 8 - 6 * x * x, di = 12 * x - x * x * x, dd = dr * dr + di * di;
+    const sr = (E2 * dr) / dd, si = (-E2 * di) / dd;
+    let pr = 0, pi = 0;
+    for (let j = 0; j < fire.length; j++) {
+      const a = (-TAU * k * fire[j]) / 720;
+      pr += size[j] * Math.cos(a);
+      pi += size[j] * Math.sin(a);
+    }
+    const taper = 0.5 + 0.5 * Math.cos((Math.PI * k) / (N + 1)); // no ringing from the cut
+    re[k] = 2 * (sr * pr - si * pi) * taper;
+    im[k] = -2 * (sr * pi + si * pr) * taper;
+  }
+  // its shape over a cycle: the peak, the floor, the RMS
+  const M = 512, cs = new Float32Array(M), Q = (3 * M) / 4;
+  for (let m = 0; m < M; m++) cs[m] = Math.cos((TAU * m) / M);
+  let hi = -Infinity, lo = Infinity, ms = 0;
+  for (let m = 0; m < M; m++) {
+    let y = 0;
+    for (let k = 1, i = 0; k <= N; k++) {
+      i = (i + m) & (M - 1); // k m mod M
+      y += re[k] * cs[i] + im[k] * cs[(i + Q) & (M - 1)]; // cos, sin
+    }
+    hi = Math.max(hi, y);
+    lo = Math.min(lo, y);
+    ms += y * y;
+  }
+  const s = 1 / Math.max(hi, -lo);
+  for (let k = 1; k <= N; k++) (re[k] *= s), (im[k] *= s);
+  const floor = lo * s, x0 = floor + (1 - floor) / 3, gate = new Float32Array(256);
+  for (let i = 0; i < 256; i++) gate[i] = Math.max(0, ((2 * i) / 255 - 1 - x0) / (1 - x0)) ** 1.5;
+  return { wave: ctx.createPeriodicWave(re, im, { disableNormalization: true }), rms: s * Math.sqrt(ms / M), gate };
+}
+
+/** The saturation: tanh, a touch asymmetric (some even harmonics: warmth), unity at the ends of its input range. */
+const SAT = (() => {
+  const n = 2048, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const u = (2 * i) / (n - 1) - 1;
+    c[i] = Math.tanh(2 * u + 0.3 * u * u) / Math.tanh(2.3);
+  }
+  return c;
+})();
+
+/** The engine's voice: P as nodes into `to`. `white` is broadband noise, `wander` slow random (RMS 1, under ~300 Hz).
+ *  Returns its controls (update() sets them every frame) and stop(), which fades it out. */
+function engineVoice(ctx: BaseAudioContext, P: Engine, white: AudioBuffer, wander: AudioBuffer, to: AudioNode) {
+  const t0 = ctx.currentTime;
+  const filter = (type: BiquadFilterType, f: number, q: number, db = 0) => {
+    const b = ctx.createBiquadFilter();
+    b.type = type;
+    b.frequency.value = f;
+    b.Q.value = q;
+    b.gain.value = db;
+    return b;
+  };
+  const gain = (v: number) => {
+    const g = ctx.createGain();
+    g.gain.value = v;
+    return g;
+  };
+  const srcs: AudioScheduledSourceNode[] = [];
+  const loop = (buf: AudioBuffer, rate = 1) => {
+    const s = ctx.createBufferSource();
+    s.buffer = buf;
+    s.loop = true;
+    s.playbackRate.value = rate;
+    s.start(t0, Math.random() * buf.duration);
+    srcs.push(s);
+    return s;
+  };
+  // the throttle's pulses, the overrun's, and at low revs short ones: a pulse's width is set in crank degrees, but at
+  // idle the blowdown is short against the long cycle - without them an idle is a dull thud a phone speaker can't play
+  const A = cycleWave(ctx, P.fire, P.load, P.width[0]), B = cycleWave(ctx, P.fire, P.lift, P.width[1]);
+  const C = cycleWave(ctx, P.fire, P.load, 0.008);
+  // the revs: one control, the cycle rate (Hz), drives the three waves so they stay in step
+  const rate = ctx.createConstantSource();
+  rate.offset.value = P.idle / 120;
+  // no two cycles alike: random timing on the waves' detune (its band follows the cycle rate: update(); nothing under
+  // 12 Hz - the revs are tied to the wheels, so it's grit, never a wander) ...
+  const jitF = filter('lowpass', 16, 0.7), jit = gain(0);
+  loop(wander, 0.83).connect(filter('highpass', 12, 0.7)).connect(jitF).connect(jit);
+  // ... and the pulses' sizes wobbling: a gain the slow noise moves (its band follows the firing rate)
+  const sum = gain(1), varF = filter('lowpass', 40, 0.7), varG = gain(0);
+  loop(wander, 1.21).connect(varF).connect(varG).connect(sum.gain);
+  const oscA = ctx.createOscillator(), oscB = ctx.createOscillator(), oscC = ctx.createOscillator();
+  const aG = gain(0), bG = gain(0), cG = gain(0);
+  oscA.setPeriodicWave(A.wave);
+  oscB.setPeriodicWave(B.wave);
+  oscC.setPeriodicWave(C.wave);
+  for (const [o, g] of [[oscA, aG], [oscB, bG], [oscC, cG]] as const) {
+    o.frequency.value = 0;
+    rate.connect(o.frequency);
+    jit.connect(o.detune);
+    o.connect(g).connect(sum);
+    o.start(t0);
+    srcs.push(o);
+  }
+  rate.start(t0);
+  srcs.push(rate);
+  // combustion noise: a band of noise and a low rumble, let through on each pulse (the throttle's wave through the
+  // gate curve)
+  const gate = ctx.createWaveShaper(), nGate = gain(0), nG = gain(0);
+  gate.curve = A.gate;
+  oscA.connect(gate).connect(nGate.gain);
+  const hiss = loop(white), rumble = gain(P.rumble[1] / P.noise[2]);
+  hiss.connect(filter('bandpass', P.noise[0], P.noise[1])).connect(nGate);
+  hiss.connect(filter('lowpass', P.rumble[0], 0.7)).connect(rumble).connect(nGate);
+  nGate.connect(nG).connect(sum);
+  // the exhaust: its resonances and the load's lowpass; a gentle saturation (driven harder on the throttle); a last
+  // lowpass for any fizz, a highpass for the sub-audio lumps
+  const res = P.body.map(([f, q, db]) => filter('peaking', f, q, db));
+  let x: AudioNode = sum;
+  for (const r of res) x = x.connect(r);
+  const lp = filter('lowpass', P.lp[0], 0.75), drive = gain(0.3), sat = ctx.createWaveShaper();
+  sat.curve = SAT;
+  sat.oversample = '2x';
+  const out = gain(0), flare = gain(1), voice = gain(1);
+  x.connect(lp).connect(drive).connect(sat).connect(filter('lowpass', 6500, 0.6)).connect(filter('highpass', 30, 0.7)).connect(out);
+  out.connect(flare).connect(voice).connect(to);
+  // a turbo: its whistle (a sine rising with the boost) and the rush of air through it
+  let whistle: OscillatorNode | null = null, wG: GainNode | null = null, hG: GainNode | null = null;
+  if (P.turbo) {
+    whistle = ctx.createOscillator();
+    wG = gain(0);
+    hG = gain(0);
+    whistle.frequency.value = 1200;
+    whistle.connect(wG).connect(voice);
+    loop(white).connect(filter('bandpass', 2200, 1)).connect(hG).connect(voice);
+    whistle.start(t0);
+    srcs.push(whistle);
+  }
+  return {
+    P, rate, aG, bG, cG, bK: A.rms / B.rms, cK: A.rms / C.rms, jitF, jit, varF, varG, nG, rasp: res[res.length - 1], lp, drive, out, flare, whistle, wG, hG,
+    stop() {
+      const t = ctx.currentTime;
+      voice.gain.setTargetAtTime(0, t, 0.03);
+      for (const s of srcs) s.stop(t + 0.25);
+    },
+  };
+}
 
 function build(ctx: BaseAudioContext, muted: boolean) {
   const sr = ctx.sampleRate;
@@ -310,25 +610,17 @@ function build(ctx: BaseAudioContext, muted: boolean) {
     o.start();
   };
 
-  // engine
-  const engF = filter('lowpass', 900, 1.6);
-  const engG = gain(0);
-  engF.connect(engG).connect(master);
-  const saw1 = ctx.createOscillator(), saw2 = ctx.createOscillator(), sub = ctx.createOscillator();
-  saw1.type = saw2.type = 'sawtooth';
-  sub.type = 'sine';
-  saw2.detune.value = 14;
-  const sawG = gain(0.22), subG = gain(0.6);
-  saw1.connect(sawG);
-  saw2.connect(sawG);
-  sawG.connect(engF);
-  sub.connect(subG).connect(engF);
-  const wob = ctx.createOscillator(), wobG = gain(7); // a slow wobble so the note lives
-  wob.frequency.value = 5.3;
-  wob.connect(wobG);
-  wobG.connect(saw1.detune);
-  wobG.connect(saw2.detune);
-  for (const o of [saw1, saw2, sub, wob]) o.start();
+  // the engine's slow random (its timing, its pulses' sizes): white through a one-pole at 300 Hz, RMS 1, 6 s round so
+  // no pattern in it repeats audibly
+  const wander = (() => {
+    const r = loopRate(ctx), k = 1 - Math.exp((-TAU * 300) / r);
+    let l = 0, ms = 0;
+    const d = lapNoise(6 * r, Math.random, (x) => (l += k * (x - l)));
+    for (let i = 0; i < d.length; i++) ms += d[i] * d[i];
+    const buf = ctx.createBuffer(1, d.length, r), o = buf.getChannelData(0), s = 1 / Math.sqrt(ms / d.length);
+    for (let i = 0; i < d.length; i++) o[i] = d[i] * s;
+    return buf;
+  })();
 
   // rolling: the plastic's hum; the asphalt's roar; the dirt's rumble, and the bus its crunches play into; the verge's
   // rumble and swish
@@ -373,8 +665,9 @@ function build(ctx: BaseAudioContext, muted: boolean) {
   loop(white).connect(whistleF).connect(whistleG).connect(master);
 
   return {
-    master, mute, white, engF, engG, saw1, saw2, sub, humF, humG, road, roadF, roadG, dirt, dirtF, dirtG, crunchG, grassF, grassG,
+    master, mute, white, wander, humF, humG, road, roadF, roadG, dirt, dirtF, dirtG, crunchG, grassF, grassG,
     swishG, sqG, sqF1, sqF2, scF1, scF2, scG, jetG, windF, windG, windLowF, windLowG, whistleF, whistleG,
+    pops: [0, 1, 2].map((kind) => [0, 1, 2].map((k) => render(ctx, [0.05, 0.1, 0.18][kind], popFn(kind, k), 0.9, 0x4c1d + 31 * kind + 7 * k))),
     tick: render(ctx, 0.03, tickFn, 0.9),
     tock: [1300, 1420, 1560].map((f, i) => render(ctx, 0.03, tockFn(f), 0.9, 0x2f6b + i)),
     crunch: [0, 1, 2, 3, 4, 5].map((k) => render(ctx, 0.03, crunchFn(k), 0.9, 0x7a31 + 97 * k)),
@@ -398,7 +691,14 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
   let ctx: BaseAudioContext | null = offline ?? null;
   let g: ReturnType<typeof build> | null = offline ? build(offline, false) : null;
   let muted = false;
-  let gear = 1, shiftT = 0, thr = 0, time = 0, sPrev = NaN;
+  let time = 0, sPrev = NaN;
+  // the engine: its profile (setCar), its voice (once there's a context), the wheels' radius (u) that turns their spin
+  // into speed; the gearbox (0: pick one), the shift / blip in progress, the revs (fraction of the redline), the load,
+  // the boost, the big jump's flare, the throttle held, the pops still due after a lift, the idle's hunting
+  let P = ENGINES.default, wheelR = 0.3;
+  let eng: ReturnType<typeof engineVoice> | null = offline && g ? engineVoice(offline, P, g.white, g.wander, g.master) : null;
+  let gear = 0, up = false, shiftT = 0, blipT = 0, rpmN = P.idle / P.redline, load = 0, boost = 0, flareT = 0, onThr = false;
+  let popEnv = 0, popDue = 0, popGap = 1, lopeA = 0, lopeB = 0;
   // what's under and beside the car (probe(), every frame): the surface mix under the tyres, the nearer wall
   let track: Track | null = null;
   const fr = newFrame(), fr2 = newFrame();
@@ -416,6 +716,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       if (!live) {
         ctx = live = new AudioContext({ latencyHint: 'interactive' });
         g = build(live, muted);
+        eng = engineVoice(live, P, g.white, g.wander, g.master);
       }
       if (live.state !== 'running' && !document.hidden) void live.resume().catch(() => {});
     } catch {
@@ -455,7 +756,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
   /** A joint's tock: one of the three, +-5% in pitch, +-1.3 dB - every hit a little different. */
   const tock = (when: number, level: number, rate: number) =>
     g && play(g.tock[Math.floor(Math.random() * g.tock.length)], when, level * (0.85 + 0.3 * Math.random()), rate * (1 + 0.1 * (Math.random() - 0.5)));
-  function tone(f: number, when: number, level: number, decay: number, type: OscillatorType = 'sine', fEnd = 0) {
+  function tone(f: number, when: number, level: number, decay: number, type: OscillatorType = 'sine', fEnd = 0, attack = 0.004) {
     if (!ctx || !g) return;
     const o = ctx.createOscillator();
     o.type = type;
@@ -463,7 +764,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     if (fEnd) o.frequency.exponentialRampToValueAtTime(fEnd, when + decay * 0.7);
     const a = ctx.createGain();
     a.gain.setValueAtTime(0, when);
-    a.gain.linearRampToValueAtTime(level, when + 0.004);
+    a.gain.linearRampToValueAtTime(level, when + attack);
     a.gain.exponentialRampToValueAtTime(0.0001, when + decay);
     o.connect(a).connect(g.master);
     o.start(when);
@@ -494,33 +795,54 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     s.stop(when + dur + 0.02);
   }
 
-  /** The engine flat out off a big jump's lip: two detuned saws sweeping up an octave through a filter that opens and
-   *  closes again, swelling in and dying over ~1.4 s. */
-  function roar(when: number, level: number, f0: number) {
+  /** The engine flat out off a big jump's lip: its voice swells to ~2x for ~1.4 s while update() revs it up and opens
+   *  it wide (flareT). */
+  function flare(when: number) {
+    if (!eng) return;
+    const f = eng.flare.gain;
+    f.cancelScheduledValues(when);
+    f.setValueAtTime(1, when);
+    f.linearRampToValueAtTime(2.1, when + 0.05);
+    f.linearRampToValueAtTime(1.6, when + 0.5);
+    f.linearRampToValueAtTime(1, when + 1.4);
+    flareT = 1.4;
+  }
+  /** A turbo's blow-off valve venting the boost: a hiss falling ~2.6 -> 1.3 kHz over a breath of lower air, ~0.5 s. */
+  function pssh(when: number, level: number) {
     if (!ctx || !g) return;
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.Q.value = 2.5;
-    lp.frequency.setValueAtTime(600, when);
-    lp.frequency.exponentialRampToValueAtTime(4200, when + 0.35);
-    lp.frequency.exponentialRampToValueAtTime(900, when + 1.4);
-    const a = ctx.createGain();
-    a.gain.setValueAtTime(0, when);
-    a.gain.linearRampToValueAtTime(level, when + 0.04);
-    a.gain.linearRampToValueAtTime(level * 0.7, when + 0.45);
-    a.gain.exponentialRampToValueAtTime(0.0001, when + 1.4);
-    lp.connect(a).connect(g.master);
-    for (let i = 0; i < 2; i++) {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      o.detune.value = i ? 11 : -11;
-      o.frequency.setValueAtTime(f0, when);
-      o.frequency.exponentialRampToValueAtTime(f0 * 2, when + 0.5);
-      o.frequency.exponentialRampToValueAtTime(f0 * 1.7, when + 1.4);
-      o.connect(lp);
-      o.start(when);
-      o.stop(when + 1.45);
+    for (const [f0, f1, q, l] of [[2600, 1300, 0.9, 1], [900, 450, 1.1, 0.45]]) {
+      const s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), a = ctx.createGain();
+      s.buffer = g.white;
+      bp.type = 'bandpass';
+      bp.Q.value = q;
+      bp.frequency.setValueAtTime(f0, when);
+      bp.frequency.exponentialRampToValueAtTime(f1, when + 0.45);
+      a.gain.setValueAtTime(0, when);
+      a.gain.linearRampToValueAtTime(level * l, when + 0.008);
+      a.gain.linearRampToValueAtTime(level * l * 0.6, when + 0.12);
+      a.gain.exponentialRampToValueAtTime(0.0001, when + 0.5);
+      s.connect(bp).connect(a).connect(g.master);
+      s.start(when, Math.random() * 0.5);
+      s.stop(when + 0.52);
     }
+  }
+  /** An exhaust pop of the engine's kind, this loud (x the engine's level; each one its own variant, weight, pitch). */
+  const pop = (when: number, level: number) =>
+    g && play(g.pops[P.pop][Math.floor(Math.random() * 3)], when, [1.1, 0.5, 0.45][P.pop] * P.level * level * (0.4 + 0.6 * Math.random() * Math.random()), 0.9 + 0.22 * Math.random());
+  /** The hidden tier 4: a glittering run two octaves up the E-major pentatonic onto a shimmering E chord (each note two
+   *  voices a few hertz apart, beating) with a bell on top, over a rising breath and a soft low E: a power-up, well
+   *  beyond tier 3's two tings. ~1.4 s. */
+  function magic(when: number) {
+    [1318.5, 1480, 1661.2, 1975.5, 2217.5, 2637, 2960, 3322.4, 3951].forEach((f, i) => tone(f, when + 0.026 * i, 0.06 + 0.005 * i, 0.22));
+    const at = when + 0.24;
+    for (const [f, l] of [[659.3, 0.07], [1318.5, 0.06], [1661.2, 0.045], [1975.5, 0.045], [2637, 0.035]]) {
+      tone(f, at, l, 1.3, 'sine', 0, 0.05);
+      tone(f * 1.0045, at, l, 1.3, 'sine', 0, 0.05);
+    }
+    ting(2637, at, 0.13);
+    whoosh(when, 0.07, 400, 3600, 0.5, 0.8, 0.1);
+    tone(82.4, at, 0.3, 0.8, 'sine', 0, 0.03);
+    tone(164.8, at, 0.12, 0.6, 'sine', 0, 0.03); // so phone speakers hear the low E
   }
 
   /** At s, on a big jump's lip (a little before it, or up to its middle)? */
@@ -585,24 +907,6 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     probe(state);
     const hard = mixP + mixA; // share of the tyres on a surface that squeals
 
-    // Engine: gearbox from the wheel speed (spins up in the air / under wheelspin).
-    let vEng = Math.max(v, Math.abs(state.wheelSpinRate) * 0.29);
-    if (!grounded) vEng += 6 * input.throttle;
-    if (gear < 5 && vEng > GEAR_TOP[gear - 1]) {
-      gear++;
-      shiftT = SHIFT_DIP;
-    } else if (gear > 1 && vEng < 0.87 * GEAR_TOP[gear - 2]) gear--;
-    const rpm = clamp(gear === 1 ? 0.18 + (0.74 * vEng) / GEAR_TOP[0] : (0.92 * vEng) / GEAR_TOP[gear - 1], 0.18, 1);
-    shiftT = Math.max(0, shiftT - dt);
-    const tIn = shiftT > 0 ? input.throttle * 0.2 : input.throttle;
-    thr += (tIn - thr) * (1 - Math.exp(-dt / 0.035));
-    const f = 38 + 210 * rpm;
-    g.saw1.frequency.setTargetAtTime(f, now, 0.025);
-    g.saw2.frequency.setTargetAtTime(f, now, 0.025);
-    g.sub.frequency.setTargetAtTime(f / 2, now, 0.025);
-    g.engF.frequency.setTargetAtTime(900 + 5100 * Math.pow(thr, 1.4) * (0.55 + 0.45 * rpm), now, 0.03);
-    g.engG.gain.setTargetAtTime(0.075 + 0.11 * thr + 0.035 * rpm, now, 0.04);
-
     // Slip: the vehicle's, or the pose's when that's bigger (a spin-out swings the nose past a drift's clamp),
     // folded onto the line of travel (sliding backwards is rolling).
     let slip = Math.abs(state.slip), off = 0;
@@ -611,6 +915,106 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       slip = Math.max(slip, Math.min(off, Math.PI - off));
     }
     const slipDeg = slip / DEG, slide = smoothstep(6, 26, slipDeg);
+
+    // Engine: the revs from the wheels (their spin: wheelspin, and free in the air) through the car's gearbox; the
+    // load from the throttle (cut in a shift, stabbed by a blip); the turbo's boost; then the voice's controls.
+    popDue = 0;
+    if (eng) {
+      const n = P.gears.length, idleN = P.idle / P.redline;
+      const back = V.dot(nose) < -1; // reversing: the brake drives it
+      const want = back ? input.brake : input.throttle;
+      // a drift on the throttle spins the rear up a little more
+      const vEng = Math.max(v, Math.abs(state.wheelSpinRate) * wheelR) * (1 + 0.1 * slide * want);
+      if (!gear || ev.respawn) {
+        gear = pickGear(P, vEng, want);
+        shiftT = blipT = 0;
+      }
+      shiftT = Math.max(0, shiftT - dt);
+      blipT = Math.max(0, blipT - dt);
+      if (grounded && !back && shiftT <= 0) {
+        const r = vEng / P.gears[gear - 1];
+        if (gear < n && r > (want > 0.05 ? P.up * (0.62 + 0.38 * want) : 0.99)) {
+          gear++;
+          up = true;
+          shiftT = P.shift;
+          // a turbo vents its boost through the blow-off as the throttle closes; a sequential's ignition cut cracks
+          if (P.turbo && boost > 0.3) {
+            pssh(now, 0.55 * P.level * P.turbo * boost);
+            boost *= 0.3;
+          }
+          if (P.shiftPop && rpmN > 0.6) pop(now + 0.012, P.shiftPop);
+        } else if (gear > 1 && r < P.down * (want > 0.05 ? 1 : 0.75) && vEng < 0.9 * P.gears[gear - 2]) {
+          gear--;
+          up = false;
+          shiftT = 0.5 * P.shift;
+          if (want < 0.3 && P.blip) {
+            blipT = 0.12;
+            if (P.pops) popEnv = Math.max(popEnv, 0.5);
+          }
+        }
+      }
+      // the revs: the gear's, held up by a slipping clutch (converter) at a standstill as the throttle asks, free in
+      // the air, flaring off a big jump, hunting at idle; the limiter rounds them off
+      flareT = Math.max(0, flareT - dt);
+      const fl = Math.min(1, flareT / 0.9);
+      const hold = idleN + (P.launch / P.redline - idleN) * want;
+      let rN = vEng / P.gears[back ? 0 : gear - 1];
+      rN = 0.5 * (rN + hold + Math.sqrt((rN - hold) ** 2 + 0.0016)); // a smooth max
+      if (!grounded) rN = Math.max(rN, idleN + (0.97 - idleN) * want);
+      rN = Math.max(rN, 0.97 * fl);
+      lopeA += dt * TAU * 1.27;
+      lopeB += dt * TAU * 2.09;
+      const idleK = 1 - smoothstep(1.15 * idleN, 1.9 * idleN, rpmN);
+      const hunt = P.lope * idleK * (0.65 * sin(lopeA) + 0.35 * sin(lopeB + 0.8 * sin(0.31 * lopeA)));
+      rN *= 1 + hunt;
+      if (rN > 0.94) rN = 0.94 + 0.06 * Math.tanh((rN - 0.94) / 0.06);
+      rpmN += (rN - rpmN) * (1 - Math.exp(-dt / (shiftT > 0 ? P.drop : grounded ? P.inertia : 0.12)));
+      // the load
+      let L = want;
+      if (shiftT > 0 && up) L *= P.cut;
+      if (blipT > 0) L = Math.max(L, P.blip);
+      L = Math.max(L, fl);
+      load += (L - load) * (1 - Math.exp(-dt / (L < load ? 0.025 : 0.05)));
+      const lo = Math.max(load, 0.3 * idleK); // idling, it still fires
+      // a lift from high revs: the blow-off, and the exhaust pops for a while
+      if (onThr && want < 0.2) {
+        onThr = false;
+        if (P.turbo && boost > 0.25) {
+          pssh(now, 0.7 * P.level * P.turbo * boost);
+          boost *= 0.2;
+        }
+        popEnv = Math.max(popEnv, smoothstep(0.4, 0.75, rpmN));
+      } else if (!onThr && want > 0.6) onThr = true;
+      popEnv *= Math.exp(-dt / P.popFade);
+      popDue = P.pops * popEnv * (1 - lo) * smoothstep(0.22, 0.5, rpmN) * dt; // pops expected this frame
+      // the turbo spools up on the throttle at revs (~0.5 s), and bleeds off quickly
+      const bT = P.turbo ? lo * smoothstep(0.3, 0.68, rpmN) * (shiftT > 0 && up ? 0 : 1) : 0;
+      boost += (bT - boost) * (1 - Math.exp(-dt / (bT > boost ? 0.5 : 0.12)));
+      // the voice
+      const fc = (rpmN * P.redline) / 120, fire = fc * P.cyl; // the cycle rate, the firing rate (Hz)
+      eng.rate.offset.setTargetAtTime(fc, now, 0.012);
+      const xa = Math.sqrt(lo), xc = 1 - smoothstep(idleN, 2.6 * idleN, rpmN); // the low revs' short pulses
+      eng.aG.gain.setTargetAtTime((1 - xc) * xa, now, 0.02);
+      eng.bG.gain.setTargetAtTime((1 - xc) * (1 - xa) * eng.bK, now, 0.02);
+      eng.cG.gain.setTargetAtTime(xc * eng.cK, now, 0.02);
+      // the randoms' bands follow the engine (timing: about the cycle rate; sizes: about the firing rate), their gains
+      // keep them at P.jitter cents and P.vary RMS (the wander through a lowpass at f: RMS ~ sqrt(0.707 f / its band))
+      const jf = clamp(fc, 10, 90), vf = clamp(0.8 * fire, 20, 300);
+      eng.jitF.frequency.setTargetAtTime(jf, now, 0.05);
+      eng.jit.gain.setTargetAtTime(P.jitter / Math.sqrt((0.707 * jf) / 249), now, 0.05);
+      eng.varF.frequency.setTargetAtTime(vf, now, 0.05);
+      eng.varG.gain.setTargetAtTime(Math.min(0.45, P.vary * (1 + 1.2 * (1 - lo))) / Math.sqrt((0.707 * vf) / 363), now, 0.05);
+      eng.nG.gain.setTargetAtTime(P.noise[2] * (0.3 + 0.7 * lo) * (0.5 + 0.5 * rpmN), now, 0.03);
+      eng.rasp.gain.setTargetAtTime(P.body[P.body.length - 1][2] * (0.25 + 0.75 * lo), now, 0.05);
+      eng.lp.frequency.setTargetAtTime(P.lp[0] + (P.lp[1] - P.lp[0]) * lo ** 1.3 * (0.3 + 0.7 * rpmN) + 900 * xc, now, 0.03);
+      eng.drive.gain.setTargetAtTime(0.14 + 0.12 * lo, now, 0.03);
+      eng.out.gain.setTargetAtTime(P.level * (0.36 + 0.64 * lo ** 0.8) * (0.55 + 0.45 * rpmN) * (1 + 0.4 * xc) * (1 + 2.5 * hunt), now, 0.03);
+      if (eng.whistle && eng.wG && eng.hG) {
+        eng.whistle.frequency.setTargetAtTime(1200 + 1700 * boost * (0.6 + 0.4 * rpmN), now, 0.05);
+        eng.wG.gain.setTargetAtTime(0.025 * P.level * P.turbo * boost * boost, now, 0.05);
+        eng.hG.gain.setTargetAtTime(0.06 * P.level * P.turbo * boost * lo, now, 0.05);
+      }
+    }
 
     // Rolling, by surface (silent in the air). The asphalt and the dirt build smoothly all the way to top speed.
     const roll = grounded ? Math.min(1, v / 25) : 0, tc = grounded ? BLEND : 0.12;
@@ -660,7 +1064,8 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     g.whistleG.gain.setTargetAtTime(0.1 * wk * wk, now, wt);
 
     // Events.
-    if (ev.tierUp) {
+    if (ev.tierUp === 4) magic(now);
+    else if (ev.tierUp) {
       ting(TING[ev.tierUp], now, 0.2);
       if (ev.tierUp === 3) ting(TING[1] * 2, now + 0.07, 0.14);
     }
@@ -672,7 +1077,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     // Lift-off: a soft whoosh at speed; off a big jump's lip, the roar.
     if (ev.airborne && !grounded) {
       if (bigAir) {
-        roar(now, 0.14, 72); // ~0.1 RMS at its peak: two to three times the engine bed
+        flare(now); // the engine flat out, ~2x the bed
         tone(58, now, 0.8, 0.7, 'sine', 28);
         tone(116, now, 0.22, 0.4, 'sine', 56); // so phone speakers hear the whump
         whoosh(now, 0.32, 300, 3200, 0.9, 1, 0.08);
@@ -700,15 +1105,17 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     }
     // Wall impacts, by material; light knocks between them only count when much harder (a scrape has the loop).
     const n = ev.wallHit ?? 0;
-    if (n > 2 && (time - hitT > 0.07 || n > hitN * 1.5)) {
+    const soft = wallMat === HAY || wallMat === SOFT; // hay is hit again and again sliding along it: fewer, gentler knocks
+    if (n > 2 && (time - hitT > (soft ? 0.18 : 0.07) || n > hitN * 1.5)) {
       hitT = time;
       hitN = n;
       const k = clamp(n / 25, 0.15, 1), r = 0.92 + 0.16 * Math.random();
       if (wallMat === RAIL) play(g.clack, now, 0.75 * k, r);
       else if (wallMat === TYRE) play(g.thump, now, 1.1 * k, r);
-      else play(g.hay, now, 0.95 * k, wallMat === SOFT ? r * 0.85 : r);
-      if (n > 22) play(g.thud, now + 0.004, 0.75 * clamp((n - 22) / 15, 0.35, 1), 0.72); // a heavy hit has weight
-      if (n > 25) play(g.slam, now + 0.006, 0.4 * clamp((n - 25) / 12, 0.3, 1), 1.2); // the hardest boom
+      else play(g.hay, now, 0.7 * k, wallMat === SOFT ? r * 0.85 : r);
+      // a heavy hit has weight (hay only a softer one: it swallows the hit, and the slam's plastic rattle isn't straw)
+      if (n > 22) play(g.thud, now + 0.004, (soft ? 0.4 : 0.75) * clamp((n - 22) / 15, 0.35, 1), 0.72);
+      if (n > 25 && !soft) play(g.slam, now + 0.006, 0.4 * clamp((n - 25) / 12, 0.3, 1), 1.2); // the hardest boom
     }
     // Spin-out: the vehicle says so, or the nose swings far off the travel at speed (a rollback has the angle
     // but no yaw rate). A long screech on the surfaces that squeal, a gravelly skid on the others.
@@ -737,6 +1144,14 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       crunchGap = -Math.log(1 - Math.random());
     }
     crunchGap -= left;
+    // the exhaust's pops after a lift (a Poisson stream too, fading)
+    left = popDue;
+    while (popDue > 0 && popGap <= left) {
+      left -= popGap;
+      pop(t0 + (1 - left / popDue) * dt, 1);
+      popGap = -Math.log(1 - Math.random());
+    }
+    popGap -= left;
     // and the track joints, on the plastic: a tock per axle at every multiple of JOINT along s.
     const s = state.trackS;
     if (!Number.isNaN(sPrev) && !ev.respawn) {
@@ -776,6 +1191,19 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       track = t;
       lips.length = 0;
       for (const b of t.tags) if (b.tag === 'bigjump') lips.push(b.s0, b.s1);
+    },
+    setCar(car: CarSpec) {
+      const r = (car.wheels ?? []).map((w) => w.r).filter((x) => x > 0);
+      wheelR = r.length ? r.reduce((a, b) => a + b, 0) / r.length : 0.3; // as the arcade's (the mean)
+      const next = engineFor(car);
+      if (next === P) return;
+      P = next;
+      gear = 0;
+      rpmN = P.idle / P.redline;
+      if (ctx && g && eng) {
+        eng.stop();
+        eng = engineVoice(ctx, P, g.white, g.wander, g.master);
+      }
     },
   };
 }

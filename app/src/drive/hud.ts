@@ -1,5 +1,6 @@
 // The drive page's overlay: lap and times (top left), speed (bottom right), the gate prompt, toasts
-// (PERFECT!, MINI-TURBO, BEST LAP), split deltas, a big WRONG WAY sign, a dip to black on respawn, the results card,
+// (PERFECT!, BOOST, BEST LAP, the hidden tier's rainbow MAX DRIFT!; outlined, so they read on the sky and the grass), split
+// deltas, a big WRONG WAY sign, a dip to black on respawn, the results card,
 // and an FPS readout with ?fps=1. Self-contained styles; text only changes when its value does.
 
 export interface RaceResult {
@@ -21,7 +22,9 @@ export interface Hud {
   setSpeed(kmh: number): void;
   /** Delta against the best lap at a split (negative = ahead). */
   split(delta: number): void;
-  toast(text: string, color?: string): void;
+  /** A word that pops up mid-screen (outlined: readable on sky and grass). kind 'max': the hidden drift tier's - bigger,
+   *  rainbow, a wobbly pop (the colour is ignored). */
+  toast(text: string, color?: string, kind?: 'max'): void;
   /** The WRONG WAY sign (shown while on; only touches the DOM when it changes). */
   wrongWay(on: boolean): void;
   results(r: RaceResult, onAgain: () => void, onRip: () => void): void;
@@ -57,9 +60,28 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .mute .x { display: none; }
 #hud .mute.off .x { display: inline; }
 #hud .mute.off .w { display: none; }
+/* every toast has a dark outline (eight hard shadows) and a drop under it: any colour reads on the sky, the clouds and
+   the grass */
 #hud .toast { position: absolute; left: 0; right: 0; top: 24%; text-align: center; font: 400 clamp(34px, 7vw, 68px)/1 Anton, Impact, sans-serif;
-  letter-spacing: 0.04em; opacity: 0; transform: scale(0.7); transition: opacity 0.18s, transform 0.3s cubic-bezier(0.2, 1.7, 0.4, 1); }
+  letter-spacing: 0.04em; opacity: 0; transform: scale(0.7); transition: opacity 0.18s, transform 0.3s cubic-bezier(0.2, 1.7, 0.4, 1);
+  --ol: rgba(9, 13, 28, 0.9); --o: max(1.5px, 0.035em); --d: max(1px, 0.025em);
+  --outline: var(--o) 0 0 var(--ol), calc(-1 * var(--o)) 0 0 var(--ol), 0 var(--o) 0 var(--ol), 0 calc(-1 * var(--o)) 0 var(--ol),
+    var(--d) var(--d) 0 var(--ol), calc(-1 * var(--d)) var(--d) 0 var(--ol), var(--d) calc(-1 * var(--d)) 0 var(--ol),
+    calc(-1 * var(--d)) calc(-1 * var(--d)) 0 var(--ol);
+  text-shadow: var(--outline), 0 0.07em 0 rgba(9, 13, 28, 0.5), 0 0.1em 0.35em rgba(0, 0, 0, 0.35); }
 #hud .toast.on { opacity: 1; transform: scale(1); }
+/* the hidden drift tier (MAX DRIFT!, its boost): bigger, rainbow running through it, a wobbly pop. The outline is a
+   copy of the text behind it (a text-shadow would paint over text clipped from its background) */
+#hud .toast.max { font-size: clamp(40px, 8.6vw, 86px); text-shadow: none; }
+#hud .toast.max::before { content: attr(data-t); position: absolute; left: 0; right: 0; top: 0; color: transparent;
+  text-shadow: var(--outline), 0 0.07em 0 rgba(9, 13, 28, 0.55), 0 0 0.45em rgba(255, 255, 255, 0.45); }
+#hud .toast.max span { position: relative; color: transparent; -webkit-background-clip: text; background-clip: text;
+  background-image: linear-gradient(100deg, #ff4f7b, #ffb02e, #ffef5c, #4be38a, #3fc8ff, #8f7bff, #ff5ce1, #ff4f7b);
+  background-size: 200% 100%; animation: hud-rainbow 0.9s linear infinite; }
+#hud .toast.max.on { animation: hud-max 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+@keyframes hud-rainbow { to { background-position: -200% 0; } }
+@keyframes hud-max { 0% { transform: scale(0.35) rotate(-9deg); } 50% { transform: scale(1.16) rotate(3deg); } 75% { transform: scale(0.97) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); } }
 #hud .split { position: absolute; left: 0; right: 0; top: calc(24% + clamp(44px, 9vw, 84px)); text-align: center;
   font: 700 22px/1 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 0.2s; }
 #hud .split.on { opacity: 1; }
@@ -203,14 +225,23 @@ export function createHud(root: HTMLElement): Hud {
       clearTimeout(splitTimer);
       splitTimer = window.setTimeout(() => splitEl.classList.remove('on'), 1800);
     },
-    toast(text, color = '#fff') {
-      set(toastEl, text);
+    toast(text, color = '#fff', kind) {
+      const max = kind === 'max';
+      if (max) {
+        // the rainbow is the span's background clipped to its text; the outline, a copy of the text behind it
+        toastEl.textContent = '';
+        const s = document.createElement('span');
+        s.textContent = text;
+        toastEl.append(s);
+        toastEl.dataset.t = text;
+      } else if (toastEl.firstElementChild || toastEl.textContent !== text) toastEl.textContent = text;
+      toastEl.classList.toggle('max', max);
       toastEl.style.color = color;
       toastEl.classList.remove('on');
       void toastEl.offsetWidth; // restart the pop
       toastEl.classList.add('on');
       clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toastEl.classList.remove('on'), 1100);
+      toastTimer = window.setTimeout(() => toastEl.classList.remove('on'), max ? 1500 : 1100);
     },
     wrongWay(on) {
       if (on === wrongOn) return;

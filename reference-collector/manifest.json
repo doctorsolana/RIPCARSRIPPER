@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_on": "2026-10-12",
+  "updated_on": "2026-10-14",
   "cars": [
     {
       "id": "porsche-911-gt3-rs",
@@ -55,71 +55,64 @@
       "selected": "cars/beach-bomb-too-k3370/generated/reference-sheet.png",
       "reference_photos": 8,
       "view_count": 5
-    }
-  ],
-  "workflow": "workflow/README.md",
-  "prompt_template": "skills/hot-wheels-reference/references/five-view-prompt.txt",
-  "drafts": [
+    },
     {
       "id": "pontiac-firebird-htf40",
       "name": "'77 Pontiac Firebird T/A — black Super Treasure Hunt",
       "product_code": "HTF40",
       "manifest": "cars/pontiac-firebird-htf40/manifest.json",
-      "preview": "cars/pontiac-firebird-htf40/generated/draft-sheet.png",
       "reference_photos": 6,
       "view_count": 5,
-      "status": "needs_correction"
+      "selected": "cars/pontiac-firebird-htf40/generated/reference-sheet.png"
     },
     {
       "id": "mustang-cobra-r-hgk61",
       "name": "1993 Ford Mustang Cobra R — turquoise Nationals dinner car",
       "product_code": "HGK61",
       "manifest": "cars/mustang-cobra-r-hgk61/manifest.json",
-      "preview": "cars/mustang-cobra-r-hgk61/generated/draft-sheet.png",
       "reference_photos": 7,
       "view_count": 5,
-      "status": "needs_correction"
+      "selected": "cars/mustang-cobra-r-hgk61/generated/reference-sheet.png"
     },
     {
       "id": "skyline-jkf36",
       "name": "LB-ER34 Super Silhouette Nissan Skyline — gold chase",
       "product_code": "JKF36",
       "manifest": "cars/skyline-jkf36/manifest.json",
-      "preview": "cars/skyline-jkf36/generated/draft-sheet.png",
       "reference_photos": 6,
       "view_count": 5,
-      "status": "needs_correction"
+      "selected": "cars/skyline-jkf36/generated/reference-sheet.png"
     },
     {
       "id": "godzilla-skyline-jhw90",
       "name": "Nissan Skyline GT-R (BNR34) — Godzilla",
       "product_code": "JHW90",
       "manifest": "cars/godzilla-skyline-jhw90/manifest.json",
-      "preview": "cars/godzilla-skyline-jhw90/generated/draft-sheet.png",
       "reference_photos": 6,
       "view_count": 5,
-      "status": "needs_correction"
+      "selected": "cars/godzilla-skyline-jhw90/generated/reference-sheet.png"
     },
     {
       "id": "civic-type-r-hcy12",
       "name": "'99 Honda Civic Type R (EK9) — gold Super Treasure Hunt",
       "product_code": "HCY12",
       "manifest": "cars/civic-type-r-hcy12/manifest.json",
-      "preview": "cars/civic-type-r-hcy12/generated/draft-sheet.png",
       "reference_photos": 8,
       "view_count": 5,
-      "status": "needs_correction"
+      "selected": "cars/civic-type-r-hcy12/generated/reference-sheet.png"
     },
     {
       "id": "skyline-fyg14",
       "name": "Nissan Skyline GT-R (BNR34) — green Super Treasure Hunt",
       "product_code": "FYG14",
       "manifest": "cars/skyline-fyg14/manifest.json",
-      "preview": "cars/skyline-fyg14/generated/draft-sheet.png",
       "reference_photos": 10,
       "view_count": 5,
-      "status": "needs_correction"
+      "selected": "cars/skyline-fyg14/generated/reference-sheet.png"
     }
   ],
+  "workflow": "workflow/README.md",
+  "prompt_template": "skills/hot-wheels-reference/references/five-view-prompt.txt",
+  "drafts": [],
   "cars_directory": "cars"
 }

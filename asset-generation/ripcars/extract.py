@@ -3,7 +3,9 @@
     uv run python -m ripcars extract <car-id|all>
 
 Reads  assets/cars/<id>/hints.json  (hand-set: photo path, rough car box, optional wheel circles,
-                                     optional wing.deckLine / nearTop points for the procedural car)
+                                     optional wing.deckLine / nearTop points for the procedural car,
+                                     optional mask.add / mask.remove polygons [[x, y], ...] in photo px:
+                                     hand fixes where the segmenter can't tell the car from the card art)
 Writes assets/cars/<id>/photo.webp   web copy of the pack photo (the card the reveal ends on)
                         mask.png     the car's silhouette in the photo (align fits the 3D model to it)
                         extract.json photo size, car box, wheels, outline stations, paint colour
@@ -30,6 +32,17 @@ def largest_parts(mask: np.ndarray, keep_ratio=0.01) -> np.ndarray:
     biggest = areas.max()
     keep = [i + 1 for i, a in enumerate(areas) if a >= biggest * keep_ratio]
     return np.isin(labels, keep).astype(np.uint8)
+
+
+def hand_mask(mask: np.ndarray, fix: dict, origin) -> np.ndarray:
+    """hints.json mask.add / mask.remove: polygons in photo px drawn into / cut out of the segmented mask."""
+    if not fix:
+        return mask
+    out = mask.copy()
+    for key, val in (("add", 1), ("remove", 0)):
+        for poly in fix.get(key, []):
+            cv2.fillPoly(out, [np.round(np.array(poly, float) - origin).astype(np.int32)], val)
+    return fill_holes(largest_parts(out))
 
 
 def fill_holes(mask: np.ndarray) -> np.ndarray:
@@ -156,6 +169,7 @@ def run(car_id: str) -> dict:
     session = new_session(hints.get("segModel", "birefnet-general-lite"))
     alpha = np.array(remove(Image.fromarray(crop), session=session, only_mask=True))
     mask = fill_holes(largest_parts((alpha > 127).astype(np.uint8)))
+    mask = hand_mask(mask, hints.get("mask") or {}, (x0, y0))
     ys, xs = np.where(mask > 0)
     bbox = (int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1))
     bx, by, bw, bh = bbox

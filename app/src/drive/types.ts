@@ -61,7 +61,7 @@ export interface VehicleEvents {
   landed?: number; // vertical speed at touchdown (u/s)
   perfectLanding?: boolean;
   boostStart?: boolean;
-  tierUp?: 1 | 2 | 3; // drift spark tier reached
+  tierUp?: 1 | 2 | 3 | 4; // drift spark tier reached (4: the hidden 'magic max', about twice tier 3's drift time)
   airborne?: boolean;
   respawn?: boolean;
   spinOut?: boolean; // a very hard wall hit spun the car out this step (camera kick, tyre screech); optional: without it
@@ -77,7 +77,7 @@ export interface VehicleState {
   wheelSpinRate: number; // rad/s wheel rotation (rolling + wheelspin)
   slip: number; // rad, signed: heading minus direction of travel
   drifting: boolean;
-  driftTier: 0 | 1 | 2 | 3;
+  driftTier: 0 | 1 | 2 | 3 | 4; // 4 is the hidden max tier
   boosting: boolean;
   grounded: boolean;
   accelLocal: THREE.Vector3; // car-frame acceleration (x forward, y up, z right) for body pitch/roll springs

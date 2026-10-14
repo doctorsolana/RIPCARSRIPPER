@@ -18,9 +18,16 @@ import type { CarSpec, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, V
 // has settled straight again - not while it swings through straight into the other side - (or too slow, spun, into a
 // wall), the grip easing back over 0.3 s; another tap never cancels it - it keeps it going and flicks it toward the
 // wheel, so S-bends link. On dirt a hard steer at speed loosens the rear a little by itself. Sparks charge through
-// three tiers while it really slides, cashed in as a mini-turbo when it ends clean.
+// three tiers while it really slides - and a hidden fourth, the magic max, for a slide kept going twice as long as gold
+// (linked through a whole S) - cashed in as a mini-turbo when it ends clean.
+// The throttle pushes up to the car's top speed and no further, but nothing else holds it there: past it only the air
+// drags (~v^2), gently, so a hill (or a boost) carries the car well over its top speed for a few seconds - into the
+// corners after the drop and the big jump faster than it ever drives there, and the tyres' grip doesn't grow with the
+// speed (past the top speed the most it turns falls as 1/v): it needs the brakes, or more road.
 // Surfaces scale grip, turn and top speed - plastic fast, asphalt grippiest, dirt loose and bumpy, the grass verge past
 // a road's edge slow and slippery - blended as the wheels cross from one to the next.
+// Each car has its own character (PROFILES): top speed, how it pulls, brakes, grips and steers, how it drifts, and how
+// the air, the walls and the dirt treat it - multipliers on the shared numbers below.
 // Walls (rails, tyre walls, hay bales, the soft end of a verge) push back at the corner that touches: an impulse with
 // the material's restitution and friction and a yaw kick from the corner's lever arm. The corner always leaves the
 // wall, so the car never sticks or buzzes on it; hard hits stun for a moment, very hard ones spin the car out - but hay
@@ -34,18 +41,21 @@ const DEG = Math.PI / 180;
 const KICK_MAX = 8; // rad/s: the most yaw that hits can stack up
 
 const K = {
-  vtop: 44, // top speed on the throttle (u/s; x4.3 = scale km/h), on plastic
+  vtop: 44, // top speed on the throttle (u/s; x4.3 = scale km/h), on plastic - each car's x its profile's top
   vboost: 56, // top speed while boosting
   accel: 26, // throttle: accel * (1 - (v/vtop)^2): 0-90% in 2.5 s
   brake: 60,
   reverse: 10, // top speed backwards
   coast: 3, // off the throttle: coast + drag * v^2
   drag: 0.004,
-  overspeed: 1.5, // above the cap (downhill, after a boost, onto grass) lose overspeed * (v - cap) per s
+  overspeed: 1.5, // over a surface's top speed (onto grass, dirt) lose overspeed * (v - its cap) per s (a surface that
+  overFull: 0.1, // takes less than overFull off the top speed - asphalt - proportionally less) - but over the car's own
+  airLin: 0.1, // top speed (down a hill, after a boost) only the air drags, gently: (airLin + airDrag * (v + top)) *
+  airDrag: 0.003, // (v - top) per s - 20% over on the flat, half of it is gone in ~1.7 s, nearly all in ~4 s
   g: 24, // ~3x real gravity at this scale: snappy and toy-like
   stick: 0.3, // the track's extra hold, in g (loop tops)
   yawLow: 3, // max yaw rate in grip (rad/s) at low speed ...
-  yawHigh: 1.3, // ... and at top speed (a 34 u radius)
+  yawHigh: 1.3, // ... and at vtop (a 34 u radius); faster, it falls as 1/v (the tyres' grip is all there is)
   yawRamp: 3.2, // yaw is also capped at v / yawRamp: no turning on the spot
   yawLag: 0.06, // s
   grip: 12, // slip decay per s
@@ -80,15 +90,18 @@ const K = {
   dirtLoose: 0.35, // on dirt a hard steer lets the tail out this far by itself (of a full slide) ...
   looseMin: 22, // ... from this speed (u/s), fully 10 u/s faster
   chargeSlip: 10, // deg of slip for sparks: none 2 deg under, full rate 2 over
-  tier1: 0.7, // s of drifting per spark tier (blue, purple, gold)
-  tier2: 1.4,
-  tier3: 2.2,
+  tier1: 0.9, // s of real sliding per spark tier (blue, purple, gold) ...
+  tier2: 1.8,
+  tier3: 2.7,
+  tier4: 5.4, // ... and the hidden magic max, twice gold's: only a slide kept going through a whole S gets there
   boost1: 0.5, // s of mini-turbo per tier ...
   boost2: 1,
   boost3: 1.5,
-  turboAccel: 31, // ... pushing this hard (u/s^2; a booster's push is boostAccel)
+  boost4: 2.5,
+  turboAccel: 31, // ... pushing this hard (u/s^2; the magic max's x turbo4; a booster's push is boostAccel)
+  turbo4: 1.3,
   boostAccel: 45,
-  boostCap: 2, // s
+  boostCap: 2, // s (a turbo stacked onto another; the magic max's alone runs its full boost4)
   padBoost: 1, // s
   padKick: 8, // a booster adds this (u/s; it never sets a speed)
   // surfaces, as multipliers on the plastic numbers above, blended as the wheels cross from one to the next
@@ -162,16 +175,84 @@ const K = {
   stuckTime: 4, // ... for this long (s) is stuck: put back on the track
 };
 
-/** Live-tunable numbers (?tune=1). Per-car flavour multiplies on top and is not in here. */
+/** Live-tunable numbers (?tune=1), shared by every car. Each car's profile multiplies on top and is not in here. */
 export const TUNING: Record<string, number> = K;
 
-// Per-car flavour, feel only (never better stats). Keyed by the first word of the car id. (The Impala's hydraulic
-// bounce into a drift is rig.ts's, on its soft springs.)
-interface Flavour { grip: number; driftGrip: number; charge: number }
-const FLAVOUR: Record<string, Partial<Flavour>> = {
-  roxy: { grip: 1.15 }, // race Porsche: bites harder
-  skyline: { driftGrip: 0.85 }, // Mountain Drifter: slides wider
+/** A car's character: multipliers on the numbers above (1 = the stock car; a car not in PROFILES drives on K alone). */
+export interface Profile {
+  top: number; // top speed (vtop: where the throttle stops pushing)
+  pull: number; // the throttle's push (accel) ...
+  rev: number; // ... and how it holds toward the top: accel * (1 - x^rev), x = v / top (stock 2; more holds on) ...
+  spool: number; // ... less this share of it off the line, coming in by half the top speed (a turbo's lag)
+  brake: number;
+  grip: number; // how fast the travel follows the nose (the slip's decay) ...
+  turn: number; // ... and the most the car turns (yawLow, yawHigh): its cornering
+  steer: number; // how slowly the nose answers the wheel (yawLag; < 1 sharper)
+  slide: number; // the loose rear's grip (looseGrip): < 1 the tail swings out wider for the same bend ...
+  unstick: number; // ... how readily it lets go on a tap (over driftIn / unstick; < 1 harder to get sideways) ...
+  float: number; // ... how slowly the nose answers it loose (looseLag; > 1 floaty) ...
+  angle: number; // ... and how far it slides before the rear bites (limitSlip)
+  charge: number; // how fast the sparks charge
+  aero: number; // drag past the top speed (< 1: carries a hill's speed further)
+  heft: number; // weight: hits bounce and turn it less (and take more to stun or spin it), the dirt's bumps shake it less
+  dirt: number; // how it copes with dirt: the dirt's grip, slide, turn and top speed x this (> 1 likes it; at most 1)
+}
+const STOCK: Profile = {
+  top: 1, pull: 1, rev: 2, spool: 0, brake: 1, grip: 1, turn: 1, steer: 1, slide: 1, unstick: 1, float: 1, angle: 1, charge: 1,
+  aero: 1, heft: 1, dirt: 1,
 };
+// Keyed by a word of the car id. Fair - each is quickest somewhere else: the Porsche through the asphalt corners and
+// on the brakes, the Skyline drifting and pulling out of the corners, the Impala over the dirt and down the hills.
+// (The Impala's hydraulic hop into a drift is rig.ts's, on its soft springs.)
+const PROFILES: Record<string, Partial<Profile>> = {
+  // Porsche 911 GT3 R: a race car - slicks, wings, race brakes, a flat-6 that revs to the top. The most grip and
+  // braking, the sharpest steering, the highest top speed; hard to get sideways and it slides short and tight, its
+  // wing's drag eats a hill's extra speed soonest, and it's light and stiff: hits knock it about, it hates the dirt.
+  roxy: {
+    top: 1.04, rev: 2.3, brake: 1.15, grip: 1.15, turn: 1.05, steer: 0.75,
+    unstick: 0.5, float: 0.95, angle: 0.9, aero: 1.25, heft: 0.9, dirt: 0.9,
+  },
+  // Nissan LB-ER34 Super Silhouette Skyline: the RB26's twin turbos - a breath of lag, then the strongest mid-range
+  // pull - in a drift machine: the easiest to throw sideways, a big controllable slide that charges quickest; close on
+  // top speed.
+  skyline: { top: 1.02, pull: 1.04, rev: 3, spool: 0.2, unstick: 1.3, float: 0.85, angle: 1.1, charge: 1.06, aero: 1.1 },
+  // 1964 Chevy Impala lowrider: big, heavy and soft. A big-block V8's shove fading to a lower top speed, drum brakes,
+  // lazy steering, skinny whitewalls: it slides big and floaty - a fun boat. Its weight carries a hill's speed furthest
+  // and shrugs off the knocks; its soft hydraulics float it over the dirt.
+  impala: {
+    top: 0.96, pull: 0.96, rev: 1.8, brake: 0.82, grip: 0.9, turn: 0.97, steer: 1.25,
+    slide: 0.9, unstick: 1.1, float: 1.3, angle: 1.18, aero: 0.8, heft: 1.35, dirt: 1.12,
+  },
+  // Porsche 911 GT3 RS (997): the road-going racer - sharp, grippy, brakes hard and revs to the top; a step below
+  // the GT3 R on grip and aero, a little easier to get sideways
+  gt3: {
+    top: 1.03, pull: 1.02, rev: 2.3, brake: 1.12, grip: 1.1, turn: 1.04, steer: 0.8,
+    unstick: 0.7, float: 0.95, angle: 0.95, aero: 1.15, heft: 0.9, dirt: 0.92,
+  },
+  // Porsche 964 (Magnus Walker's outlaw): an air-cooled classic 911 - the engine hung out behind the rear axle, so
+  // the tail swings readily on a lift and the slide runs long; good brakes, quick steering, a tad less top
+  '964': {
+    top: 1, pull: 1, rev: 2.1, brake: 1.08, grip: 1.03, turn: 1.01, steer: 0.85,
+    slide: 0.95, unstick: 1.2, float: 0.95, angle: 1.08, aero: 1.05, heft: 0.95, dirt: 0.95,
+  },
+  // '77 Pontiac Firebird Trans Am: a big V8's shove off the corners that fades up top, a heavy nose, a lazy wheel
+  // and a tail that steps out under power - the muscle car slides; soft brakes
+  firebird: {
+    top: 0.99, pull: 1.06, rev: 1.7, brake: 0.88, grip: 0.93, turn: 0.97, steer: 1.12,
+    slide: 0.92, unstick: 1.25, float: 1.15, angle: 1.15, aero: 0.9, heft: 1.25, dirt: 1.05,
+  },
+  // Beach Bomb Too (a VW bus with surfboards): tall, soft and slow - an air-cooled flat-4's putter, a floaty lean
+  // into every slide, drum brakes, but it shrugs over the dirt and carries a hill's speed (a box on wheels)
+  beach: {
+    top: 0.93, pull: 0.9, rev: 1.8, brake: 0.8, grip: 0.92, turn: 0.96, steer: 1.25,
+    slide: 0.9, unstick: 1.15, float: 1.35, angle: 1.15, aero: 0.85, heft: 1.3, dirt: 1.1,
+  },
+};
+/** The car's profile: the first word of its id that has one (skyline-..., chevy-impala-..., roxy-porsche-...). */
+export function profileOf(id: string): Profile {
+  for (const w of id.toLowerCase().split('-')) if (PROFILES[w]) return { ...STOCK, ...PROFILES[w] };
+  return { ...STOCK };
+}
 
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -219,14 +300,15 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   const LEN = track.length;
   const wrapS = (x: number) => ((x % LEN) + LEN) % LEN;
   const geo = carGeometry(car);
-  const flav: Flavour = { grip: 1, driftGrip: 1, charge: 1, ...FLAVOUR[car.id.split('-')[0]] };
+  const P = profileOf(car.id);
   let floorY = 0; // the ground: below every bit of track
   for (const f of track.frames) floorY = Math.min(floorY, f.p.y - 0.05);
 
-  const state: VehicleState = {
+  // (the profile rides on the state, read-only, for a driver that plans ahead: the autopilot)
+  const state: VehicleState & { readonly profile: Readonly<Profile> } = {
     position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), velocity: new THREE.Vector3(), speed: 0,
     steerVisual: 0, wheelSpinRate: 0, slip: 0, drifting: false, driftTier: 0, boosting: false, grounded: true,
-    accelLocal: new THREE.Vector3(), trackS: 0, lapDelta: 0, events: {}, wrongWay: false,
+    accelLocal: new THREE.Vector3(), trackS: 0, lapDelta: 0, events: {}, wrongWay: false, profile: P,
   };
 
   // scratch (no allocation per step)
@@ -242,11 +324,12 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   // simulation state
   let s = 0, d = 0, psi = 0, beta = 0, v = 0, omega = 0;
   let grounded = true, falling = false, respawnIn = 0, airTime = 0, stuck = 0, wrongT = 0;
-  let drifting = false, dir = 0, charge = 0, tier: 0 | 1 | 2 | 3 = 0, pressT = 0, held = false;
+  let drifting = false, dir = 0, charge = 0, tier: 0 | 1 | 2 | 3 | 4 = 0, pressT = 0, held = false;
   // the slide: how far the rear has let go (0 grip .. 1 loose); a drift's time loose, time straight, whether it has
   // slid yet; a drift that ended spun gets no help coming round
   let slide = 0, looseT = 0, straightT = 0, slid = false, spun = false, settleT = 0;
-  let boost = 0, turbo = 0, onPad = false; // s left of a booster's (or a landing's) push, of a drift's mini-turbo
+  // s left of a booster's (or a landing's) push, of a drift's mini-turbo (and that one's strength: the magic max's)
+  let boost = 0, turbo = 0, turboK = 1, onPad = false;
   let safeS = 0, safeV = 0, vPrev = 0, steerVis = 0, spin = 0, aY = 0;
   // walls: the yaw a hit kicked in (it dies away by itself, apart from the steering's omega), the stun and spin-out
   // timers, how far the slip may go (a hit can leave it past slipMax), time since the corner last touched a wall
@@ -288,12 +371,18 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (gap) jumps.push({ lip, land: gap.s1, end: b.s1 });
   }
 
-  /** Blend the surface numbers toward what's under the wheels (h = 0 snaps): the frame's surface, and grass for each
-   *  wheel out on a verge. */
+  /** Blend the surface numbers toward what's under the wheels (h = 0 snaps): the frame's surface (the dirt's as this
+   *  car copes with it), and grass for each wheel out on a verge. */
   function surfaceAt(f: TrackFrame, h: number) {
     let gr = 1, dr = 1, yw = 1, cp = 1, bp = 0, w = 0;
     if (f.surface === 'asphalt') (gr = dr = K.asphaltGrip), (yw = K.asphaltYaw), (cp = K.asphaltCap);
-    else if (f.surface === 'dirt') (gr = K.dirtGrip), (dr = K.dirtDrift), (yw = K.dirtYaw), (cp = K.dirtCap), (bp = 1);
+    else if (f.surface === 'dirt') {
+      gr = Math.min(1, K.dirtGrip * P.dirt);
+      dr = Math.min(1, K.dirtDrift * P.dirt);
+      yw = Math.min(1, K.dirtYaw * P.dirt);
+      cp = Math.min(1, K.dirtCap * P.dirt);
+      bp = 1;
+    }
     const ls = bp; // loose: the dirt (not its verge)
     if (f.edge === 'grass') {
       const half = f.width * 0.5, sn = Math.sin(psi), zs = geo.tw * Math.cos(psi);
@@ -352,6 +441,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     tier = 0;
     charge = 0;
     slide = looseT = straightT = settleT = turbo = 0;
+    turboK = 1;
     aY = 0;
     kick = stunT = spinT = airYawRate = hayT = 0;
     slipLim = K.slipMax * DEG;
@@ -387,7 +477,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       rs = wrapS(rs - 2);
     }
     place(rs);
-    v = vPrev = clamp(safeV, K.respawnSpeed * K.vtop, K.vtop);
+    const top = K.vtop * P.top;
+    v = vPrev = clamp(safeV, K.respawnSpeed * top, top);
     boost = Math.max(boost, 1);
     pressT = 0;
     poseGround(fM);
@@ -414,10 +505,13 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (Math.abs(steer) >= K.driftSteer) omega += Math.sign(steer) * K.driftKick;
   }
 
-  /** The drift is over (reward: cash the sparks in as a mini-turbo); the rear grips up again over driftOut. */
+  /** The drift is over (reward: cash the sparks in as a mini-turbo - the magic max's longer and stronger); the rear
+   *  grips up again over driftOut. */
   function endDrift(reward: boolean) {
     if (reward && tier > 0) {
-      turbo = Math.min(K.boostCap, turbo + (tier === 3 ? K.boost3 : tier === 2 ? K.boost2 : K.boost1));
+      const b = tier === 4 ? K.boost4 : tier === 3 ? K.boost3 : tier === 2 ? K.boost2 : K.boost1;
+      turboK = Math.max(turbo > 0 ? turboK : 1, tier === 4 ? K.turbo4 : 1);
+      turbo = Math.min(Math.max(K.boostCap, b), turbo + b);
       state.events.boostStart = true;
     }
     drifting = false;
@@ -434,10 +528,11 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
    *  faster, so the car never sticks to or buzzes on a wall, and steering into one slides along it. Any hit past
    *  driftHit ends a drift (no boost); a hard one stuns (grip and steering down), a very hard one spins the car out.
    *  Hay is soft: it swallows the hit and slows the car along it to no less than hayKeep of its speed (hayMin square
-   *  on, turned the way the track runs), with a gentle turn and no stun or spin-out. Leaves the new velocity in oT, oR. */
+   *  on, turned the way the track runs), with a gentle turn and no stun or spin-out. A heavier car (heft) bounces and
+   *  turns less and takes a harder hit to stun or spin. Leaves the new velocity in oT, oR. */
   function impact(side: number, f: TrackFrame, vT: number, vR: number, yawRel: number) {
     const m = wallOf(f), hay = m === 2;
-    const e0 = m === 0 ? K.railE : m === 1 ? K.tyreE : K.hayE;
+    const e0 = (m === 0 ? K.railE : m === 1 ? K.tyreE : K.hayE) / P.heft;
     const mu = m === 0 ? K.railMu : m === 1 ? K.tyreMu : K.hayMu;
     const c = Math.cos(psi), sn = Math.sin(psi);
     // The touching corner (car frame: x ahead, z right). As a flank or the nose comes to lie along the wall the contact
@@ -457,7 +552,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (un <= -K.wallSep) return; // already leaving
     const th = Math.atan2(Math.max(0, un), Math.abs(ut)); // the angle it comes in at
     const e = un < K.bounceMin ? 0 : e0 * smooth(K.glance * DEG, (K.glance + 10) * DEG, th);
-    const I = K.wallI;
+    const I = K.wallI * P.heft;
     const j = Math.max((1 + e) * un, un + K.wallSep) / (1 + (arm * arm) / I);
     let jt = clamp(-ut, -mu * j, mu * j); // Coulomb: at most stops the slide along the wall
     if (hay) {
@@ -478,16 +573,16 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     kick = clamp(kick + dW, hay ? -K.hayYaw : -KICK_MAX, hay ? K.hayYaw : KICK_MAX);
     const still = side * (oR + (yawRel + dW) * lev); // the clamp held some yaw back: the corner must leave anyway
     if (still > -K.wallSep) oR -= side * (still + K.wallSep);
-    accBase.z = clamp(accBase.z - side * j * c * 3, -60, 60); // the body rocks toward the wall (the rig's roll spring)
+    accBase.z = clamp(accBase.z - (side * j * c * 3) / P.heft, -60, 60); // the body rocks toward the wall (the rig's roll spring)
     if (un <= K.bounceMin) return; // a touch: it scrapes along
     const ev = state.events;
     ev.wallHit = Math.max(ev.wallHit ?? 0, un);
-    if (drifting && un > K.driftHit) endDrift(false); // a hit ends a drift (no boost)
+    if (drifting && un > K.driftHit * P.heft) endDrift(false); // a hit ends a drift (no boost)
     if (hay) {
       hayT = K.hayTime;
       omega = 0; // the bales stop the car turning in (the settle straightens it)
       if (!drifting) slide = 0;
-    } else if (th > K.spinAngle * DEG && un > K.spinSpeed) {
+    } else if (th > K.spinAngle * DEG && un > K.spinSpeed * P.heft) {
       // spun out: the nose goes the way the lever arm swings it (head-on: round toward the way the track runs)
       const sg = Math.abs(arm) > 0.3 ? -side * Math.sign(arm) : sn > 0 ? -1 : 1;
       kick = sg * Math.max(K.spinYaw, sg * kick);
@@ -495,7 +590,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       ev.spinOut = true;
       if (drifting) endDrift(false);
       slide = 0;
-    } else if (th > K.stunAngle * DEG && un > K.stunSpeed) {
+    } else if (th > K.stunAngle * DEG && un > K.stunSpeed * P.heft) {
       stunT = Math.max(stunT, K.stunTime);
       if (drifting) endDrift(false);
     }
@@ -705,16 +800,17 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       if (slide < 0.05) dir = steer > 0 ? 1 : steer < 0 ? -1 : dir;
       else if (steer * dir < 0) loose = 0;
     }
-    if (drifting) slide = Math.min(1, slide + h / K.driftIn);
+    const letGo = (h * P.unstick) / K.driftIn;
+    if (drifting) slide = Math.min(1, slide + letGo);
     else if (slide > loose) slide = Math.max(loose, slide - h / K.driftOut);
-    else slide = Math.min(loose, slide + h / K.driftIn);
+    else slide = Math.min(loose, slide + letGo);
     const sm = slide * slide * (3 - 2 * slide);
     if (slide <= loose) spun = false;
     if (settleT > 0) settleT -= h;
 
     // ---- grip on the slip: the tyres' (kN), or the loose rear's (kL: looser on the throttle, tighter off it)
-    const kN = K.grip * flav.grip * sGrip;
-    const kL = K.looseGrip * flav.driftGrip * sDrift * lerp(K.looseLift, K.looseThrottle, thr);
+    const kN = K.grip * P.grip * sGrip;
+    const kL = K.looseGrip * P.slide * sDrift * lerp(K.looseLift, K.looseThrottle, thr);
     let k = kN + (kL - kN) * sm;
     let c = K.scrub + (K.driftScrub - K.scrub) * sm;
 
@@ -724,20 +820,27 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const gPerp = -gT * sph + gR * cph;
     const gTurn = v > 0 ? (K.bankAssist * gPerp * v) / (v * v + 25) : 0; // ~ gPerp / v, fading out at a standstill
 
-    // ---- speed (the surface sets the top speed; the verge drags)
-    const vtop = K.vtop * sCap;
+    // ---- speed: the throttle pushes along the car's curve up to its top speed on this surface (the surface sets it;
+    // the verge drags). Over it the surface's share bleeds off firmly, and over the car's own top speed - a hill's, a
+    // boost's - only the air drags it back, gently.
+    const top = K.vtop * P.top, vtop = top * sCap;
     let a = gAlong;
-    if (v > -0.5 && v < vtop) a += thr * K.accel * (1 - (v / vtop) ** 2);
+    if (v > -0.5 && v < vtop) {
+      const x = Math.max(0, v) / vtop;
+      a += thr * K.accel * P.pull * (1 - x ** P.rev) * (1 - P.spool * (1 - smooth(0.1, 0.5, x)));
+    }
     if (brk > 0 && v < 0.5) a -= brk * K.accel * 0.5 * Math.max(0, 1 + v / K.reverse); // reverse
-    const push = boost > 0 ? K.boostAccel : turbo > 0 ? K.turboAccel : 0; // a booster's push, or a drift's mini-turbo
+    // a booster's push, or a drift's mini-turbo
+    const push = boost > 0 ? K.boostAccel : turbo > 0 ? K.turboAccel * turboK : 0;
     if (push > 0 && v > -0.5) a += push * Math.max(0, 1 - (v / (K.vboost * sCap)) ** 2);
     let fr = c * Math.abs(Math.sin(beta)) * av; // friction-like: never reverses the motion
     fr += (1 - thr) * (K.coast + K.drag * v * v); // part throttle: a lower top speed
     fr += sDrag * av;
-    if (brk > 0 && v > 0.5) fr += K.brake * brk;
-    if (thr > 0 && v < -0.5) fr += K.brake * thr;
-    const cap = (push > 0 ? K.vboost : K.vtop) * sCap;
-    if (av > cap) fr += K.overspeed * (av - cap);
+    if (brk > 0 && v > 0.5) fr += K.brake * P.brake * brk;
+    if (thr > 0 && v < -0.5) fr += K.brake * P.brake * thr;
+    const lim = push > 0 ? Math.max(K.vboost, top) : top, cap = lim * sCap;
+    if (av > cap) fr += K.overspeed * Math.min(1, (1 - sCap) / Math.max(K.overFull, 1e-3)) * (Math.min(av, lim) - cap);
+    if (av > lim) fr += P.aero * (av - lim) * (K.airLin + K.airDrag * (av + lim));
     v += a * h;
     v = v > 0 ? Math.max(0, v - fr * h) : Math.min(0, v + fr * h);
 
@@ -747,13 +850,15 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     // tail steps out while the car rotates faster than the travel bends, and comes back in when it doesn't. Past
     // limitSlip the rear bites and holds the nose back (no spin from steering alone; it fades out past 60 deg). The
     // grip coming back, the slip goes by the nose easing back to the travel, which bends no faster than the loose
-    // rear let it plus exitSlack (no snap) - unless the car has spun: then nothing helps it round.
+    // rear let it plus exitSlack (no snap) - unless the car has spun: then nothing helps it round. The most the
+    // steering asks falls with speed to yawHigh at vtop, and past it as 1/v: over its top speed the car needs more road.
     const av2 = Math.abs(v);
-    const wGrip = steer * ctl * sYaw * (v < 0 ? -1 : 1) * Math.min(av2 / K.yawRamp, lerp(K.yawLow, K.yawHigh, Math.min(1, av2 / K.vtop)));
+    const yawV = av2 < K.vtop ? lerp(K.yawLow, K.yawHigh, av2 / K.vtop) : (K.yawHigh * K.vtop) / av2;
+    const wGrip = steer * ctl * sYaw * P.turn * (v < 0 ? -1 : 1) * Math.min(av2 / K.yawRamp, yawV);
     let wT = wGrip * (1 + (K.looseYaw - 1) * sm);
     const ab = Math.abs(beta);
     if (sm > 0 && v > 0 && hayT <= 0) {
-      wT -= Math.sign(beta) * Math.max(0, ab - K.limitSlip * DEG) * (1 - smooth(60 * DEG, 80 * DEG, ab)) * K.limitYaw * sm;
+      wT -= Math.sign(beta) * Math.max(0, ab - K.limitSlip * P.angle * DEG) * (1 - smooth(60 * DEG, 80 * DEG, ab)) * K.limitYaw * sm;
     }
     const b0 = beta; // (the slip before this step: how fast it swings, below)
     if (settleT > 0 && !drifting && v > 0 && hayT <= 0) {
@@ -767,7 +872,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (hayT > 0) (k *= K.hayGrip), (c *= K.hayGrip); // caught by hay: it slides along the bales while it straightens
     wT += gTurn;
     if (hayT > 0) wT -= clamp(beta * K.hayAlign, -K.hayTurn, K.hayTurn); // ... its nose swinging round to its slide
-    omega += (wT - omega) * (1 - Math.exp(-h / lerp(K.yawLag, K.looseLag, sm)));
+    omega += (wT - omega) * (1 - Math.exp(-h / lerp(K.yawLag * P.steer, K.looseLag * P.float, sm)));
     // Against a wall the nose can't be steered in past wallNose, and further in the wall eases it back: the wall takes
     // the turn and the car slides along it (a drift steered into it is over). Without this the steering out-turns the
     // wall and winds the car in nose first, scrubbing off all its speed.
@@ -826,10 +931,10 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
 
     // ---- sparks: only while it really slides (the rear all the way loose, the slip past chargeSlip either way)
     if (drifting && sm > 0.9 && v > K.driftEnd) {
-      charge += h * flav.charge * smooth(K.chargeSlip - 2, K.chargeSlip + 2, Math.abs(beta) / DEG);
-      const nt = charge >= K.tier3 ? 3 : charge >= K.tier2 ? 2 : charge >= K.tier1 ? 1 : 0;
+      charge += h * P.charge * smooth(K.chargeSlip - 2, K.chargeSlip + 2, Math.abs(beta) / DEG);
+      const nt = charge >= K.tier4 ? 4 : charge >= K.tier3 ? 3 : charge >= K.tier2 ? 2 : charge >= K.tier1 ? 1 : 0;
       if (nt > tier) {
-        tier = nt as 1 | 2 | 3;
+        tier = nt as 1 | 2 | 3 | 4;
         ev.tierUp = tier;
       }
     }
@@ -878,7 +983,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     accBase.lerp(aT, 1 - Math.exp(-20 * h));
     state.accelLocal.copy(accBase);
     if (sBump > 0.01) {
-      const b = sBump * K.dirtBump * Math.min(1, av3 / 25);
+      const b = (sBump * K.dirtBump * Math.min(1, av3 / 25)) / P.heft;
       state.accelLocal.x += 24 * b * bumps(s + 5.3); // through the rig's springs: ~1 deg of pitch and roll, ~0.02 u of heave
       state.accelLocal.y += 55 * b * bumps(s);
       state.accelLocal.z += 24 * b * bumps(s * 1.3 + 11);
@@ -937,7 +1042,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
 
       // wheels: rolling speed plus a little wheelspin off the line; in the air they rev with the throttle
       if (grounded) spin = (v * Math.cos(beta)) / geo.r + inp.throttle * Math.max(0, 1 - Math.abs(v) / 12) * 30;
-      else spin += ((inp.throttle * K.vtop * 1.2) / geo.r - spin) * (1 - Math.exp(-h * (inp.throttle > 0 ? 2 : 0.4)));
+      else spin += ((inp.throttle * K.vtop * P.top * 1.2) / geo.r - spin) * (1 - Math.exp(-h * (inp.throttle > 0 ? 2 : 0.4)));
       steerVis += (inp.steer - steerVis) * (1 - Math.exp(-h * 25));
 
       const r0 = wrapS(s0 - track.start), r1 = wrapS(s - track.start);

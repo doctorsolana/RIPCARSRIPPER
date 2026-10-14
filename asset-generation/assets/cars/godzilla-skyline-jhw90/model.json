@@ -1,0 +1,110 @@
+{
+  "car": "godzilla-skyline-jhw90",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      1.0043,
+      1.0088,
+      1.0054
+    ],
+    "offset_xy": [
+      -0.0231,
+      0.0034
+    ],
+    "side+top_iou": 1.848,
+    "by_hand": {
+      "width": 0.975,
+      "height": 0.99
+    }
+  },
+  "glass_source": {
+    "top": "traced",
+    "front": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.0173,
+    "height": 1.2546,
+    "width": 1.6477
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.2437,
+        0.3013,
+        0.6485
+      ],
+      "r": 0.3101,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.2114,
+        0.3013,
+        -0.6941
+      ],
+      "r": 0.3091,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.1427,
+        0.3023,
+        0.6933
+      ],
+      "r": 0.3081,
+      "pieces": 2
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.176,
+        0.3032,
+        -0.6485
+      ],
+      "r": 0.3081,
+      "pieces": 2
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9372,
+    "top": 0.9481,
+    "left": 0.9299,
+    "front": 0.948,
+    "rear": 0.8876
+  },
+  "proportions_vs_sheet": {
+    "length": 0.993,
+    "width": 0.981,
+    "height": 1.042
+  },
+  "glb": {
+    "bytes": 1244416,
+    "triangles": 16398
+  }
+}

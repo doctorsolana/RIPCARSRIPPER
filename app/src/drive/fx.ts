@@ -5,16 +5,27 @@ import type { CarSpec, Track, TrackFrame, VehicleState } from './types';
 // Driving juice, all GPU-animated: each system is one instanced draw over a ring buffer, and a frame
 // only uploads the slots it spawned (no per-frame geometry rebuilds, no allocation).
 //   skids   tyre strips at the rear wheels when sliding (|slip| > 6 deg) or braking hard, on asphalt and
-//           plastic only; fade 6 s
+//           plastic only. They stay the whole race (cleared on a restart); the ring's oldest fade out before reuse
+//   marks   tyre tracks in the grass: every wheel rolling on a verge presses a track into it (darker, flattened
+//           grass with a ragged edge; a sliding or locked wheel sweeps a wider one and tears the turf, earth
+//           showing through). Multiplied into the grass under it, so it keeps the grass's own shading. Long-lived:
+//           they stay the whole race (cleared on a restart), and the ring's oldest fade out before they're reused
 //   streaks velocity-stretched quads with a white-hot core: drift sparks by tier, tier-up bursts,
 //           wall sparks, landing scrapes, perfect-landing ring, boost-start burst, boost speed lines, and
 //           debris under full gravity (grass clippings, dirt clods, straw, rubber crumbs)
-//           (alpha-blended, not additive: added onto the bright orange track every hue went white)
-//   smoke   soft billboards, each with its own colour: tyre smoke, the dust trail on dirt, dust off the
-//           verge, rubber puffs off tyre walls, straw dust off hay. A puff that looms over the camera fades
-//           out before it fills the screen
-//   flame   twin boost flames at the exhaust, in the top-tier colour: view-aligned billboards from
-//           nozzle to tip, so from behind they read as glowing discs and from the side as jets
+//           (alpha-blended, not additive: added onto the bright orange track every hue went white).
+//           The hidden 4th drift tier ('magic max') is iridescent: a white-hot core, an edge whose hue runs round
+//           the rainbow over time and across the streak, twinkling (a negative red marks such a streak)
+//   smoke   soft billboards, each with its own colour, lit from above: tyre smoke, the dust trail on dirt, dust
+//           off the verge, rubber puffs off tyre walls, straw dust off hay. Ground dust has its own drag (the trail
+//           rides in the car's wake a moment, a plume either side of it, then hangs over the road), billows up as it
+//           grows and fades out toward the ground it rose from (no hard line where the ground cuts the billboard);
+//           where it sits between the camera and the car it thins, so the car stays readable in its own cloud. A puff
+//           that looms over the camera fades out before it fills the screen (ground dust sooner: fill is what a
+//           phone pays for)
+//   flame   twin boost flames at the exhaust, in the top-tier colour (a tier-4 boost: rainbow plasma, longer and
+//           shedding rainbow sparks): view-aligned billboards from nozzle to tip, so from behind they read as
+//           glowing discs and from the side as jets
 //   trail   the big jump's boost trail: twin ribbons laid from the pipes through the flight (segment by segment,
 //           world-fixed, an even brightness along each), in the car's rarity colour, spreading and fading over 1.5 s,
 //           and faded where they pass close to the camera - they draw the arc across the sky for the side view
@@ -42,11 +53,14 @@ export interface Fx {
 
 const VTOP = 44;
 const DEG = Math.PI / 180;
-const SKID_N = 1024, SKID_SEG = 0.6, SKID_FADE = 6, SKID_W = 0.26;
-const STREAK_N = 768, SMOKE_N = 256, CONFETTI_N = 192, TRAIL_N = 320;
+const SKID_N = 16384, SKID_SEG = 0.6, SKID_W = 0.26; // (a race of hard drifting lays ~10k)
+// tyre tracks in the grass: ring slots (4 wheels x ~50 segments/s flat out: half a minute of verge before reuse),
+// longest segment and the bend (cos) that starts a new one (u), width (u), full strength for HOLD s, gone by LIFE s
+const MARK_N = 8192, MARK_SEG = 2.5, MARK_BEND = 0.9965, MARK_W = 0.3;
+const STREAK_N = 768, SMOKE_N = 384, CONFETTI_N = 192, TRAIL_N = 320;
 const TRAIL_SEG = 0.9, TRAIL_LIFE = 1.5, TRAIL_W = 0.3; // u between the trail's joints, its life (s) and width (u)
 const GRAVITY = -32; // u/s^2 for sparks (toy scale: snappy arcs)
-const SPARK_RATE = [0, 95, 130, 170]; // per rear wheel per second, by drift tier
+const SPARK_RATE = [0, 95, 130, 170, 210]; // per rear wheel per second, by drift tier (4: the hidden 'magic max')
 // Colour multipliers stay modest: AgX turns anything much brighter than ~1.5 white, and the tier hue
 // (blue / purple / top tier) is the point of the sparks.
 const SPARK_I = 1.15, HOT_I = 2.2;
@@ -58,7 +72,9 @@ const TOUCH = 0.12; // u: a corner this close to a wall is on it
 // Debris and dust colours (linear; the smoke shader is unlit and tone-mapped like the scene).
 const C_SMOKE = new THREE.Color(0.72, 0.71, 0.7);
 const C_SCUFF = new THREE.Color('#efe7df'); // plastic dust off a rail
-const C_DUST = new THREE.Color('#ecdfc6'); // the dirt road's dust: much lighter than the road (sunlit), or it vanishes on it
+// the dirt road's dust: warm light browns a shade apart, linear and past 1 (sunlit dust in the air reads lighter than the
+// sunlit road under it; at the road's own brightness it vanishes into it). Lit from above in the shader
+const C_DUSTS = [new THREE.Color(1.62, 1.2, 0.76), new THREE.Color(1.44, 1.04, 0.64), new THREE.Color(1.78, 1.36, 0.9)];
 const C_CLOD = new THREE.Color('#8a6438');
 const C_VERGE = new THREE.Color('#ddd6b0'); // dry dust off the grass
 const C_GRASS = [new THREE.Color('#3f7a26'), new THREE.Color('#a9cc5c'), new THREE.Color('#6fa83c'), new THREE.Color('#5a3d24')]; // + a clod of earth (contrast on the grass)
@@ -100,9 +116,16 @@ class Pool {
   arr(i: number) {
     return this.attrs[i].array as Float32Array;
   }
+  /** The slot next() hands out next: the oldest once the ring has gone round. */
+  get headSlot() {
+    return this.head;
+  }
+  /** Slots handed out so far (n once the ring has gone round): a draw needs no more instances than this. */
+  used = 0;
   next() {
     const i = this.head;
     this.head = (i + 1) % this.n;
+    if (this.used < this.n) this.used++;
     this.touch(i);
     return i;
   }
@@ -124,7 +147,7 @@ class Pool {
     const a = this.attrs[birth[0]];
     const arr = a.array as Float32Array;
     for (let i = 0; i < this.n; i++) arr[i * a.itemSize + birth[1]] = -1e6;
-    this.head = 0;
+    this.head = this.used = 0;
     this.full = true;
   }
   flush() {
@@ -195,18 +218,35 @@ const STREAK_VS = /* glsl */ `
     vColor = aC.rgb;
     vQ = position.xy;
   }`;
+/** Hue (0..1, wraps) to a fully saturated colour. */
+const HUE = /* glsl */ `
+  vec3 hue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }`;
+
 const STREAK_FS = /* glsl */ `
+  uniform float uTime;
   varying vec3 vColor;
   varying float vA;
   varying vec2 vQ;
+  ${HUE}
   void main() {
     float across = 1.0 - abs(vQ.y) * 2.0;
-    float peak = max(max(vColor.r, vColor.g), vColor.b);
-    vec3 c = mix(vColor, vec3(peak), pow(across, 6.0) * 0.45); // white-hot core, tier-coloured edge
+    vec3 c;
+    float a = vA;
+    if (vColor.r < 0.0) {
+      // magic (colour = -intensity, hue, core): a thin white-hot core, an iridescent edge - the hue runs round the
+      // rainbow over time and across the streak, kept deep (AgX washes bright saturated colours out to white) - and a
+      // twinkle
+      float h = vColor.g + uTime * 0.8 + vQ.y * 0.35;
+      c = mix(hue(h), vec3(-vColor.r), pow(across, 6.0) * vColor.b);
+      a *= 0.7 + 0.3 * sin(uTime * 53.0 + vColor.g * 97.0);
+    } else {
+      float peak = max(max(vColor.r, vColor.g), vColor.b);
+      c = mix(vColor, vec3(peak), pow(across, 6.0) * 0.45); // white-hot core, tier-coloured edge
+    }
   #ifdef TRAIL
-    gl_FragColor = vec4(c, vA * min(1.0, across * 1.6));
+    gl_FragColor = vec4(c, a * min(1.0, across * 1.6));
   #else
-    gl_FragColor = vec4(c, vA * min(1.0, across * 1.6) * (0.35 + 0.65 * vQ.x));
+    gl_FragColor = vec4(c, a * min(1.0, across * 1.6) * (0.35 + 0.65 * vQ.x));
   #endif
     ${OUT}
   }`;
@@ -214,57 +254,133 @@ const STREAK_FS = /* glsl */ `
 const SMOKE_VS = /* glsl */ `
   attribute vec4 aP; // spawn position, birth
   attribute vec4 aV; // velocity, life
-  attribute vec4 aX; // size0, size1, rotation (sign = spin direction), opacity
-  attribute vec4 aC; // linear colour, rise (u/s^2; dust barely rises)
+  attribute vec4 aX; // size0, size1, rotation (sign = spin direction), opacity (negative: ground dust, below)
+  attribute vec4 aC; // linear colour, rise (u/s^2; dust barely rises) - ground dust: its drag (1/s) instead
   uniform float uTime;
   uniform float uDrag;
+  uniform vec4 uCar; // the car's middle (world) and radius: ground dust between it and the camera thins out
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vA;
+  varying float vLit;
+  varying float vLow;
   void main() {
     float age = uTime - aP.w;
     if (age < 0.0 || age >= aV.w) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; }
     float t = age / aV.w;
-    vec3 p = aP.xyz + aV.xyz * ((1.0 - exp(-uDrag * age)) / uDrag);
-    p.y += 0.5 * aC.w * age * age;
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    // Ground dust (born on the ground) has its own drag - a trail hangs in the car's wake - rises gently, lifts off the
+    // ground and billows up as it grows (its bottom stays near the ground instead of sinking into it), and is there
+    // at once: the chase camera is only a few tenths of a second behind the tyres
+    bool dust = aX.w < 0.0;
+    float drag = dust ? aC.w : uDrag;
+    vec3 p = aP.xyz + aV.xyz * ((1.0 - exp(-drag * age)) / drag);
+    p.y += 0.5 * (dust ? 0.45 : aC.w) * age * age;
     float size = mix(aX.x, aX.y, 1.0 - (1.0 - t) * (1.0 - t));
+    if (dust) p.y += 0.3 + 0.3 * (size - aX.x);
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
     // a puff about as big as its distance would fill the screen (and cost a full screen of blending):
-    // fade it out as it looms over the lens, and drop it once it's that close or behind the camera
-    float loom = 1.0 - smoothstep(0.5, 1.1, size / max(-mv.z, 1e-3));
+    // fade it out as it looms over the lens, and drop it once it's that close or behind the camera (ground dust
+    // sooner: the chase camera drives through the trail, and the fill is what a phone pays for)
+    float loom = 1.0 - (dust ? smoothstep(0.45, 1.0, size / max(-mv.z, 1e-3)) : smoothstep(0.5, 1.1, size / max(-mv.z, 1e-3)));
     if (loom <= 0.0) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; }
     float r = aX.z + age * 0.9 * sign(aX.z);
     float c = cos(r), s = sin(r);
     vec2 q = position.xy;
-    mv.xy += vec2(q.x * c - q.y * s, q.x * s + q.y * c) * size;
+    vec2 o = vec2(q.x * c - q.y * s, q.x * s + q.y * c) * size;
+    mv.xy += o;
     gl_Position = projectionMatrix * mv;
     vUv = q + 0.5;
     vColor = aC.rgb;
-    vA = aX.w * smoothstep(0.0, 0.1, t) * (1.0 - t) * (1.0 - t) * loom;
+    vLit = q.y + 0.5; // lit from above: the top of the puff on screen
+    vA = abs(aX.w) * smoothstep(0.0, dust ? 0.04 / aV.w : 0.1, t) * (1.0 - t) * (1.0 - t) * loom;
+    if (dust) {
+      // a puff of dust over the car, between it and the camera, thins out: the car stays readable in its own cloud
+      vec4 cv = modelViewMatrix * vec4(uCar.xyz, 1.0);
+      float zc = -cv.z, zp = -(mv.z);
+      if (zp < zc && zc > 0.5) {
+        float rr = uCar.w / zc + 0.25 * size / max(zp, 0.5);
+        vA *= 1.0 - 0.4 * (1.0 - smoothstep(0.4 * rr, rr, length((mv.xy - o) / zp - cv.xy / zc)));
+      }
+    }
+    // ground dust: this corner's height (world) over the ground it rose from, in fractions of the puff's size; the
+    // fragments fade out toward the ground, so it never cuts a hard line through the cloud
+    vLow = dust ? (p.y + (vec3(o, 0.0) * mat3(viewMatrix)).y - aP.y) / (0.22 * size + 0.08) : 1e4; // (1e4: not dust)
   }`;
 const SMOKE_FS = /* glsl */ `
   uniform sampler2D uMap;
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vA;
+  varying float vLit;
+  varying float vLow;
   void main() {
-    float a = texture2D(uMap, vUv).a * vA;
+    float a = texture2D(uMap, vUv).a * vA * smoothstep(0.0, 1.0, vLow);
     if (a < 0.004) discard;
-    gl_FragColor = vec4(vColor, a);
+    // ground dust is shaded harder (lit tops, dusky bottoms): billows, not a fog
+    gl_FragColor = vec4(vColor * (vLow < 1e3 ? 0.7 + 0.42 * vLit : 0.8 + 0.3 * vLit), a);
     ${OUT}
+  }`;
+
+// Tyre tracks in the grass, multiplied into it (premultiplied: dst x mix(1, m, k)). Unlit, no tone mapping: the
+// multiplier applies to the grass as drawn, sun and all. Faded out with distance before the fog takes the grass.
+const MARK_VS = /* glsl */ `
+  attribute vec4 aA; // start, birth
+  attribute vec4 aB; // end, strength
+  attribute vec4 aN; // surface normal, slide (0 rolling .. 1 sliding or locked: a wider track, torn turf)
+  uniform float uTime;
+  uniform float uHead; // the ring's next slot: the ones just after it are the oldest
+  uniform float uWidth;
+  varying float vA;
+  varying float vSlide;
+  varying vec2 vQ;
+  varying vec2 vW;
+  void main() {
+    float age = uTime - aA.w;
+    float rank = mod(uHead - 1.0 - float(gl_InstanceID) + ${MARK_N}.0, ${MARK_N}.0); // 0: the newest
+    float a = aB.w * (1.0 - smoothstep(${Math.round(MARK_N * 0.8)}.0, ${MARK_N}.0, rank));
+    vec3 d = aB.xyz - aA.xyz;
+    if (a <= 0.0 || dot(d, d) < 1e-6) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; }
+    vec3 side = normalize(cross(d, aN.xyz));
+    vec3 p = mix(aA.xyz, aB.xyz, position.x) + side * position.y * uWidth * (1.0 + 0.6 * aN.w) + aN.xyz * 0.02;
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    gl_Position = projectionMatrix * mv;
+    vA = a * (1.0 - smoothstep(100.0, 170.0, -mv.z));
+    vSlide = aN.w;
+    vQ = position.xy;
+    vW = p.xz;
+  }`;
+const MARK_FS = /* glsl */ `
+  uniform sampler2D uNoise;
+  varying float vA;
+  varying float vSlide;
+  varying vec2 vQ;
+  varying vec2 vW;
+  void main() {
+    vec4 n = texture2D(uNoise, vW * 0.37); // ~3 u blotches (world space: seamless from segment to segment)
+    float f = texture2D(uNoise, vW * 2.3).g; // grain
+    float across = abs(vQ.y) * 2.0;
+    // a ragged edge; the grass pressed flattest in the middle of the tread, patchy along it
+    float edge = 1.0 - smoothstep(0.45, 1.0, across + 0.5 * (n.r - 0.5) + 0.35 * (f - 0.5));
+    float k = vA * edge * (0.8 + 0.5 * (n.g - 0.5) + 0.4 * (f - 0.5));
+    // flattened grass: darker and a touch olive; a slide tears the turf - earth (warmer, darker) in patches
+    float torn = vSlide * smoothstep(0.4, 0.6, n.b * 0.55 + f * 0.45 + 0.2 * vSlide);
+    vec3 m = mix(vec3(0.62, 0.67, 0.52), vec3(0.98, 0.7, 0.56), torn);
+    k = clamp(k * (1.0 + 0.3 * torn), 0.0, 1.0);
+    if (k < 0.004) discard;
+    gl_FragColor = vec4(m * k, k);
   }`;
 
 const SKID_VS = /* glsl */ `
   attribute vec4 aA; // start, birth
   attribute vec4 aB; // end, strength
   attribute vec3 aN; // surface normal
-  uniform float uTime;
-  uniform float uFade;
+  uniform float uHead; // the ring's next slot: the ones just after it are the oldest
   uniform float uWidth;
   varying float vA;
   varying float vY;
   void main() {
-    float a = aB.w * clamp(1.0 - (uTime - aA.w) / uFade, 0.0, 1.0);
+    float rank = mod(uHead - 1.0 - float(gl_InstanceID) + ${SKID_N}.0, ${SKID_N}.0); // 0: the newest
+    float a = aB.w * (1.0 - smoothstep(${Math.round(SKID_N * 0.8)}.0, ${SKID_N}.0, rank));
     vec3 d = aB.xyz - aA.xyz;
     if (a <= 0.0 || dot(d, d) < 1e-8) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; }
     vec3 side = normalize(cross(d, aN));
@@ -301,8 +417,10 @@ const FLAME_VS = /* glsl */ `
 const FLAME_FS = /* glsl */ `
   uniform float uTime;
   uniform float uAlpha;
+  uniform float uMagic; // a tier-4 boost: rainbow plasma, bands of hue streaming out of the pipe
   uniform vec3 uColor;
   varying vec2 vUv;
+  ${HUE}
   void main() {
     float along = clamp(vUv.x, 0.0, 1.0);
     float width = mix(0.5, 0.08, along);
@@ -310,7 +428,8 @@ const FLAME_FS = /* glsl */ `
     float flick = 0.8 + 0.2 * sin(uTime * 63.0 - along * 17.0) * sin(uTime * 37.0 + along * 5.0);
     float a = min(1.0, core * 1.4) * pow(1.0 - along, 0.6) * flick * uAlpha;
     float hot = (1.0 - smoothstep(0.0, 0.45, along)) * (1.0 - smoothstep(0.0, width * 0.6, abs(vUv.y)));
-    vec3 c = mix(uColor * 1.5, vec3(1.0, 0.94, 0.8) * 1.8, hot);
+    vec3 base = mix(uColor, hue(along * 1.4 - uTime * 2.6 + vUv.y * 0.6), uMagic);
+    vec3 c = mix(base * 1.5, vec3(1.0, 0.94, 0.8) * 1.8, hot * (1.0 - 0.35 * uMagic));
     gl_FragColor = vec4(c, a);
     ${OUT}
   }`;
@@ -335,6 +454,19 @@ function puffTexture() {
     g.fillRect(0, 0, 64, 64);
   }
   return new THREE.CanvasTexture(c);
+}
+
+/** Value noise for the grass tracks: 64 x 64 random texels, four independent channels, filtered and tiled. */
+function noiseTexture() {
+  const n = 64, d = new Uint8Array(n * n * 4);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 256) | 0;
+  const t = new THREE.DataTexture(d, n, n);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.needsUpdate = true;
+  return t;
 }
 
 function streakMaterial(blending: THREE.Blending, streak: number, trail = false) {
@@ -392,7 +524,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   const smoke = new Pool(SMOKE_N, quad(-0.5, 0.5), { aP: 4, aV: 4, aX: 4, aC: 4 });
   const puffMap = puffTexture();
   const smokeMat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uDrag: { value: 2.6 }, uMap: { value: puffMap } },
+    uniforms: { uTime: { value: 0 }, uDrag: { value: 2.6 }, uMap: { value: puffMap }, uCar: { value: new THREE.Vector4(0, -1e4, 0, 1.4) } },
     vertexShader: SMOKE_VS,
     fragmentShader: SMOKE_FS,
     transparent: true,
@@ -404,7 +536,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   // -- skid marks
   const skids = new Pool(SKID_N, quad(0, 1), { aA: 4, aB: 4, aN: 3 });
   const skidMat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uFade: { value: SKID_FADE }, uWidth: { value: SKID_W } },
+    uniforms: { uHead: { value: 0 }, uWidth: { value: SKID_W } },
     vertexShader: SKID_VS,
     fragmentShader: SKID_FS,
     transparent: true,
@@ -417,6 +549,26 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   scene.add(mesh(skids.geo, skidMat, 1));
   const [kA, kB, kN] = [0, 1, 2].map((i) => skids.arr(i));
 
+  // -- tyre tracks in the grass (hidden until the first one, and once the last has gone)
+  const marks = new Pool(MARK_N, quad(0, 1), { aA: 4, aB: 4, aN: 4 });
+  const markMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uHead: { value: 0 }, uWidth: { value: MARK_W }, uNoise: { value: noiseTexture() } },
+    vertexShader: MARK_VS,
+    fragmentShader: MARK_FS,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.MultiplyBlending,
+    premultipliedAlpha: true,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  const marksMesh = mesh(marks.geo, markMat, 1);
+  marksMesh.visible = false;
+  scene.add(marksMesh);
+  const [gA, gB, gN] = [0, 1, 2].map((i) => marks.arr(i));
+
   // -- boost flames: one billboard per exhaust pipe (nozzles in the car frame), drawn in the car's pose
   const rearWheels = car.wheels.filter((w) => w.name.includes('rear'));
   const hubY = rearWheels.length ? rearWheels.reduce((s, w) => s + w.centre[1], 0) / rearWheels.length : 0.3;
@@ -427,9 +579,10 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   flameGeo.index = quad(0, 1).index;
   flameGeo.setAttribute('position', quad(0, 1).getAttribute('position'));
   flameGeo.setAttribute('aN', new THREE.InstancedBufferAttribute(new Float32Array([exhaust.x, exhaust.y, -pipe, exhaust.x, exhaust.y, pipe]), 3));
+  const flameW = Math.min(0.5, car.height * 0.42);
   const flameMat = new THREE.ShaderMaterial({
     uniforms: {
-      uTime: { value: 0 }, uAlpha: { value: 0 }, uLen: { value: 1.6 }, uWidth: { value: Math.min(0.5, car.height * 0.42) },
+      uTime: { value: 0 }, uAlpha: { value: 0 }, uLen: { value: 1.6 }, uWidth: { value: flameW }, uMagic: { value: 0 },
       uColor: { value: topTierColor.clone() },
     },
     vertexShader: FLAME_VS,
@@ -454,6 +607,9 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
 
   // skid strips, one per rear wheel: the head slot is extended every frame until it is SKID_SEG long
   const strips = rearLocal.map(() => ({ on: false, last: new THREE.Vector3(), head: -1 }));
+  // grass tracks, one chain per wheel (all four): the head segment stretches until it is MARK_SEG long or the wheel's
+  // path bends away from it (dir: the segment's heading; prev: where the wheel was last frame)
+  const chains = allLocal.map(() => ({ on: false, last: new THREE.Vector3(), prev: new THREE.Vector3(), dir: new THREE.Vector3(), head: -1 }));
   // per rear wheel: spawn accumulators (tyre smoke, dust, debris) and the ground under it
   const smokeAcc = new Float32Array(wp.length), dustAcc = new Float32Array(wp.length), bitAcc = new Float32Array(wp.length);
   const gnd = new Uint8Array(wp.length);
@@ -470,6 +626,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     new THREE.Color('#3d8bff'),
     new THREE.Color('#a855f7'),
     topTierColor.clone(),
+    new THREE.Color('#ffffff'), // tier 4 draws in the rainbow (magic streaks); white where one colour is needed
   ];
   const col = new THREE.Color();
   // warm colours vanish on the orange track: 'hot' is kept close to white
@@ -477,6 +634,8 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   const nose = new THREE.Vector3(), upv = new THREE.Vector3(), side = new THREE.Vector3(), dir = new THREE.Vector3();
   const tmp = new THREE.Vector3(), prevVel = new THREE.Vector3(), dv = new THREE.Vector3(), q1 = new THREE.Vector3();
   let sparkAcc = 0, lineAcc = 0, flameA = 0, havePrev = false;
+  // the drift tier last frame, the tier the running boost was charged at (4: magic flames), their strength, sparks shed
+  let lastTier = 0, boostTier = 0, magicA = 0, shedAcc = 0;
   // the big jump: the track's 'bigjump' spans [s0, s1, ...]; time aloft, whether this flight left a big jump's lip; the
   // trail's last joint per pipe; the flames' flare off the lip; wind lines due; when the trail and confetti are spent
   const lips: number[] = [];
@@ -496,24 +655,81 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     sS[j] = sx, sS[j + 1] = sy, sS[j + 2] = sz, sS[j + 3] = grav;
   }
 
+  /** A magic streak (the hidden tier): its edge runs round the rainbow from `hue` (0..1), a white-hot core of
+   *  `intensity` (`core` 0..1 how much), twinkling. */
+  function magic(
+    x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, width: number, hue: number,
+    intensity: number, grav: number, born = time, core = 0.9,
+  ) {
+    const i = streaks.next(), j = i * 4;
+    sP[j] = x, sP[j + 1] = y, sP[j + 2] = z, sP[j + 3] = born;
+    sV[j] = vx, sV[j + 1] = vy, sV[j + 2] = vz, sV[j + 3] = life;
+    sC[j] = -intensity, sC[j + 1] = hue, sC[j + 2] = core, sC[j + 3] = width;
+    sS[j] = sS[j + 1] = sS[j + 2] = 0, sS[j + 3] = grav;
+  }
+
+  /** A puff off p. A negative opacity makes it ground dust (see the smoke shader): `rise` is then its drag (1/s). */
   function puff(
     p: THREE.Vector3, vx: number, vy: number, vz: number, s0: number, s1: number, life: number, opacity: number, born = time,
     c: THREE.Color = C_SMOKE, rise = 1.4,
   ) {
-    const i = smoke.next(), j = i * 4;
-    mP[j] = p.x + upv.x * 0.15, mP[j + 1] = p.y + upv.y * 0.15, mP[j + 2] = p.z + upv.z * 0.15, mP[j + 3] = born;
+    const i = smoke.next(), j = i * 4, lift = opacity < 0 ? 0 : 0.15; // (ground dust starts on the ground: the shader lifts it)
+    mP[j] = p.x + upv.x * lift, mP[j + 1] = p.y + upv.y * lift, mP[j + 2] = p.z + upv.z * lift, mP[j + 3] = born;
     mV[j] = vx, mV[j + 1] = vy, mV[j + 2] = vz, mV[j + 3] = life;
     mX[j] = s0, mX[j + 1] = s1, mX[j + 2] = (Math.random() < 0.5 ? -1 : 1) * rand(0.1, Math.PI), mX[j + 3] = opacity;
     mC[j] = c.r, mC[j + 1] = c.g, mC[j + 2] = c.b, mC[j + 3] = rise;
   }
 
-  /** A low dust cloud off p: carried along a little, spread out sideways (`out`, u/s) and up. */
-  function dust(p: THREE.Vector3, v: THREE.Vector3, out: number, c: THREE.Color, s0: number, s1: number, life: number, opacity: number, born: number) {
-    const u = rand(1.2, 2.8);
+  /** A cloud of ground dust off a tyre at p: dragged along in the car's wake (`carry` x v, slowing at `drag` per s),
+   *  kicked back off the tread (`back`), out sideways (`out`) and up (`up`, u/s). Ground dust: it billows up as it
+   *  grows and fades into the ground it rose from. */
+  function dust(
+    p: THREE.Vector3, v: THREE.Vector3, carry: number, drag: number, back: number, out: number, up: number, c: THREE.Color,
+    s0: number, s1: number, life: number, opacity: number, born: number,
+  ) {
     puff(
-      p, v.x * 0.5 + side.x * out + upv.x * u + rand(-0.8, 0.8), v.y * 0.5 + side.y * out + upv.y * u,
-      v.z * 0.5 + side.z * out + upv.z * u + rand(-0.8, 0.8), s0, s1, life, opacity, born, c, 0.3,
+      p, v.x * carry - nose.x * back + side.x * out + upv.x * up + rand(-0.8, 0.8),
+      v.y * carry - nose.y * back + side.y * out + upv.y * up,
+      v.z * carry - nose.z * back + side.z * out + upv.z * up + rand(-0.8, 0.8), s0, s1, life, -opacity, born, c, drag,
     );
+  }
+
+  /** Wheel k's grass track: on, it presses the track on to p (on the surface, normal n); strength 0..1 and slide (0
+   *  rolling .. 1 sliding or locked: wider, the turf torn) go with the segment being laid. */
+  function layMark(k: number, on: boolean, p: THREE.Vector3, n: THREE.Vector3, strength: number, slide: number) {
+    const ch = chains[k];
+    if (!on) {
+      ch.on = false;
+      ch.head = -1;
+      return;
+    }
+    const d2 = p.distanceToSquared(ch.last);
+    if (!ch.on || d2 > 16) {
+      ch.on = true;
+      ch.last.copy(p);
+      ch.prev.copy(p);
+      ch.head = -1;
+      return;
+    }
+    if (p.distanceToSquared(ch.prev) < 1e-4) return; // (standing still)
+    dir.subVectors(p, ch.prev).normalize(); // the wheel's way this frame
+    let i = ch.head;
+    if (i < 0) {
+      i = ch.head = marks.next();
+      const j = i * 4;
+      gA[j] = ch.last.x, gA[j + 1] = ch.last.y, gA[j + 2] = ch.last.z, gA[j + 3] = time;
+      ch.dir.copy(dir);
+    } else marks.touch(i);
+    const j = i * 4;
+    gB[j] = p.x, gB[j + 1] = p.y, gB[j + 2] = p.z, gB[j + 3] = strength;
+    gN[j] = n.x, gN[j + 1] = n.y, gN[j + 2] = n.z, gN[j + 3] = slide;
+    // the next segment starts here once this one is long, or the wheel's path bends away from it (a slide's arc
+    // stays smooth: a segment every ~5 deg of its turn)
+    if (d2 >= MARK_SEG * MARK_SEG || dir.dot(ch.dir) < MARK_BEND) {
+      ch.last.copy(p);
+      ch.head = -1;
+    }
+    ch.prev.copy(p);
   }
 
   /** A bit of debris off p under full gravity: carried with the car (`carry` x v), out along `o` (`out` u/s) and up. */
@@ -647,10 +863,59 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     );
   }
 
+  /** The hidden tier's sparks: a bigger, longer fan than gold's, every spark iridescent; one in four is glitter -
+   *  slow, tiny, left hanging behind the car, twinkling. */
+  function magicSpray(p: THREE.Vector3, v: THREE.Vector3, outSign: number, born: number) {
+    const h = rand(0, 1);
+    if (Math.random() < 0.25) {
+      magic(
+        p.x + rand(-0.3, 0.3), p.y + rand(0.1, 0.6), p.z + rand(-0.3, 0.3),
+        v.x * 0.35 + rand(-1.5, 1.5), v.y * 0.35 + rand(0.5, 2), v.z * 0.35 + rand(-1.5, 1.5),
+        rand(0.5, 0.9), rand(0.06, 0.085), h, 1.35, 0.06, born, 0.4,
+      );
+      return;
+    }
+    const b = rand(5, 10), o = rand(0, 5.5) * outSign, u = rand(2.6, 6);
+    magic(
+      p.x, p.y + 0.04, p.z,
+      v.x * 0.55 - nose.x * b + side.x * o + upv.x * u + rand(-1.8, 1.8),
+      v.y * 0.55 - nose.y * b + side.y * o + upv.y * u + rand(-1, 1),
+      v.z * 0.55 - nose.z * b + side.z * o + upv.z * u + rand(-1.8, 1.8),
+      rand(0.28, 0.55), rand(0.1, 0.15), h, 1.25, 0.4, born,
+    );
+  }
+
+  /** The hidden tier reached: a ring of magic streaks round the car (the hue running round it), a white-hot fountain
+   *  off the rear tyres, a shock ring along the ground and rainbow glitter carried along with the car. */
+  function magicBurst(P: THREE.Vector3, V: THREE.Vector3) {
+    for (let n = 0; n < 56; n++) {
+      const a = (n / 56) * Math.PI * 2, s = rand(9, 15);
+      dir.copy(nose).multiplyScalar(Math.cos(a) * s).addScaledVector(side, Math.sin(a) * s).addScaledVector(upv, rand(1.5, 5));
+      magic(P.x + upv.x * 0.3, P.y + upv.y * 0.3, P.z + upv.z * 0.3, V.x * 0.6 + dir.x, V.y * 0.6 + dir.y, V.z * 0.6 + dir.z, rand(0.45, 0.75), rand(0.1, 0.14), n / 56, 1.35, 0.5);
+    }
+    for (let n = 0; n < 30; n++) {
+      const w = wp[n % wp.length];
+      dir.copy(upv).multiplyScalar(rand(8, 14)).addScaledVector(side, rand(-3, 3)).addScaledVector(nose, rand(-4, 0.5));
+      if (n % 3) magic(w.x, w.y + 0.1, w.z, V.x * 0.75 + dir.x, V.y * 0.75 + dir.y, V.z * 0.75 + dir.z, rand(0.55, 0.85), rand(0.08, 0.12), rand(0, 1), 1.3, 0.6);
+      else streak(w.x, w.y + 0.1, w.z, V.x * 0.75 + dir.x, V.y * 0.75 + dir.y, V.z * 0.75 + dir.z, rand(0.5, 0.8), rand(0.08, 0.11), colours[0], HOT_I, 0.6);
+    }
+    for (let n = 0; n < 24; n++) {
+      // (slower straight back, toward the chase camera: sticks across the lens otherwise)
+      const a = (n / 24) * Math.PI * 2, back = smoothstep(-0.5, -0.95, Math.cos(a)), sp = rand(13, 18) * (1 - 0.6 * back);
+      ldir.copy(nose).multiplyScalar(Math.cos(a)).addScaledVector(side, Math.sin(a));
+      streak(P.x + upv.x * 0.15, P.y + upv.y * 0.15, P.z + upv.z * 0.15, V.x * 0.85 + ldir.x * sp, V.y * 0.85 + ldir.y * sp, V.z * 0.85 + ldir.z * sp, 0.18, 0.06, colours[0], 1.3, 0);
+    }
+    confettiBurst(tmp.copy(P).addScaledVector(upv, 0.8), V, 0.85, 60, true);
+  }
+
   function breakStrips() {
     for (const st of strips) {
       st.on = false;
       st.head = -1;
+    }
+    for (const ch of chains) {
+      ch.on = false;
+      ch.head = -1;
     }
   }
 
@@ -740,14 +1005,15 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
    *  streaks, sparks off plastic or asphalt (clods or grass off a soft surface). */
   function landingSlam(P: THREE.Vector3, Q: THREE.Quaternion, V: THREE.Vector3, f: TrackFrame | null, k: number) {
     const gl = f ? groundAt(f, surf, P) : PLASTIC;
-    const c = gl === PLASTIC ? C_SCUFF : gl === ASPHALT ? C_SMOKE : gl === DIRT ? C_DUST : C_VERGE;
+    const c = gl === PLASTIC ? C_SCUFF : gl === ASPHALT ? C_SMOKE : gl === DIRT ? C_DUSTS[0] : C_VERGE;
     for (let i = 0, n = 10 + Math.round(14 * k); i < n; i++) {
       const a = (i / n) * Math.PI * 2 + rand(0, 0.3), sp = rand(5, 9) * (0.8 + 0.6 * k), u = rand(0.3, 1);
       ldir.copy(nose).multiplyScalar(Math.cos(a)).addScaledVector(side, Math.sin(a));
       tmp.copy(P).addScaledVector(ldir, 1.5);
+      // (ground dust: it rolls out along the ground and billows up, no hard edge where the ground cuts it)
       puff(
         tmp, V.x * 0.35 + ldir.x * sp + upv.x * u, V.y * 0.35 + ldir.y * sp + upv.y * u, V.z * 0.35 + ldir.z * sp + upv.z * u,
-        0.7, rand(2.6, 3.6) + 1.6 * k, rand(0.9, 1.4), 0.4 + 0.15 * k, time, c, 0.35,
+        0.7, rand(2.6, 3.6) + 1.6 * k, rand(0.9, 1.4), -(0.4 + 0.15 * k), time, c, 2.6,
       );
     }
     for (let i = 0; i < 24; i++) {
@@ -767,12 +1033,14 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     }
   }
 
-  /** Confetti at `at`: carried along with velocity V x carry, thrown up and out; half in the rarity colour. */
-  function confettiBurst(at: THREE.Vector3, V: THREE.Vector3 | null, carry: number, count: number) {
+  /** Confetti at `at`: carried along with velocity V x carry, thrown up and out; half in the rarity colour (magic:
+   *  rainbow glitter, every piece running through the hues and twinkling). */
+  function confettiBurst(at: THREE.Vector3, V: THREE.Vector3 | null, carry: number, count: number, isMagic = false) {
     for (let n = 0; n < Math.min(count, CONFETTI_N); n++) {
       const j = confettiPool.next() * 4;
       const a = rand(0, Math.PI * 2), r = rand(2, 7);
       col.copy(n % 2 ? topTierColor : PALETTE[(n >> 1) % PALETTE.length]);
+      if (isMagic) col.setRGB(-1.3, n / count, 0.25); // (rainbow glitter: just a glint of white)
       cP[j] = at.x, cP[j + 1] = at.y, cP[j + 2] = at.z, cP[j + 3] = time;
       cV[j] = (V ? V.x * carry : 0) + Math.cos(a) * r, cV[j + 1] = (V ? V.y * carry : 0) + rand(9, 17), cV[j + 2] = (V ? V.z * carry : 0) + Math.sin(a) * r;
       cV[j + 3] = rand(1.6, 2.4);
@@ -793,6 +1061,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     upv.set(0, 1, 0).applyQuaternion(Q);
     side.set(0, 0, 1).applyQuaternion(Q);
     for (let i = 0; i < wp.length; i++) wp[i].copy(rearLocal[i]).applyQuaternion(Q).add(P);
+    for (let i = 0; i < ap.length; i++) ap[i].copy(allLocal[i]).applyQuaternion(Q).add(P);
     if (ev.respawn) breakStrips();
     const f = probe(state, P);
 
@@ -840,6 +1109,8 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     // verge. Spawns are spread over the frame so low frame rates don't clump them.
     const strength = sliding ? 0.4 + 0.5 * smoothstep(6, 22, slipDeg) : 0.55;
     const slideK = smoothstep(8, 26, slipDeg);
+    // the dust trail grows with speed, with the slide and with the throttle hard down (or a boost) pulling away
+    const fastK = smoothstep(8, 44, sp), pullK = smoothstep(4, 22, state.accelLocal.x);
     for (let k = 0; k < wp.length; k++) {
       const gk = gnd[k], w = wp[k];
       layStrip(k, gk <= ASPHALT && (sliding || braking), w, upv, strength);
@@ -850,10 +1121,10 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
       if (gk <= ASPHALT) {
         smokeAcc[k] += (sp > 5 ? 21 * slideK + (braking ? 7 : 0) : 0) * dt;
       } else if (gk === DIRT) {
-        dustAcc[k] += ((4 + 0.5 * sp) * (1 + 1.4 * slideK) + (braking ? 8 : 0)) * dt;
-        bitAcc[k] += (24 * slideK + (braking ? 6 : 0)) * dt;
+        dustAcc[k] += ((3 + 0.38 * sp) * (1 + 0.8 * slideK) + 8 * pullK + (braking ? 6 : 0)) * dt;
+        bitAcc[k] += (24 * slideK + (braking ? 6 : 0) + 6 * fastK) * dt;
       } else {
-        dustAcc[k] += (2 + 0.25 * sp) * (1 + slideK) * dt;
+        dustAcc[k] += (1.5 + 0.2 * sp) * (1 + slideK) * dt;
         bitAcc[k] += (8 + 0.8 * sp) * (1 + 1.2 * slideK) * dt;
       }
       while (smokeAcc[k] >= 1) {
@@ -864,11 +1135,23 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
       }
       while (dustAcc[k] >= 1) {
         dustAcc[k] -= 1;
-        const fr0 = Math.random();
+        const fr0 = Math.random(), born = time - fr0 * dt;
         tmp.copy(w).addScaledVector(V, -fr0 * dt);
-        const out = rand(-1.5, 1.5) + slideK * outSign * rand(0, 2);
-        if (gk === DIRT) dust(tmp, V, out, C_DUST, rand(0.8, 1.1), rand(2.8, 4), rand(1.1, 1.8), rand(0.45, 0.6), time - fr0 * dt);
-        else dust(tmp, V, out, C_VERGE, rand(0.6, 0.8), rand(2, 2.8), rand(0.8, 1.2), rand(0.32, 0.42), time - fr0 * dt);
+        // each tyre's dust rolls out on its own side, past the car's flank (and with the slide): from behind, a plume
+        // either side of the car with the car clear between them
+        const out = (rearLocal[k].z < 0 ? -1 : 1) * rand(0.8, 3.6) + slideK * outSign * rand(0, 3);
+        // dirt: a billowing cloud thrown up off the tread, bigger the faster - most of it rides in the wake right
+        // behind the car for half a second (where the chase camera sees it), rising over the car's roof (against the
+        // verge, the trees and the sky it shows far better than against the road); the rest is left hanging over the
+        // road sooner. The verge: a lighter haze of dry grass dust
+        if (gk === DIRT) {
+          const wake = Math.random() < 0.6, hang = wake ? 1 : 1.3; // (what's left hanging billows out wider and higher)
+          dust(
+            tmp, V, wake ? rand(0.88, 0.97) : rand(0.5, 0.7), wake ? 0.5 : 0.9, rand(0.5, 2), out * hang,
+            rand(2, 3.4) * hang + 1.2 * slideK, C_DUSTS[(Math.random() * 3) | 0], rand(1, 1.3),
+            (rand(2.6, 3.4) * (0.75 + 0.45 * fastK) + 1.2 * slideK) * hang, rand(1.5, 2.4) * (wake ? 1 : 1.15), rand(0.72, 0.9), born,
+          );
+        } else dust(tmp, V, rand(0.7, 0.88), 1.1, rand(0.3, 1.5), out, rand(0.8, 1.8), C_VERGE, rand(0.5, 0.7), rand(2, 2.8), rand(1, 1.6), rand(0.3, 0.42), born);
       }
       while (bitAcc[k] >= 1) {
         bitAcc[k] -= 1;
@@ -881,19 +1164,36 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
       }
     }
 
-    // drift sparks, coloured by tier
-    if (state.drifting && g && state.driftTier > 0) {
-      sparkAcc += SPARK_RATE[state.driftTier] * wp.length * dt;
-      const c = colours[state.driftTier];
+    // Tracks in the grass: every wheel rolling on a verge presses one in, on the surface under it (a sliding or
+    // locked wheel sweeps a wider one and tears the turf). The fronts slide less than the rears in a drift.
+    const onGrass = g && sp > 0.4 && !!f && f.edge === 'grass';
+    for (let i = 0; i < ap.length; i++) {
+      let on = false;
+      if (onGrass && f) {
+        q1.subVectors(ap[i], f.p);
+        on = Math.abs(q1.dot(f.right)) > f.width * 0.5 + 0.08;
+        if (on) tmp.copy(ap[i]).addScaledVector(f.up, -q1.dot(f.up));
+      }
+      const sl = clamp((allLocal[i].x < 0 ? slideK : 0.4 * slideK) + (braking ? 0.55 : 0), 0, 1);
+      layMark(i, on, tmp, f ? f.up : upv, 0.68 + 0.3 * sl, sl);
+    }
+
+    // drift sparks, coloured by tier (the hidden 4th: magic)
+    const tierNow = state.driftTier;
+    if (state.drifting && g && tierNow > 0) {
+      sparkAcc += SPARK_RATE[tierNow] * wp.length * dt;
+      const c = colours[tierNow];
       while (sparkAcc >= 1) {
         sparkAcc -= 1;
         const f = Math.random();
         tmp.copy(wp[(Math.random() * wp.length) | 0]).addScaledVector(V, -f * dt);
-        spray(tmp, V, 0.55, 8, 4.5, outSign, 4.8, c, time - f * dt); // a low fan back and out
+        if (tierNow === 4) magicSpray(tmp, V, outSign, time - f * dt);
+        else spray(tmp, V, 0.55, 8, 4.5, outSign, 4.8, c, time - f * dt); // a low fan back and out
       }
     } else sparkAcc = 0;
 
-    if (ev.tierUp) {
+    if (ev.tierUp === 4) magicBurst(P, V);
+    else if (ev.tierUp) {
       const c = colours[ev.tierUp];
       for (let n = 0; n < 30; n++) {
         const a = rand(0, Math.PI * 2), s = rand(5, 11);
@@ -942,8 +1242,8 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
         if (gi <= ASPHALT) puff(ap[i], V.x * 0.25 + dir.x * 2.5, 0.6, V.z * 0.25 + dir.z * 2.5, 0.5, rand(2, 2.8), rand(0.7, 1.1), 0.45);
         else {
           soft = gi;
-          const c = gi === DIRT ? C_DUST : C_VERGE;
-          for (let m = 0; m < 2; m++) puff(ap[i], V.x * 0.25 + dir.x * rand(2, 4), rand(0.4, 1.2), V.z * 0.25 + dir.z * rand(2, 4), 0.6, rand(2.6, 3.6), rand(1.1, 1.6), 0.4, time, c, 0.3);
+          const c = gi === DIRT ? C_DUSTS[i % 3] : C_VERGE;
+          for (let m = 0; m < 2; m++) puff(ap[i], V.x * 0.25 + dir.x * rand(2, 4), rand(0.4, 1.2), V.z * 0.25 + dir.z * rand(2, 4), 0.6, rand(2.6, 3.6), rand(1.1, 1.6), gi === DIRT ? -0.55 : -0.4, time, c, 2.6);
         }
       }
       if (ev.landed > 14) {
@@ -979,7 +1279,13 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     }
 
     // boost: flames, a burst out of the pipes as it lights, speed lines streaming past
-    // (off a big jump's lip they flare: longer, for 0.8 s, boost or not)
+    // (off a big jump's lip they flare: longer, for 0.8 s, boost or not). A boost charged at the hidden tier (the tier
+    // its drift had reached: the drift reads 0 once it's cashed in) burns as rainbow plasma, longer and wider, shedding
+    // magic sparks
+    if (ev.boostStart) boostTier = Math.max(lastTier, ev.tierUp ?? 0);
+    else if (!state.boosting) boostTier = 0;
+    const magicOn = state.boosting && boostTier === 4;
+    magicA += ((magicOn ? 1 : 0) - magicA) * (1 - Math.exp(-dt / 0.08));
     flareT = Math.max(0, flareT - dt);
     const flameOn = state.boosting || flareT > 0;
     flameA += ((flameOn ? 1 : 0) - flameA) * (1 - Math.exp(-dt / (flameOn ? 0.04 : 0.09)));
@@ -988,19 +1294,44 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
       flameRig.position.copy(P);
       flameRig.quaternion.copy(Q);
       const len = (1.05 + 0.25 * Math.sin(time * 41) + 0.15 * Math.sin(time * 97)) * (0.4 + 0.6 * flameA) * (1 + 0.7 * smoothstep(0, 0.8, flareT));
-      flameMat.uniforms.uLen.value = len * 1.8;
+      flameMat.uniforms.uLen.value = len * 1.8 * (1 + 0.4 * magicA);
+      flameMat.uniforms.uWidth.value = flameW * (1 + 0.25 * magicA);
+      flameMat.uniforms.uMagic.value = magicA;
       flameMat.uniforms.uAlpha.value = flameA;
       flameMat.uniforms.uTime.value = time;
     }
+    if (magicA > 0.3 && flameRig.visible) {
+      shedAcc += 75 * magicA * dt;
+      while (shedAcc >= 1) {
+        shedAcc -= 1;
+        pipeP.set(exhaust.x - 0.15, exhaust.y, Math.random() < 0.5 ? -pipe : pipe).applyQuaternion(Q).add(P);
+        const b = rand(5, 11);
+        magic(
+          pipeP.x, pipeP.y, pipeP.z, V.x * 0.7 - nose.x * b + rand(-1.5, 1.5), V.y * 0.7 - nose.y * b + rand(-0.5, 2),
+          V.z * 0.7 - nose.z * b + rand(-1.5, 1.5), rand(0.25, 0.45), rand(0.06, 0.09), rand(0, 1), 1.3, 0.25,
+        );
+      }
+    } else shedAcc = 0;
     if (ev.boostStart) {
       tmp.copy(exhaust).applyQuaternion(Q).add(P);
-      for (let i = 0; i < 18; i++) {
-        col.copy(i % 2 ? hot : topTierColor);
-        streak(
-          tmp.x, tmp.y, tmp.z,
-          V.x * 0.6 - nose.x * rand(8, 15) + rand(-2.5, 2.5), V.y * 0.6 - nose.y * rand(8, 15) + rand(0, 3), V.z * 0.6 - nose.z * rand(8, 15) + rand(-2.5, 2.5),
-          rand(0.2, 0.4), 0.08, col, HOT_I, 0.5,
-        );
+      if (boostTier === 4) {
+        // the hidden tier's turbo lights: a fan of magic out of the pipes
+        for (let i = 0; i < 40; i++) {
+          const b = rand(8, 16);
+          magic(
+            tmp.x, tmp.y, tmp.z, V.x * 0.6 - nose.x * b + rand(-3.5, 3.5), V.y * 0.6 - nose.y * b + rand(0, 4),
+            V.z * 0.6 - nose.z * b + rand(-3.5, 3.5), rand(0.25, 0.5), rand(0.09, 0.12), i / 40, 1.35, 0.5,
+          );
+        }
+      } else {
+        for (let i = 0; i < 18; i++) {
+          col.copy(i % 2 ? hot : topTierColor);
+          streak(
+            tmp.x, tmp.y, tmp.z,
+            V.x * 0.6 - nose.x * rand(8, 15) + rand(-2.5, 2.5), V.y * 0.6 - nose.y * rand(8, 15) + rand(0, 3), V.z * 0.6 - nose.z * rand(8, 15) + rand(-2.5, 2.5),
+            rand(0.2, 0.4), 0.08, col, HOT_I, 0.5,
+          );
+        }
       }
     }
     if (state.boosting || state.speed > VTOP * 1.08) {
@@ -1020,12 +1351,22 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
 
     prevVel.copy(V);
     havePrev = true;
+    lastTier = tierNow;
     streakMat.uniforms.uTime.value = time;
     smokeMat.uniforms.uTime.value = time;
-    skidMat.uniforms.uTime.value = time;
+    smokeMat.uniforms.uCar.value.set(P.x + upv.x * 0.6, P.y + upv.y * 0.6, P.z + upv.z * 0.6, 1.4);
+    skidMat.uniforms.uHead.value = skids.headSlot;
+    skids.geo.instanceCount = skids.used; // (only the slots laid so far, until the ring goes round)
     streaks.flush();
     smoke.flush();
     skids.flush();
+    marksMesh.visible = marks.used > 0;
+    if (marksMesh.visible) {
+      markMat.uniforms.uTime.value = time;
+      markMat.uniforms.uHead.value = marks.headSlot;
+      marks.geo.instanceCount = marks.used; // (only the slots laid so far, until the ring goes round)
+      marks.flush();
+    }
     trailMesh.visible = time < trailUntil;
     if (trailMesh.visible) {
       trailMat.uniforms.uTime.value = time;
@@ -1039,13 +1380,16 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   }
 
   function reset() {
+    // a new race starts on clean tarmac and grass (the marks' strength is what hides a slot: they never fade by age)
     streaks.clear();
     smoke.clear();
-    skids.clear();
+    skids.clear([1, 3]);
+    marks.clear([1, 3]);
     trail.clear();
     confettiPool.clear();
     breakStrips();
     sparkAcc = lineAcc = flameA = scrapeAcc = scrapeHold = hitN = airT = flareT = windAcc = 0;
+    lastTier = boostTier = magicA = shedAcc = 0;
     bigAir = trailHave = false;
     trailUntil = confettiUntil = -1;
     smokeAcc.fill(0);

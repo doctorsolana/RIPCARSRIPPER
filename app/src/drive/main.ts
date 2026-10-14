@@ -34,10 +34,15 @@ const AUTO = q.get('auto') === '1';
 const LAPS = Math.min(9, Math.max(1, Math.round(Number(q.get('laps')) || 3)));
 const FAST = Math.min(16, Math.max(1, Math.round(Number(q.get('fast')) || 1))); // tests: run the sim N x real time
 const KMH = 4.3; // u/s -> km/h at toy scale
-const PAR = 42.1; // u/s: the autopilot's average (3 laps of the 2,740 u course in 195.4 s); medals at x1.03 / 1.10 / 1.20
-// of laps x length / PAR
+// u/s: the autopilot's average over 3 laps of the 2,740 u course, per car (each drives its own way: PROFILES in
+// vehicles/arcade.ts; a car without a profile drives the stock car's, 42.1); medals at x1.03 / 1.10 / 1.20 of
+// laps x length / PAR
+const PARS: Record<string, number> = {
+  skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26,
+};
+const PAR = CAR.toLowerCase().split('-').map((w) => PARS[w]).find((x) => x !== undefined) ?? 42.1;
 const HARD_HIT = 25; // u/s square into a wall: an extra camera kick and a hard buzz (the camera scales its own shake by the hit)
-const BOOST_NAMES = ['', 'Boost', 'Super boost', 'Ultra boost'];
+const BOOST_NAMES = ['', 'Boost', 'Super boost', 'Ultra boost', 'Hyper boost!']; // 4: the hidden 'magic max' tier
 /** Hay bales are the wall here (the dirt's barriers, and the far edge of every verge; as the vehicle's wallOf). */
 const isHay = (f: TrackFrame) => f.edge === 'grass' || (f.edge === 'barrier' && f.surface === 'dirt');
 
@@ -104,6 +109,7 @@ async function main() {
   const audio = createAudio();
   fx.setTrack(track); // the surface under each tyre and what the walls are made of
   audio.setTrack(track);
+  audio.setCar(rig.spec); // its own engine
   const input = createInput(canvas);
   hud.onMute((m) => audio.setMuted(m));
   const tune = q.get('tune'); // a dev tool: its code only loads when asked for
@@ -328,7 +334,11 @@ async function main() {
       const big = air > 1.5 ? ` ${air.toFixed(1)} s` : '';
       if (ev.perfectLanding) hud.toast(`Perfect!${big}`, '#3ddc84');
       else if (big) hud.toast(`Big air${big}`);
-      else if (ev.boostStart && lastTier > 0) hud.toast(BOOST_NAMES[lastTier], lastTier === 3 ? tier.color : lastTier === 2 ? '#a35cff' : '#3d8bff');
+      else if (ev.tierUp === 4) hud.toast('Max drift!', '#fff', 'max'); // the hidden tier: a surprise
+      else if (ev.boostStart && lastTier > 0) {
+        const c = lastTier === 4 ? '#fff' : lastTier === 3 ? tier.color : lastTier === 2 ? '#a35cff' : '#3d8bff';
+        hud.toast(BOOST_NAMES[lastTier], c, lastTier === 4 ? 'max' : undefined);
+      }
       if (ev.respawn) hud.flash();
       lastTier = st.driftTier;
       clearEvents();

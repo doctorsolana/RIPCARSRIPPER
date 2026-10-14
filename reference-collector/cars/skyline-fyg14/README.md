@@ -6,27 +6,27 @@
 
 ## Current multiview sheet
 
-**Draft — correction needed · v2 · 1024 × 1536 PNG**
+**Accepted · v3 · 1024 × 1536 PNG**
 
-This sheet is a draft. It has not passed the side-camera review and must not be treated as an accepted input.
+Both side profiles passed the level-camera review.
 
-[Open sheet](generated/draft-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
+[Open sheet](generated/reference-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
 
-![Current five-view sheet](generated/draft-sheet.png)
+![Current five-view sheet](generated/reference-sheet.png)
 
 Right profile facing right; left profile facing left; overhead facing right; front and rear below. Tripo multiview uses front, left, rear and right crops. The top view remains available for fitting and textures.
 
-Generated directly from real photographs.
+Finalized by editing an earlier generated sheet. The final prompt and original photographs are retained; superseded working images were removed.
 
 Right side: real reference. Left side: real reference. [Side evidence](reference/side-evidence.json).
 
-- Generated directly from five real original photos; no previous generated input.
-- Both real sides documented; retained draft preserves right-only fuel flap.
-- Both side rows retain visible front-bumper faces and fail the strict perpendicular-camera requirement.
-- The bottom front view shows a broad hood surface; it is not accepted as a strict level frontal projection.
-- No complete vertical overhead source: top projection and concealed relief are inferred from real oblique photos; visible hood/roof markings are documented.
-- Tiny hood/rear logo geometry, lettering orientation and reflections are approximate, not an exact texture transfer.
-- This is synthetic photographic reference with baked lighting, not calibrated CAD or neutral albedo. No Tripo submission or 3D reconstruction test was performed.
+- Both physical sides independently pass the strict level-camera visual checks. This is visual acceptance, not numerical calibration.
+- Green FYG14, black/chrome wheels, plain flanks and wing, right-only fuel flap and left rear exhaust preserved.
+- Synthetic swirled green paint grain remains; it is not a real decorative texture and should not be baked literally into albedo/normal maps.
+- Front/rear were lowered but remain approximate projections; overhead is inferred.
+- Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.
+- True overhead geometry is partly inferred from elevated photographs.
+- No Tripo reconstruction or numerical camera calibration was performed in this correction task.
 
 ## Original photographs
 

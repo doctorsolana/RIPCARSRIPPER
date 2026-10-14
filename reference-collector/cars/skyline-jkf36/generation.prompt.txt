@@ -1,23 +1,8 @@
-Create a PHOTOREALISTIC ORTHOGRAPHIC TURNAROUND of this physical die-cast toy using only the attached real photos as evidence. One finished five-view sheet. Reconstruct the toy, then choose NEW cameras; never retain the source photograph angles.
+Edit the supplied five-view sheet. Replace ONLY the top two side views. Keep the lower three views, layout and colors unchanged.
 
-HARD CAMERA REQUIREMENT: both side images are exact lateral elevations. Camera X axis along car length; camera looks exactly along the lateral axis at mid-door height with ZERO elevation, ZERO yaw, ZERO roll. Parallel orthographic rays. Roof, hood and trunk top surfaces collapse to thin curved silhouette edges. The far wing support overlaps the near support. Grilles and front/rear lamp PANEL FACES are hidden edge-on. Only the side-turning edge of a lamp may show. No look-down cabin view. Preserve full roof height and actual curved cross-section. This is a shaded 3D object viewed sideways, not a flat drawing.
+The two side views must become TRUE ENGINEERING SIDE ELEVATIONS rendered in photographic materials. Top row nose RIGHT, second row nose LEFT. Move the cameras DOWN to axle-center height and aim EXACTLY HORIZONTALLY across the car, perpendicular to the doors, with orthographic projection. Zero downward tilt and zero front-corner reveal. A headlamp or front-bumper FACE must collapse to a thin edge at the nose. The front and rear planes have ZERO visible width in a lateral elevation. Do not just paint over their markings.
+The hood/cowl, roof, rear deck and wing TOPS must collapse to thin contours. NO transverse roof/hood bands, NO top-facing hood artwork, NO windshield width, NO looking down into the cabin. Near/far wing supports and wheels align in projection. The body remains its real full height and width: change ONLY the virtual camera, never squash the body or lower the roof.
 
-HARD BACKGROUND REQUIREMENT: objects suspended in empty pure-white space. There is NO floor or shadow catcher. White #FFFFFF begins at the silhouette boundary including directly beneath the tires and chassis. Zero external cast shadows, zero contact shadow blobs, zero gray haze or ground reflection. Internal wheel, window and body recesses remain dark and volumetric. Do not remove the miniature's surface shading.
-
-LAYOUT portrait 2:3, four rows, exactly FIVE complete views: row1 vehicle-RIGHT side nose RIGHT; row2 vehicle-LEFT side nose LEFT; row3 vertical 90-degree TOP nose RIGHT; row4 level straight FRONT left and level straight REAR right. First three views matching car length. Ample blank white gutters, no labels or borders. The top view is a conservative synthesis from original photos. Front/rear cameras also horizontal, no looking down over hood/roof. All body panels closed.
-
-SOFTBOX MATERIALS: realistic shaded 3D miniature, metallic flakes and paint reflections, curved highlight gradients on fenders, round rubber tire walls, deep recessed spokes, glazing/cabin depth. Orthographic camera changes projection only; retain realistic physical volume. No flat fills, vector art, outlines, cel shading or sprites.
-
-SUBJECT-SPECIFIC CAMERA AND FIDELITY CHECK:
-In top view nose RIGHT, vehicle-LEFT is at TOP: sill exhaust must be on TOP edge only, never bottom. Gold 10 anniversary door badge, no extra zero. Wing supports exactly overlap in side projection. Only thin edge of splitter, no view across its top.
-
-EXACT RELEASE DETAILS
-JKF36 LB-ER34 Super Silhouette Nissan Skyline, 2026 Aérostyles 0/5 gold chase. Metallic reflective GOLD body, wheels, tall wing, interior/base and aero. Broad angular box fenders, long projecting front splitter with triangular side fences, gold side skirts, tall raised gold rear wing with two outer supports and a central brace, rear diffuser. Gold FIVE-spoke Real Riders wheels and black tires. Smoke glazing with gold-toned dark cabin. One darker-gold '10 Hot Wheels CAR CULTURE' anniversary badge near the FRONT of each door, normally readable on both sides; no racing numbers or sponsors from the black chase release. ASYMMETRY: short cylindrical gold exhaust outlet through vehicle-LEFT sill, absent on vehicle-RIGHT. Front printed dark/silver headlight panels, black upper grille and small dark bumper apertures, gold lower radiator relief; two recessed hood openings and flanking sculpted ridges. Rear four red round lamps, blank/indistinct small gold plate relief; preserve photographed gold miniature details without inventing a license number. Roof plain gold. Large wing must remain the same height and shape in every view.
-
-REAL INPUT PHOTOS IN ORDER
-1. Vehicle-right front-quarter; door badge and gold body
-2. Vehicle-left front-quarter; left sill exhaust
-3. Elevated front; bumper, splitter, hood vent and roof evidence
-4. Elevated rear; wing, lamps and diffuser
-
-Do not add a sixth view, packaging or source watermark. Do not mirror text. All source inputs are real photos, no generated sheet.
+Keep the photographic metal gradients, glass, rubber, tire thickness and recessed spokes. Preserve the toy's actual wheelbase, fenders, wheel diameters, stance, sculpted side details and all side graphics. Do not substitute a flat illustration. Do not mirror one side to make the other.
+Gold LB-ER34 Super Silhouette Skyline JKF36 chase, gold five-spoke wheels, prominent gold aero body and rear wing, normal readable 10 / Hot Wheels / CAR CULTURE door badges. Side exhaust ONLY at vehicle-LEFT sill, second row; none on top/right row. Preserve the large front splitter side silhouette. In side elevation the far wing support and far endplate must overlap behind near ones; no multiple offset wing supports. Raised hood ribs can contribute thin silhouette contours, but no broad top planes. Keep gold paint and wheel depth.
+Keep exactly five full views in four rows. All exterior space pure white with no ground/contact/cast shadows or halos. No labels. Output the corrected full sheet.

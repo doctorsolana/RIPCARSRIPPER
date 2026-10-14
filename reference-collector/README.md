@@ -2,7 +2,7 @@
 
 [Gallery](index.html) · [All cars](cars/README.md) · [Manifest](manifest.json) · [Workflow](workflow/README.md)
 
-The library keeps **one current five-view sheet per car**, original toy photographs, source evidence, the final exact prompt and current review. There are 12 releases: six accepted sheets and six drafts requiring side-camera correction, with 105 original photos.
+The library keeps **one current five-view sheet per car**, original toy photographs, source evidence, the final exact prompt and current review. There are 12 releases: 12 accepted sheets, with 105 original photos.
 
 ```text
 reference-collector/

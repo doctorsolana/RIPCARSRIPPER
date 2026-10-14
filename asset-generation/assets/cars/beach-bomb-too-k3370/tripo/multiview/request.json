@@ -1,0 +1,42 @@
+{
+  "car": "beach-bomb-too-k3370",
+  "mode": "multiview",
+  "source": "reference-collector/cars/beach-bomb-too-k3370/generated/reference-sheet.png",
+  "endpoint": "https://openapi.tripo3d.ai/v3/generation/multiview-to-model",
+  "files": {
+    "front": "asset-generation/assets/cars/beach-bomb-too-k3370/tripo/multiview/views/front.png",
+    "left": "asset-generation/assets/cars/beach-bomb-too-k3370/tripo/multiview/views/left.png",
+    "back": "asset-generation/assets/cars/beach-bomb-too-k3370/tripo/multiview/views/back.png",
+    "right": "asset-generation/assets/cars/beach-bomb-too-k3370/tripo/multiview/views/right.png"
+  },
+  "body": {
+    "inputs": [
+      {
+        "front": {
+          "file_token": "<file_token of front.png>"
+        }
+      },
+      {
+        "left": {
+          "file_token": "<file_token of left.png>"
+        }
+      },
+      {
+        "back": {
+          "file_token": "<file_token of back.png>"
+        }
+      },
+      {
+        "right": {
+          "file_token": "<file_token of right.png>"
+        }
+      }
+    ],
+    "model": "P2-20260801",
+    "quad": true,
+    "face_limit": 8000,
+    "texture": true,
+    "pbr": true,
+    "texture_quality": "standard"
+  }
+}

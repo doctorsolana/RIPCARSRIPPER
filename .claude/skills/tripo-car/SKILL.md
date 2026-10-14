@@ -103,6 +103,8 @@ Each texel takes its glass from the listed view that sees it best. So when a win
 "notes": ["model.rebake.glass: why each panel was traced the way it was"]
 ```
 
+**Super-tinted windows** (dark privacy glass on the real toy, e.g. the Beach Bomb's rear windows): add `model.rebake.tinted`, either `"all"` or per view `"sheet"` / sheet-px polygons drawn over the panels to darken, mirrored by `tinted_mirror`. Only glass texels change. They are baked near black, and the app draws them almost opaque (roughness 0.13 instead of 0.06 marks them; `app/src/glass.ts`). Tinted on the toy is still glass: don't leave a dark window out just because the sheet draws it black.
+
 Rebake, then check `glass-map.jpg` and the 3D views below. Repeat until the magenta sits exactly on the glass. Glass becomes a plain dark tint with a flat normal map, and it is see-through in the app. The cabin behind it is painted from what the drawings show through their windows. `model.glass`, the sheet's own window masks shared with the scripts route, decides which drawn pixels count as "seen through glass".
 
 ## 5. Review in 3D
@@ -122,7 +124,14 @@ Check that:
 - windows are clean (no letters, roof or wing on the glass) and the paint/glass edge is crisp
 - the roof is the sheet's size
 
-When something is off, find the view that paints it (`align-<view>.jpg`) and fix the cause. Don't paint over it.
+When something is off, find the view that paints it (`align-<view>.jpg`) and fix the cause. Don't paint over it. The tools for that, all in `model.rebake`, with a note each:
+
+| You see | Override |
+| --- | --- |
+| A decal on a featureless area comes out sheared or stepped (the Godzilla's roof claws: Tripo painted the roof plain red, the top alignment matched only 0.26) | `noalign: ["top"]`: project that drawing straight through the camera. Not for views Tripo was given: a rear without its alignment doubled the plate and badge. |
+| Tripo embossed its own invented lettering into a surface (relief under the drawn decal) | `flat`: per view sheet-px polygons whose normal-map relief is flattened, as on glass |
+| Tripo's own garbled paint survives under a drawn decal | `trust`: per view polygons where that view's drawing always wins |
+| An elevated drawing smears a top surface (the rear drawing sees a wing's top lettering at a slant) | `skip`: per view polygons that view never paints, so the view that sees the surface squarely paints it alone |
 
 ## 6. Promote into the app
 

@@ -35,6 +35,10 @@ from . import wheels as wh
 
 GLASS_TINT = np.array([26, 32, 40], np.float32)
 GLASS_PLAIN = np.array([58, 64, 72], np.float32)  # glass the drawings don't show squarely
+GLASS_DARK = np.array([9, 10, 13], np.float32)  # super-tinted glass (model.rebake.tinted)
+# Glass is roughness < 0.2 in the material map (the app's test); super-tinted glass sits at TINT_ROUGH, clear at
+# 0.06 - the app reads > 0.095 as super tinted (well clear of JPEG noise on either side)
+TINT_ROUGH = 0.13
 MAX_SHIFT = {"side": 0.03, "left": 0.03, "top": 0.03, "front": 0.07, "rear": 0.07}  # of the panel's width
 
 
@@ -270,9 +274,11 @@ def _hand_glass(vs: dict, masks: dict) -> np.ndarray:
 
 def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int = 2048, power: float = 4.0,
                 agree_sigma: float = 55.0, hand_glass: bool = False, report: dict | None = None,
-                unseen: frozenset = frozenset({"top"}), traced: dict | None = None):
+                unseen: frozenset = frozenset({"top"}), traced: dict | None = None, tinted: dict | str | None = None,
+                flat: dict | None = None, trust: dict | None = None, skip: dict | None = None):
     """unseen: views the generator never got - not aligned, and not trusted to say where the glass is
-    (their window outlines don't line up with the generated greenhouse)."""
+    (their window outlines don't line up with the generated greenhouse). tinted: "all" (every window super
+    tinted) or {view: (mask, aligned)} marking the super-tinted panels (model.rebake.tinted, as for the glass)."""
     V, F = mesh.V, mesh.F
     ys, xs, t, bary = bake._texels(F, mesh.uv, size)
     P = (bary[:, :, None] * V[F[t]]).sum(1)
@@ -322,6 +328,10 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
         # trusted as drawn: what's seen through glass and the glass itself - and everything a view the
         # generator never got paints (its paint there is a guess: a roof banner twice, invented lettering)
         agree = np.where(seen_through | is_glass | (src in unseen), 1.0, agree)
+        if trust and src in trust:  # model.rebake.trust: here this view's drawing beats the generated paint
+            m, aligned = trust[src]
+            tu, tvv = (e["u"], e["v"]) if aligned else (e["u0"], e["v0"])
+            agree = np.where(render.sample(m.astype(np.float32), tu - 0.5, tvv - 0.5, cv2.BORDER_CONSTANT)[:, 0] > 0.5, 1.0, agree)
         # a view only paints glass where its own drawing shows glass there (not a wing drawn in front of
         # the rear window), and only paints bodywork where it doesn't show glass (no cabin on the pillars)
         g = e["view"].panel.glass
@@ -331,6 +341,10 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
             # (the rear drawing has the wing in front of the rear window: its lettering isn't the cabin)
             agree = agree * np.where(is_glass | seen_through, 0.05 + 0.95 * gv, 1.0 - 0.9 * gv)
         Wt[k] = e["w"] * agree
+        if skip and src in skip:  # model.rebake.skip: this view never paints here (its drawing shows it at a slant)
+            m, aligned = skip[src]
+            su, sv = (e["u"], e["v"]) if aligned else (e["u0"], e["v0"])
+            Wt[k] = np.where(render.sample(m.astype(np.float32), su - 0.5, sv - 0.5, cv2.BORDER_CONSTANT)[:, 0] > 0.5, 0.0, Wt[k])
     total = Wt.sum(0)
     sheet_col = (C * Wt[:, :, None]).sum(0) / np.maximum(total, 1e-6)[:, None]
     beta = np.clip(total / 0.3, 0, 1) ** 0.5  # how much the drawings take over from the generated paint
@@ -345,6 +359,13 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
     # the glass itself is plain tint: what the drawings show through it is real geometry behind it
     # (painted above), so painting it onto the glass too would show the cabin twice
     col[is_glass] = GLASS_TINT
+    if tinted == "all":
+        dark = is_glass.copy()
+    elif tinted:
+        dark = is_glass & _hand_glass(tv_full, tinted)
+    else:
+        dark = np.zeros_like(is_glass)
+    col[dark] = GLASS_DARK
 
     img = np.zeros((size, size, 3), np.float32)
     img[ys, xs] = col
@@ -361,11 +382,20 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
     mr[..., 1] = np.maximum(mr[..., 1], 0.4 * 255)
     mr[ys[is_glass], xs[is_glass], 1] = 0.06 * 255
     mr[ys[is_glass], xs[is_glass], 2] = 0
+    mr[ys[dark], xs[dark], 1] = TINT_ROUGH * 255
     glass_uv = np.zeros((size, size), np.uint8)
+    # 2: bodywork whose generated relief is flattened (model.rebake.flat: lettering the generator embossed
+    # where the drawing has its own), 1: glass (also flat)
+    if flat:
+        fl = _hand_glass(tv_full, flat) & ~is_glass
+        glass_uv[ys[fl], xs[fl]] = 2
+        if report is not None:
+            report["flat_share"] = round(float(fl.mean()), 4)
     glass_uv[ys[is_glass], xs[is_glass]] = 1
     if report is not None:
         report["sheet_share"] = round(float(beta.mean()), 3)
         report["glass_share"] = round(float(is_glass.mean()), 4)
+        report["tinted_share"] = round(float(dark.mean()), 4)
         report["seen_through_glass"] = round(float(np.mean([(tv[n]["vis"] & ~tv_full[n]["vis"]).mean() for n in names])), 4)
     return bake._pad(img, known), bake._pad(mr, known), glass_uv
 
@@ -422,6 +452,11 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
         r = rasters[name] = render.render(v, mesh.V, mesh.F)
         renders[name] = render.lookup_texture(r, mesh.F, mesh.uv, mesh.base)
         flows[name], report["alignment"][name] = align(v, renders[name], r.cover)
+        if name in tune.get("rebake", {}).get("noalign", ()):
+            # (hints: model.rebake.noalign) a weak alignment can shear fine paint - a roof decal over
+            # featureless generated paint: project the drawing straight through the camera instead
+            flows[name] = None
+            report["alignment"][name]["note"] = "not aligned (hints: noalign): the drawing is projected as it is"
         if name in unseen:
             report["alignment"][name]["note"] = "generator never saw this view: aligned for paint only, not trusted for glass"
         _debug(qadir / f"align-{name}.jpg", v, renders[name], flows[name])
@@ -433,6 +468,19 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
     sheet_rgb = cv2.cvtColor(cv2.imread(str(paths.sheet(car))), cv2.COLOR_BGR2RGB)
     cv2.imwrite(str(qadir / "glass.jpg"), glass.debug_image(cal, sheet_rgb))
     traced = _traced_masks(cal, rb.get("glass"), mirror=tuple(rb.get("glass_mirror", ())))
+    # super-tinted windows (model.rebake.tinted): "all", or per view "sheet" / sheet-px polygons like the glass
+    # (traced over the panels to darken; only glass texels are touched), mirrored by tinted_mirror
+    # areas whose generated normal-map relief is flattened (model.rebake.flat: per view polygons, like the glass)
+    flat = _traced_masks(cal, rb.get("flat"), mirror=tuple(rb.get("flat_mirror", ()))) if rb.get("flat") else None
+    # areas where a view's drawing always wins over the generated paint (model.rebake.trust: per view polygons) -
+    # where the generator painted its own invented detail (lettering) that the drawing's agreement test keeps
+    trust = _traced_masks(cal, rb.get("trust"), mirror=tuple(rb.get("trust_mirror", ()))) if rb.get("trust") else None
+    # areas a view never paints (model.rebake.skip: per view polygons) - an elevated drawing's view of a top
+    # surface (a wing's lettering) would smear across it; the view that sees it squarely paints it alone
+    skip = _traced_masks(cal, rb.get("skip"), mirror=tuple(rb.get("skip_mirror", ()))) if rb.get("skip") else None
+    tinted = rb.get("tinted")
+    if isinstance(tinted, dict):
+        tinted = _traced_masks(cal, tinted, mirror=tuple(rb.get("tinted_mirror", ())))
     clays = {name: trace.clay(v, rasters[name], mesh.normals_face) for name, v in cal.views.items()}
     _write(qadir / "tripo-sheet.png", trace.canvas(cal, renders))
     _write(qadir / "tripo-clay.png", trace.canvas(cal, clays))
@@ -446,7 +494,7 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
                               if traced else "sheet masks, aligned")
     tex, mr, glass_uv = guided_bake(mesh, cal, grid, flows, renders, size=texture, hand_glass="replace" in tune.get("glass", {}),
                           report=report, unseen=unseen, power=rb.get("power", 4.0), agree_sigma=rb.get("agree", 55.0),
-                          traced=traced)
+                          traced=traced, tinted=tinted, flat=flat, trust=trust, skip=skip)
     name = src_path.stem.replace("-clean", "") + "-guided"
     dst = out / "snapshots" / f"{name}.glb"
     wheels, report["wheels_note"] = parts.find_wheels(mesh.V, mesh.F) if rb.get("wheels", True) else ([], "off (hints)")
@@ -455,7 +503,7 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
     _write(qadir / "wheels.jpg", trace.wheel_map(cal, rasters, renders, wheels))
     report["glb"] = _export(mesh, tex, mr, dst, glass_uv, wheels)
     (out / "snapshots" / f"{name}.json").write_text(json.dumps(report, indent=2) + "\n")
-    _write(qadir / "glass-map.jpg", trace.glass_map(cal, rasters, mesh.F, mesh.uv, tex, glass_uv))
+    _write(qadir / "glass-map.jpg", trace.glass_map(cal, rasters, mesh.F, mesh.uv, tex, (glass_uv == 1).astype(np.uint8)))
     return report
 
 
@@ -499,7 +547,8 @@ def _traced_masks(cal, polys: dict | None, mirror=()) -> dict:
 def _export(mesh: Textured, tex: np.ndarray, mr: np.ndarray, dst, glass_uv: np.ndarray | None = None,
             wheels: list | None = None) -> dict:
     """Same geometry and UVs (fitted), new base colour + material map, the generated normal map kept -
-    flattened on the glass, where the generator had embossed its own (invented) window lettering."""
+    flattened on the glass, where the generator had embossed its own (invented) window lettering, and on
+    any bodywork marked flat (glass_uv 1 glass, 2 flat bodywork)."""
     import io
 
     from trimesh.visual.material import PBRMaterial

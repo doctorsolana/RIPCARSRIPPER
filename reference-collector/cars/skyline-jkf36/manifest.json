@@ -4,9 +4,59 @@
   "name": "LB-ER34 Super Silhouette Nissan Skyline — gold chase",
   "product_code": "JKF36",
   "edition": "2026 Car Culture Aérostyles 0/5 chase",
-  "updated_on": "2026-10-12",
-  "status": "needs_correction",
-  "selected": null,
+  "updated_on": "2026-10-14",
+  "status": "accepted",
+  "selected": {
+    "file": "generated/reference-sheet.png",
+    "version": 3,
+    "view_count": 5,
+    "generation_strategy": "edit_existing_sheet",
+    "generated_inputs": 1,
+    "layout": [
+      {
+        "id": "right",
+        "row": 1,
+        "nose_direction": "right",
+        "physical_side": "vehicle-right"
+      },
+      {
+        "id": "left",
+        "row": 2,
+        "nose_direction": "left",
+        "physical_side": "vehicle-left"
+      },
+      {
+        "id": "top",
+        "row": 3,
+        "nose_direction": "right"
+      },
+      {
+        "id": "front",
+        "row": 4,
+        "column": "left"
+      },
+      {
+        "id": "rear",
+        "row": 4,
+        "column": "right"
+      }
+    ],
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2347391,
+      "sha256": "cc3cd45657bdd5a6fc0dc9c0c8a3c590b498af3ffa851d4dfc329230b5394304"
+    },
+    "latest_prompt": "generation.prompt.txt",
+    "review_record": "review.json",
+    "tool": "image_gen.imagegen (built-in)",
+    "background": {
+      "color": "#FFFFFF",
+      "cast_shadow": "none",
+      "contact_shadow": "none"
+    }
+  },
   "reference": {
     "directory": "reference",
     "pack_photo": "reference/pack-photo.png",
@@ -18,46 +68,37 @@
     "generation.prompt.txt"
   ],
   "review": {
-    "side_profile": "visual_fail",
+    "side_profile": "visual_pass",
     "ground_shadows": "visual_pass",
     "material_depth": "visual_pass",
     "sides": {
       "right": {
-        "side_profile": "visual_fail",
+        "side_profile": "visual_pass",
         "evidence_status": "real_reference",
-        "review_record": "review.json"
+        "review_record": "review.json",
+        "source_files": [
+          "reference/catalog-01.jpg"
+        ]
       },
       "left": {
-        "side_profile": "visual_fail",
+        "side_profile": "visual_pass",
         "evidence_status": "real_reference",
-        "review_record": "review.json"
+        "review_record": "review.json",
+        "source_files": [
+          "reference/catalog-03.jpg"
+        ]
       }
     },
     "notes": [
-      "Both sides still reveal front headlight faces, hood upper planes and offset wing supports.",
-      "Left-side sill exhaust is supported by real photos; v2 correctly locates it on the upper edge of the nose-right overhead.",
-      "Door badge printing, hood relief and wing geometry remain synthetic approximations.",
-      "True vertical top photo unavailable; overhead is inferred from elevated real photos.",
-      "Fine printing, reflections and reconstructed geometry are approximate, not a neutral albedo map or calibrated CAD.",
-      "No 3D reconstruction test was performed for this sheet."
+      "Both physical sides independently pass the strict level-camera visual checks. This is visual acceptance, not numerical calibration.",
+      "Gold JKF36 chase, five-spoke wheels, Car Culture 10 badges, tall wing and left-only sill exhaust retained.",
+      "Fine gold surface has synthetic patterned grain; original photos remain the authority for paint finish.",
+      "Bottom fascia views remain elevated, with visible hood/wing upper surfaces.",
+      "Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.",
+      "True overhead geometry is partly inferred from elevated photographs.",
+      "No Tripo reconstruction or numerical camera calibration was performed in this correction task."
     ]
   },
   "workflow": "../../workflow/README.md",
-  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt",
-  "preview": {
-    "file": "generated/draft-sheet.png",
-    "version": 2,
-    "metadata": {
-      "width": 1024,
-      "height": 1536,
-      "format": "PNG",
-      "bytes": 2568190,
-      "sha256": "60a83a0208e03856face6c2e68c9416108aaa2c1b13177279ea0456ed32b4fec"
-    },
-    "review_record": "review.json",
-    "latest_prompt": "generation.prompt.txt",
-    "generation_strategy": "direct_from_real_photos",
-    "generated_inputs": 0,
-    "view_count": 5
-  }
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt"
 }

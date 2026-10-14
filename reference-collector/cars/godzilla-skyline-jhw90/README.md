@@ -6,26 +6,27 @@
 
 ## Current multiview sheet
 
-**Draft — correction needed · v2 · 1024 × 1536 PNG**
+**Accepted · v3 · 1024 × 1536 PNG**
 
-This sheet is a draft. It has not passed the side-camera review and must not be treated as an accepted input.
+Both side profiles passed the level-camera review.
 
-[Open sheet](generated/draft-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
+[Open sheet](generated/reference-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
 
-![Current five-view sheet](generated/draft-sheet.png)
+![Current five-view sheet](generated/reference-sheet.png)
 
 Right profile facing right; left profile facing left; overhead facing right; front and rear below. Tripo multiview uses front, left, rear and right crops. The top view remains available for fitting and textures.
 
-Generated directly from real photographs.
+Finalized by editing an earlier generated sheet. The final prompt and original photographs are retained; superseded working images were removed.
 
 Right side: real reference. Left side: real reference. [Side evidence](reference/side-evidence.json).
 
-- Both profiles expose roof/hood top surfaces and forward headlight faces.
-- All three attempts depict four roof claw marks; real release has three.
-- Small Hot Wheels flame lettering below the left ゴジラ is garbled/reversed-looking; artwork is not an exact texture transfer.
-- True vertical top photo unavailable; overhead is inferred from elevated real photos.
-- Fine printing, reflections and reconstructed geometry are approximate, not a neutral albedo map or calibrated CAD.
-- No 3D reconstruction test was performed for this sheet.
+- Both physical sides independently pass the strict level-camera visual checks. This is visual acceptance, not numerical calibration.
+- Cream/burgundy Godzilla release retained. Roof now has THREE claw slashes. Main ゴジラ lettering is normal-facing; small flame-logo lettering on the left remains garbled.
+- Small left-side Hot Wheels lettering is garbled/reversed-looking and must be taken from the real photo for accurate texturing.
+- Bottom front/rear panels retain elevation and visible upper surfaces; they are approximate fascia references.
+- Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.
+- True overhead geometry is partly inferred from elevated photographs.
+- No Tripo reconstruction or numerical camera calibration was performed in this correction task.
 
 ## Original photographs
 

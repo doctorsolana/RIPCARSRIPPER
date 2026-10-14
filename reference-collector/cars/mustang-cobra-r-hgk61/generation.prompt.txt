@@ -1,23 +1,8 @@
-Create a PHOTOREALISTIC ORTHOGRAPHIC TURNAROUND of this physical die-cast toy using only the attached real photos as evidence. One finished five-view sheet. Reconstruct the toy, then choose NEW cameras; never retain the source photograph angles.
+Edit the supplied five-view sheet. Replace ONLY the top two side views. Keep the lower three views, layout and colors unchanged.
 
-HARD CAMERA REQUIREMENT: both side images are exact lateral elevations. Camera X axis along car length; camera looks exactly along the lateral axis at mid-door height with ZERO elevation, ZERO yaw, ZERO roll. Parallel orthographic rays. Roof, hood and trunk top surfaces collapse to thin curved silhouette edges. The far wing support overlaps the near support. Grilles and front/rear lamp PANEL FACES are hidden edge-on. Only the side-turning edge of a lamp may show. No look-down cabin view. Preserve full roof height and actual curved cross-section. This is a shaded 3D object viewed sideways, not a flat drawing.
+The two side views must become TRUE ENGINEERING SIDE ELEVATIONS rendered in photographic materials. Top row nose RIGHT, second row nose LEFT. Move the cameras DOWN to axle-center height and aim EXACTLY HORIZONTALLY across the car, perpendicular to the doors, with orthographic projection. Zero downward tilt and zero front-corner reveal. A headlamp or front-bumper FACE must collapse to a thin edge at the nose. The front and rear planes have ZERO visible width in a lateral elevation. Do not just paint over their markings.
+The hood/cowl, roof, rear deck and wing TOPS must collapse to thin contours. NO transverse roof/hood bands, NO top-facing hood artwork, NO windshield width, NO looking down into the cabin. Near/far wing supports and wheels align in projection. The body remains its real full height and width: change ONLY the virtual camera, never squash the body or lower the roof.
 
-HARD BACKGROUND REQUIREMENT: objects suspended in empty pure-white space. There is NO floor or shadow catcher. White #FFFFFF begins at the silhouette boundary including directly beneath the tires and chassis. Zero external cast shadows, zero contact shadow blobs, zero gray haze or ground reflection. Internal wheel, window and body recesses remain dark and volumetric. Do not remove the miniature's surface shading.
-
-LAYOUT portrait 2:3, four rows, exactly FIVE complete views: row1 vehicle-RIGHT side nose RIGHT; row2 vehicle-LEFT side nose LEFT; row3 vertical 90-degree TOP nose RIGHT; row4 level straight FRONT left and level straight REAR right. First three views matching car length. Ample blank white gutters, no labels or borders. The top view is a conservative synthesis from original photos. Front/rear cameras also horizontal, no looking down over hood/roof. All body panels closed.
-
-SOFTBOX MATERIALS: realistic shaded 3D miniature, metallic flakes and paint reflections, curved highlight gradients on fenders, round rubber tire walls, deep recessed spokes, glazing/cabin depth. Orthographic camera changes projection only; retain realistic physical volume. No flat fills, vector art, outlines, cel shading or sprites.
-
-SUBJECT-SPECIFIC CAMERA AND FIDELITY CHECK:
-Hood must sit fully flush. Side roof and hood are contours, no visible cowl-top grid. Right fuel flap only. In overhead with nose right, vehicle-right is the bottom edge.
-
-EXACT RELEASE DETAILS
-Metalflake cyan/turquoise 1993 Fox-body Mustang Cobra R HGK61, 2022 Charlotte Nationals dinner car. Compact angular hatchback coupe, low molded rear spoiler, black window surrounds, smoked glazing, pale blue/gray cabin as photographed. Small black rectangular door handles, silver Cobra snake on both front fenders, tiny MUSTANG on rear side-window trim. Black ten-spoke wheel centers with bright chrome outer rims and black rubber tires. BODY ASYMMETRY: rectangular fuel flap on vehicle-RIGHT rear quarter only; left quarter has no flap. Hood fully CLOSED in every view, with real panel outline and restrained shallow sculpting; do not use an engine-open pose or invent a scoop. Plain body-colored roof/hood, no stripes. Front lamps retain the white/amber printed miniature pattern; narrow black grille and wide dark lower opening. Rear: horizontal red taillamps with white/amber segments, small Ford badge, California plate 'KOIBRA', dual round chrome exhaust tips and turquoise spoiler. The spoiler's tiny convention inscription remains a small marking, not large body lettering; do not invent legible detail beyond evidence.
-
-REAL INPUT PHOTOS IN ORDER
-1. Vehicle-right front-quarter; right fuel flap, wheels and cabin
-2. Vehicle-left front-quarter; left details, Cobra badge
-3. Elevated front with closed hood; lights, hood and roof evidence
-4. Elevated rear; KOIBRA plate, lamps, spoiler and exhaust
-
-Do not add a sixth view, packaging or source watermark. Do not mirror text. All source inputs are real photos, no generated sheet.
+Keep the photographic metal gradients, glass, rubber, tire thickness and recessed spokes. Preserve the toy's actual wheelbase, fenders, wheel diameters, stance, sculpted side details and all side graphics. Do not substitute a flat illustration. Do not mirror one side to make the other.
+Turquoise metallic 1993 Mustang Cobra R HGK61, pale blue cabin, black ten-spoke wheels with chrome rim lips, black side-window trim, Cobra fender badges, normal readable MUSTANG quarter-window marks. Square fuel flap ONLY on vehicle-RIGHT, top row. Opposite side has none. Hood must be fully shut, flush rear edge and no opening gap in ALL views; keep raised central hood molding only where real. Preserve the rear wing silhouette but hide its top surface in both side rows. Dual rear exhaust and KOIBRA plate unchanged.
+Keep exactly five full views in four rows. All exterior space pure white with no ground/contact/cast shadows or halos. No labels. Output the corrected full sheet.

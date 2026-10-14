@@ -6,25 +6,27 @@
 
 ## Current multiview sheet
 
-**Draft — correction needed · v3 · 1024 × 1536 PNG**
+**Accepted · v4 · 1024 × 1536 PNG**
 
-This sheet is a draft. It has not passed the side-camera review and must not be treated as an accepted input.
+Both side profiles passed the level-camera review.
 
-[Open sheet](generated/draft-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
+[Open sheet](generated/reference-sheet.png) · [Final exact prompt](generation.prompt.txt) · [Review](review.json)
 
-![Current five-view sheet](generated/draft-sheet.png)
+![Current five-view sheet](generated/reference-sheet.png)
 
 Right profile facing right; left profile facing left; overhead facing right; front and rear below. Tripo multiview uses front, left, rear and right crops. The top view remains available for fitting and textures.
 
-Generated directly from real photographs.
+Finalized by editing an earlier generated sheet. The final prompt and original photographs are retained; superseded working images were removed.
 
 Right side: real reference. Left side: real reference. [Side evidence](reference/side-evidence.json).
 
-- All three attempts generated directly from four real photographs; no generated sheet used as input.
-- Both side rows fail the strict camera gate: broad hood and rear-deck top planes remain visible.
-- Front and rear panels also retain elevated cameras.
-- Overhead geometry is synthesized; exposed wheel-face projections may not be consistent with a true vertical view.
-- Tiny logos/lettering and exact textures are generative approximations.
+- Both physical sides independently pass the strict level-camera visual checks. This is visual acceptance, not numerical calibration.
+- Black metallic HTF40, tan cabin/T-tops, bronze wheels with red rims, lower stripes and pillar birds retained; rear lamp relief remains metallic/chrome.
+- Tiny TH/flame marks and hood phoenix are approximations; use source photos for exact printing.
+- Front and rear views still show broad upper surfaces. Overhead projection and wheel-edge visibility are approximate.
+- Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.
+- True overhead geometry is partly inferred from elevated photographs.
+- No Tripo reconstruction or numerical camera calibration was performed in this correction task.
 
 ## Original photographs
 

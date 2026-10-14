@@ -1,18 +1,17 @@
 {
   "schema_version": 2,
   "id": "skyline-fyg14",
-  "name": "Nissan Skyline GT-R (BNR34) \u2014 green Super Treasure Hunt",
+  "name": "Nissan Skyline GT-R (BNR34) — green Super Treasure Hunt",
   "product_code": "FYG14",
   "edition": "2019 Super Treasure Hunt, Nissan 2/5, 45/250",
-  "updated_on": "2026-10-12",
-  "status": "needs_correction",
-  "selected": null,
-  "preview": {
-    "file": "generated/draft-sheet.png",
-    "version": 2,
+  "updated_on": "2026-10-14",
+  "status": "accepted",
+  "selected": {
+    "file": "generated/reference-sheet.png",
+    "version": 3,
     "view_count": 5,
-    "generation_strategy": "direct_from_real_photos",
-    "generated_inputs": 0,
+    "generation_strategy": "edit_existing_sheet",
+    "generated_inputs": 1,
     "layout": [
       {
         "id": "right",
@@ -46,8 +45,8 @@
       "width": 1024,
       "height": 1536,
       "format": "PNG",
-      "bytes": 2544263,
-      "sha256": "bdc02aa88767c1463dcfb0e6fff86774b53c55bf5065bd22ea152e5d81a4a694"
+      "bytes": 2302795,
+      "sha256": "0f18947893d92f566a997642bda7baf6d30d4e4e2c9349ff9a02febc6471b38e"
     },
     "latest_prompt": "generation.prompt.txt",
     "review_record": "review.json",
@@ -69,12 +68,12 @@
     "generation.prompt.txt"
   ],
   "review": {
-    "side_profile": "visual_fail",
+    "side_profile": "visual_pass",
     "ground_shadows": "visual_pass",
     "material_depth": "visual_pass",
     "sides": {
       "right": {
-        "side_profile": "visual_fail",
+        "side_profile": "visual_pass",
         "evidence_status": "real_reference",
         "review_record": "review.json",
         "source_files": [
@@ -83,7 +82,7 @@
         ]
       },
       "left": {
-        "side_profile": "visual_fail",
+        "side_profile": "visual_pass",
         "evidence_status": "real_reference",
         "review_record": "review.json",
         "source_files": [
@@ -93,13 +92,13 @@
       }
     },
     "notes": [
-      "Generated directly from five real original photos; no previous generated input.",
-      "Both real sides documented; retained draft preserves right-only fuel flap.",
-      "Both side rows retain visible front-bumper faces and fail the strict perpendicular-camera requirement.",
-      "The bottom front view shows a broad hood surface; it is not accepted as a strict level frontal projection.",
-      "No complete vertical overhead source: top projection and concealed relief are inferred from real oblique photos; visible hood/roof markings are documented.",
-      "Tiny hood/rear logo geometry, lettering orientation and reflections are approximate, not an exact texture transfer.",
-      "This is synthetic photographic reference with baked lighting, not calibrated CAD or neutral albedo. No Tripo submission or 3D reconstruction test was performed."
+      "Both physical sides independently pass the strict level-camera visual checks. This is visual acceptance, not numerical calibration.",
+      "Green FYG14, black/chrome wheels, plain flanks and wing, right-only fuel flap and left rear exhaust preserved.",
+      "Synthetic swirled green paint grain remains; it is not a real decorative texture and should not be baked literally into albedo/normal maps.",
+      "Front/rear were lowered but remain approximate projections; overhead is inferred.",
+      "Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.",
+      "True overhead geometry is partly inferred from elevated photographs.",
+      "No Tripo reconstruction or numerical camera calibration was performed in this correction task."
     ]
   },
   "workflow": "../../workflow/README.md",

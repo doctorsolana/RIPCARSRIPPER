@@ -1,0 +1,109 @@
+{
+  "car": "beach-bomb-too-k3370",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      0.9976,
+      1.0187,
+      1.0006
+    ],
+    "offset_xy": [
+      0.0168,
+      0.0191
+    ],
+    "side+top_iou": 1.886
+  },
+  "glass_source": {
+    "side": "traced",
+    "left": "traced",
+    "front": "traced",
+    "rear": "traced",
+    "top": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 3.9902,
+    "height": 1.7085,
+    "width": 1.7246
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.1182,
+        0.3534,
+        0.5945
+      ],
+      "r": 0.3499,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.1182,
+        0.3534,
+        -0.598
+      ],
+      "r": 0.3499,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.1449,
+        0.3525,
+        0.613
+      ],
+      "r": 0.3499,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.1459,
+        0.3525,
+        -0.6033
+      ],
+      "r": 0.3489,
+      "pieces": 1
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9506,
+    "top": 0.9339,
+    "left": 0.9534,
+    "front": 0.8975,
+    "rear": 0.9076
+  },
+  "proportions_vs_sheet": {
+    "length": 0.991,
+    "width": 0.979,
+    "height": 1.016
+  },
+  "glb": {
+    "bytes": 1331584,
+    "triangles": 17302
+  }
+}

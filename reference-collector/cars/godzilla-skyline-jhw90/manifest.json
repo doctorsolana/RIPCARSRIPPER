@@ -4,9 +4,59 @@
   "name": "Nissan Skyline GT-R (BNR34) — Godzilla",
   "product_code": "JHW90",
   "edition": "2026 Pop Culture Mix A, Godzilla, cream/burgundy",
-  "updated_on": "2026-10-12",
-  "status": "needs_correction",
-  "selected": null,
+  "updated_on": "2026-10-14",
+  "status": "accepted",
+  "selected": {
+    "file": "generated/reference-sheet.png",
+    "version": 3,
+    "view_count": 5,
+    "generation_strategy": "edit_existing_sheet",
+    "generated_inputs": 2,
+    "layout": [
+      {
+        "id": "right",
+        "row": 1,
+        "nose_direction": "right",
+        "physical_side": "vehicle-right"
+      },
+      {
+        "id": "left",
+        "row": 2,
+        "nose_direction": "left",
+        "physical_side": "vehicle-left"
+      },
+      {
+        "id": "top",
+        "row": 3,
+        "nose_direction": "right"
+      },
+      {
+        "id": "front",
+        "row": 4,
+        "column": "left"
+      },
+      {
+        "id": "rear",
+        "row": 4,
+        "column": "right"
+      }
+    ],
+    "metadata": {
+      "width": 1024,
+      "height": 1536,
+      "format": "PNG",
+      "bytes": 2390524,
+      "sha256": "b11738aca2d70cabedf7d32af889af7351f6becc10cb2f7a7389e0e89b444513"
+    },
+    "latest_prompt": "generation.prompt.txt",
+    "review_record": "review.json",
+    "tool": "image_gen.imagegen (built-in)",
+    "background": {
+      "color": "#FFFFFF",
+      "cast_shadow": "none",
+      "contact_shadow": "none"
+    }
+  },
   "reference": {
     "directory": "reference",
     "pack_photo": "reference/pack-photo.png",
@@ -18,46 +68,37 @@
     "generation.prompt.txt"
   ],
   "review": {
-    "side_profile": "visual_fail",
+    "side_profile": "visual_pass",
     "ground_shadows": "visual_pass",
     "material_depth": "visual_pass",
     "sides": {
       "right": {
-        "side_profile": "visual_fail",
+        "side_profile": "visual_pass",
         "evidence_status": "real_reference",
-        "review_record": "review.json"
+        "review_record": "review.json",
+        "source_files": [
+          "reference/catalog-01.jpg"
+        ]
       },
       "left": {
-        "side_profile": "visual_fail",
+        "side_profile": "visual_pass",
         "evidence_status": "real_reference",
-        "review_record": "review.json"
+        "review_record": "review.json",
+        "source_files": [
+          "reference/catalog-03.jpg"
+        ]
       }
     },
     "notes": [
-      "Both profiles expose roof/hood top surfaces and forward headlight faces.",
-      "All three attempts depict four roof claw marks; real release has three.",
-      "Small Hot Wheels flame lettering below the left ゴジラ is garbled/reversed-looking; artwork is not an exact texture transfer.",
-      "True vertical top photo unavailable; overhead is inferred from elevated real photos.",
-      "Fine printing, reflections and reconstructed geometry are approximate, not a neutral albedo map or calibrated CAD.",
-      "No 3D reconstruction test was performed for this sheet."
+      "Both physical sides independently pass the strict level-camera visual checks. This is visual acceptance, not numerical calibration.",
+      "Cream/burgundy Godzilla release retained. Roof now has THREE claw slashes. Main ゴジラ lettering is normal-facing; small flame-logo lettering on the left remains garbled.",
+      "Small left-side Hot Wheels lettering is garbled/reversed-looking and must be taken from the real photo for accurate texturing.",
+      "Bottom front/rear panels retain elevation and visible upper surfaces; they are approximate fascia references.",
+      "Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.",
+      "True overhead geometry is partly inferred from elevated photographs.",
+      "No Tripo reconstruction or numerical camera calibration was performed in this correction task."
     ]
   },
   "workflow": "../../workflow/README.md",
-  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt",
-  "preview": {
-    "file": "generated/draft-sheet.png",
-    "version": 2,
-    "metadata": {
-      "width": 1024,
-      "height": 1536,
-      "format": "PNG",
-      "bytes": 2520422,
-      "sha256": "744c2de548489ec36cdd4af4d6f83cb2ae5a671e3242db11f748f46a101380e7"
-    },
-    "review_record": "review.json",
-    "latest_prompt": "generation.prompt.txt",
-    "generation_strategy": "direct_from_real_photos",
-    "generated_inputs": 0,
-    "view_count": 5
-  }
+  "prompt_template": "../../skills/hot-wheels-reference/references/five-view-prompt.txt"
 }

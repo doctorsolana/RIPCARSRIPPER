@@ -1,21 +1,34 @@
 {
   "schema_version": 2,
-  "version": 2,
-  "status": "needs_correction",
+  "version": 3,
+  "status": "accepted",
   "view_count": 5,
+  "reviewed_on": "2026-10-14",
+  "acceptance_scope": "Independent visual acceptance of both strict side profiles, complete five-view layout, white exterior and dimensional materials. Front/rear and texture limitations remain below.",
   "tool": "image_gen.imagegen (built-in)",
-  "generation_strategy": "direct_from_real_photos",
+  "generation_strategy": "edit_existing_sheet",
+  "provenance_note": "User-requested side-camera correction of a previously generated sheet, not source-only generation. Ordered generated inputs and the exact prompts required for the retained edit chain are recorded below. Original base sheets are recoverable from Git; unused attempts and intermediate images are not retained in the current repository. Real source photos were reviewed as evidence but were not direct inputs to the selected edit calls.",
   "prompt_file": "generation.prompt.txt",
-  "prompt_sha256": "53b953649b17bb2410f64b9a011e494a8b13a44d8023deaf3ad31b4a871e3571",
-  "saved_output": "generated/draft-sheet.png",
+  "prompt_sha256": "61c489b41414eab6df13de4c3334c384d1914456c21cc179a1b23f33deaf7215",
+  "saved_output": "generated/reference-sheet.png",
   "output_metadata": {
     "width": 1024,
     "height": 1536,
     "format": "PNG",
-    "bytes": 2568190,
-    "sha256": "60a83a0208e03856face6c2e68c9416108aaa2c1b13177279ea0456ed32b4fec"
+    "bytes": 2347391,
+    "sha256": "cc3cd45657bdd5a6fc0dc9c0c8a3c590b498af3ffa851d4dfc329230b5394304"
   },
-  "real_inputs": [
+  "real_inputs": [],
+  "generated_inputs": [
+    {
+      "sha256": "a7576089fc3baeab885d939e48f70a37fa1a9b1e186bbf1f91136a363be887ed",
+      "edit_chain_output": 1,
+      "role": "Previous correction output; retired intermediate, identified by hash",
+      "input_order": 1,
+      "kind": "generated_image"
+    }
+  ],
+  "inherited_reference_inputs": [
     {
       "file": "reference/catalog-01.jpg",
       "role": "Vehicle-right front-quarter; door badge and gold body",
@@ -37,123 +50,137 @@
       "sha256": "7ae5ccb4701327b7c6d53c830f40177d4fab8be3d3284330455dbb41912e31e7"
     }
   ],
+  "edit_chain": [
+    {
+      "attempt": 1,
+      "generation_strategy": "edit_existing_sheet",
+      "prompt": "Use case: precise-object-edit.\nInput 1 is the existing five-view sheet to correct. Produce a full edited sheet of the SAME toy. Preserve the established layout and identity.\n\nReplace the upper two views with physically correct orthographic lateral elevations: top row VEHICLE-RIGHT nose RIGHT; second row VEHICLE-LEFT nose LEFT. Camera precisely perpendicular to the doors, at mid-door height, horizontal, ZERO pitch/yaw/roll. Do NOT copy the current elevated angle.\nIn each side row: no broad roof, hood/cowl, rear-deck or wing TOP surface; only curved edge contours. No downward view into seat cushions. No front grille/bumper FACE or rear lamp-panel FACE: those planes collapse edge-on. Rotate the camera; do NOT erase graphics or squash body height. Wing supports and near/far wheels align in projection. Circular near wheel faces, level axle baseline. Preserve actual roof height, hood slope, wheelbase, ride height, wheel size, fender overlap and body shape.\nAlso correct the bottom FRONT and REAR cameras to horizontal orthographic elevations at mid-body height, rather than looking down: roof and horizontal hood/deck surfaces seen as narrow contours, no large top planes. Keep genuine sloping surfaces and material depth.\nKeep the true overhead panel facing right, its artwork and proportions, except the specifically requested corrections below.\n\nCAR-SPECIFIC INVARIANTS\nGold LB-ER34 Super Silhouette Skyline JKF36 chase, gold five-spoke wheels, prominent gold aero body and rear wing, normal readable 10 / Hot Wheels / CAR CULTURE door badges. Side exhaust ONLY at vehicle-LEFT sill, second row; none on top/right row. Preserve the large front splitter side silhouette. In side elevation the far wing support and far endplate must overlap behind near ones; no multiple offset wing supports. Raised hood ribs can contribute thin silhouette contours, but no broad top planes. Keep gold paint and wheel depth.\n\nPhotographic physical die-cast miniature: retain rounded metallic highlights, recessed wheel spokes, rubber tire volume, glazing thickness and cabin depth. Orthographic camera must NOT produce flat vector/sprite materials.\nExactly five complete silhouettes in four rows, equal scale for the two sides and overhead, equal width/scale front/rear, generous white gutters. Do not crop tires or wings. Opaque pure WHITE #FFFFFF outside the silhouettes, no floor, cast/contact shadows, halos or floor reflections. No text labels, packaging, borders or sixth panel.\n",
+      "prompt_sha256": "a0468035b757368bdc73a66c43df04da9af04e6c6b64d6fbfc0ce4844051c417",
+      "ordered_inputs": [
+        {
+          "git_commit": "0262e055c1c369cd2def0207715f1bd571aad1e7",
+          "file": "reference-collector/cars/skyline-jkf36/generated/draft-sheet.png",
+          "sha256": "60a83a0208e03856face6c2e68c9416108aaa2c1b13177279ea0456ed32b4fec",
+          "input_order": 1,
+          "kind": "generated_image"
+        }
+      ],
+      "output_sha256": "a7576089fc3baeab885d939e48f70a37fa1a9b1e186bbf1f91136a363be887ed"
+    },
+    {
+      "attempt": 2,
+      "generation_strategy": "edit_existing_sheet",
+      "prompt": "Edit the supplied five-view sheet. Replace ONLY the top two side views. Keep the lower three views, layout and colors unchanged.\n\nThe two side views must become TRUE ENGINEERING SIDE ELEVATIONS rendered in photographic materials. Top row nose RIGHT, second row nose LEFT. Move the cameras DOWN to axle-center height and aim EXACTLY HORIZONTALLY across the car, perpendicular to the doors, with orthographic projection. Zero downward tilt and zero front-corner reveal. A headlamp or front-bumper FACE must collapse to a thin edge at the nose. The front and rear planes have ZERO visible width in a lateral elevation. Do not just paint over their markings.\nThe hood/cowl, roof, rear deck and wing TOPS must collapse to thin contours. NO transverse roof/hood bands, NO top-facing hood artwork, NO windshield width, NO looking down into the cabin. Near/far wing supports and wheels align in projection. The body remains its real full height and width: change ONLY the virtual camera, never squash the body or lower the roof.\n\nKeep the photographic metal gradients, glass, rubber, tire thickness and recessed spokes. Preserve the toy's actual wheelbase, fenders, wheel diameters, stance, sculpted side details and all side graphics. Do not substitute a flat illustration. Do not mirror one side to make the other.\nGold LB-ER34 Super Silhouette Skyline JKF36 chase, gold five-spoke wheels, prominent gold aero body and rear wing, normal readable 10 / Hot Wheels / CAR CULTURE door badges. Side exhaust ONLY at vehicle-LEFT sill, second row; none on top/right row. Preserve the large front splitter side silhouette. In side elevation the far wing support and far endplate must overlap behind near ones; no multiple offset wing supports. Raised hood ribs can contribute thin silhouette contours, but no broad top planes. Keep gold paint and wheel depth.\nKeep exactly five full views in four rows. All exterior space pure white with no ground/contact/cast shadows or halos. No labels. Output the corrected full sheet.\n",
+      "prompt_sha256": "61c489b41414eab6df13de4c3334c384d1914456c21cc179a1b23f33deaf7215",
+      "ordered_inputs": [
+        {
+          "sha256": "a7576089fc3baeab885d939e48f70a37fa1a9b1e186bbf1f91136a363be887ed",
+          "edit_chain_output": 1,
+          "role": "Previous correction output; retired intermediate, identified by hash",
+          "input_order": 1,
+          "kind": "generated_image"
+        }
+      ],
+      "output_sha256": "cc3cd45657bdd5a6fc0dc9c0c8a3c590b498af3ffa851d4dfc329230b5394304"
+    }
+  ],
   "review": {
-    "level_side_camera": {
-      "result": "fail",
-      "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports. Left shows broad hood top, frontal headlight face and wing top."
-    },
-    "top_planes_hidden": {
-      "result": "fail",
-      "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports. Left shows broad hood top, frontal headlight face and wing top."
-    },
-    "front_rear_faces_hidden": {
-      "result": "fail",
-      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
-    },
-    "interior_at_side_height": {
-      "result": "uncertain",
-      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
-    },
-    "wheel_projection": {
-      "result": "pass",
-      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
-    },
-    "shape_and_stance_preserved": {
-      "result": "uncertain",
-      "observation": "Right shows broad hood and wing upper surfaces plus headlight face. Left shows hood ridges in plan and front fascia face; wing supports do not align in projection."
-    },
     "sides": {
       "right": {
         "evidence_status": "real_reference",
         "level_side_camera": {
-          "result": "fail",
-          "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports."
+          "result": "pass",
+          "observation": "Nose-right level elevation, no forward three-quarter view."
         },
         "top_planes_hidden": {
-          "result": "fail",
-          "observation": "Right shows front headlight face, broad hood ribs and multiple offset wing supports."
+          "result": "pass",
+          "observation": "Raised hood ribs reduce to contour lines; wing upper area no longer a broad top plane."
         },
         "front_rear_faces_hidden": {
-          "result": "fail",
-          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+          "result": "pass",
+          "observation": "Front headlamp/grille face edge-on; side splitter geometry remains."
         },
         "interior_at_side_height": {
-          "result": "uncertain",
-          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+          "result": "pass",
+          "observation": "Cabin is seen laterally; no downward cushion view."
         },
         "wheel_projection": {
           "result": "pass",
-          "observation": "Near wheel faces approximately circular and axle baseline level."
+          "observation": "Circular five-spoke wheels with level hub baseline."
         },
         "shape_and_stance_preserved": {
-          "result": "uncertain",
-          "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+          "result": "pass",
+          "observation": "Large aero body, roof and wheelbase preserved; wing supports/endplates substantially overlap in projection."
         }
       },
       "left": {
         "evidence_status": "real_reference",
         "level_side_camera": {
-          "result": "fail",
-          "observation": "Left shows broad hood top, frontal headlight face and wing top."
+          "result": "pass",
+          "observation": "Nose-left elevation separately checked; horizontal sill and axles."
         },
         "top_planes_hidden": {
-          "result": "fail",
-          "observation": "Left shows broad hood top, frontal headlight face and wing top."
+          "result": "pass",
+          "observation": "No broad hood-rib upper plane; roof and wing reduce to narrow contours."
         },
         "front_rear_faces_hidden": {
-          "result": "fail",
-          "observation": "Front lamp/bumper projection is oblique rather than a strict edge-on elevation."
+          "result": "pass",
+          "observation": "No frontal headlamp or grille area, no rear lamp-panel face."
         },
         "interior_at_side_height": {
-          "result": "uncertain",
-          "observation": "Seat backs are visible but elevated camera prevents a clean level-cabin assessment."
+          "result": "pass",
+          "observation": "Seat silhouette at side height, without downward cushion view."
         },
         "wheel_projection": {
           "result": "pass",
-          "observation": "Near wheel faces approximately circular and axle baseline level."
+          "observation": "Round five-spoke wheel faces and level hubs."
         },
         "shape_and_stance_preserved": {
-          "result": "uncertain",
-          "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+          "result": "pass",
+          "observation": "Aero body height preserved, left sill exhaust retained; wing supports overlap instead of separating into staggered struts."
         }
       }
     },
     "five_view_layout": {
       "result": "pass",
-      "observation": "Five complete views in four rows with requested orientations."
+      "observation": "Five complete silhouettes: right, left, overhead facing right, front and rear; four rows with white gutters."
     },
     "ground_shadows": {
       "result": "pass",
-      "observation": "Pure-white exterior to silhouettes; no visible floor pools or ground reflections in all five panels."
+      "observation": "White exterior without visible cast/contact shadows, floor reflection or shadow pools in all five panels."
     },
     "material_depth": {
       "result": "pass",
-      "observation": "Curved metallic highlights, spoke recesses, tire and cabin shading preserve photographic volume."
+      "observation": "Rounded highlights, dark recessed spokes, tire volume and cabin depth remain photographic. Paint microtexture is synthetic; see limitations."
     },
     "identity_and_graphics": {
-      "result": "uncertain",
-      "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+      "result": "pass_with_limitations",
+      "observation": "Gold JKF36 chase, five-spoke wheels, Car Culture 10 badges, tall wing and left-only sill exhaust retained."
     },
     "opposite_side_identity": {
       "result": "pass",
-      "observation": "Separate side details and graphics provided, no whole-side pixel mirroring."
+      "observation": "Both sides independently compared with existing exact-release evidence; side-specific features retained. Tiny logos remain approximate."
     },
     "readable_not_mirrored_text": {
-      "result": "uncertain",
-      "observation": "Main text orientation normal; exact tiny marks not reliable."
-    },
-    "cross_view_consistency": {
-      "result": "uncertain",
-      "observation": "10 door badge improved; overhead left-sill exhaust now correctly on top edge for nose right."
+      "result": "approximate",
+      "observation": "Tiny lettering and emblem shapes are synthesized; source photos remain authoritative."
     },
     "front_rear_cameras": {
-      "result": "fail",
-      "observation": "Bottom cameras expose broad hood or upper rear/roof surfaces."
+      "result": "approximate",
+      "observation": "Bottom fascia views remain elevated, with visible hood/wing upper surfaces."
+    },
+    "cross_view_consistency": {
+      "result": "approximate",
+      "observation": "Main identity and mechanical pose agree; these synthesized projections are not a metrically calibrated camera set."
     },
     "limitations": [
-      "True overhead is inferred from elevated original photographs.",
-      "Fine printing and reconstructed dimensions are synthetic approximations."
+      "Fine gold surface has synthetic patterned grain; original photos remain the authority for paint finish.",
+      "Bottom fascia views remain elevated, with visible hood/wing upper surfaces.",
+      "Fine lettering, reflections and reconstructed dimensions remain synthetic approximations, not calibrated CAD or an exact albedo map.",
+      "True overhead geometry is partly inferred from elevated photographs.",
+      "No Tripo reconstruction or numerical camera calibration was performed in this correction task."
     ],
-    "selection_rationale": "Reject: both profiles remain elevated/oblique. White background and material depth now pass. Final source-only retry focuses on literal lateral projection."
-  }
+    "selection_rationale": "Selected second focused edit for side projection and wing overlap. Later resets had cleaner grain but reintroduced staggered wing structure and other side details."
+  },
+  "user_direction": "User approved choosing the best available versions and ending further generation on 2026-10-14."
 }

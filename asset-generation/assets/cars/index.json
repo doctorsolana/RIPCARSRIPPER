@@ -6,10 +6,13 @@
       "model": "Beach Bomb Too",
       "year": 2006,
       "rarity": "legendary",
-      "modelled": false,
-      "passed": null,
-      "versions": [],
-      "source": null
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
       "id": "chevy-impala-jkb99",
@@ -26,15 +29,46 @@
       "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
+      "id": "godzilla-skyline-jhw90",
+      "make": "Nissan",
+      "model": "Skyline GT-R (BNR34) Godzilla",
+      "year": 1999,
+      "rarity": "rare",
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    },
+    {
+      "id": "pontiac-firebird-htf40",
+      "make": "Pontiac",
+      "model": "Firebird T/A",
+      "year": 1977,
+      "rarity": "legendary",
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    },
+    {
       "id": "porsche-911-gt3-rs",
       "make": "Porsche",
       "model": "911 GT3 RS",
       "year": 2011,
       "rarity": "rare",
-      "modelled": false,
-      "passed": null,
-      "versions": [],
-      "source": null
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
       "id": "porsche-964-gdf88",
@@ -42,10 +76,13 @@
       "model": "964",
       "year": 1989,
       "rarity": "epic",
-      "modelled": false,
-      "passed": null,
-      "versions": [],
-      "source": null
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
       "id": "roxy-porsche-hrv96",
