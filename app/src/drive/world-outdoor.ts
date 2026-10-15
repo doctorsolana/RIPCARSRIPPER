@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { Track, TrackFrame, VehicleState } from './types';
+import type { Track, TrackFrame, TrackLook, VehicleState } from './types';
 
 // The outdoor world of the drive page: a sunny meadow round any course (roads and orange plastic set pieces), made
 // entirely in code (no asset files) and drawn in at most 15 calls (the scenery's area chunks, the pond and the boards
@@ -36,7 +36,7 @@ import type { Track, TrackFrame, VehicleState } from './types';
 // it (props keep KEEP u beyond it, trees further), nor in or under anything else the track builds (the plan of its
 // meshes: a tower off the course, a hoop's masts), and trees keep off the sight lines across every bend: the chase
 // camera always sees the road ahead.
-// Each course has its own style (STYLES, by track.object.userData.course): the meadow's as above; track 2's (the Sky
+// Each course has its own style (STYLES, by track.look.world): the meadow's as above; track 2's (the Sky
 // Tower) is later in the day - a lower, warmer sun throwing the tower's and the decks' shadows long, a golden haze - over
 // an open, stadium-like meadow on a smaller budget (its track is heavier, and from up on its decks the camera sees most
 // of the meadow at once): fewer trees, the ground cover gathered where the lap runs low, 6 chunks - and dressed like
@@ -96,13 +96,13 @@ const NEAR = 60, MID = 160; // u beyond the course's footprint: tree detail tier
 /** Scenery budget: trees per detail tier, the rest by count. */
 const CAP = { trees: [170, 200, 240], bushes: 90, rocks: 80, flowers: 520, tufts: 1300 };
 const CHUNKS = 8; // the scenery's area chunks (draw calls at most; the ones out of view are culled)
-/** A course's world (track.object.userData.course; the meadow's by default). Track 2 is ridden high up on decks and
+/** A course's world (track.look.world: its Course.world in tracks/; the meadow's by default). Track 2 is ridden high up on decks and
  *  stilts and sees most of the meadow at once - from the top of the spiral, the whole of it - so it gets an open,
  *  stadium-like meadow on a smaller budget (its own track is heavier than the meadow's): fewer trees, the flowers and
  *  grass tufts gathered where the lap runs low (`low`: up on a deck nobody sees them), fewer chunks; and the dressing -
  *  grandstands beside the booster stadium, the double jump and facing the tower, the RIPCARS sign on the tower's crown. */
 interface Style { look: typeof LOOK; cap: typeof CAP; chunks: number; low: boolean; dressing: boolean }
-const STYLES: Record<string, Style> = {
+const STYLES: Record<TrackLook['world'], Style> = {
   meadow: { look: LOOK, cap: CAP, chunks: CHUNKS, low: false, dressing: false },
   sky: { look: LOOK_SKY, cap: { trees: [90, 100, 150], bushes: 45, rocks: 55, flowers: 260, tufts: 560 }, chunks: 6, low: true, dressing: true },
 };
@@ -653,7 +653,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   const root = new THREE.Group();
   root.name = 'world-outdoor';
   scene.add(root);
-  const ST = STYLES[(track.object.userData as { course?: string }).course ?? ''] ?? STYLES.meadow, LOOK = ST.look, CAP = ST.cap;
+  const ST = STYLES[track.look?.world ?? 'meadow'], LOOK = ST.look, CAP = ST.cap;
   const rnd = rngOf(SEED);
   const R = (a: number, b: number) => a + (b - a) * rnd();
   const pick = <T>(a: T[]) => a[Math.floor(rnd() * a.length) % a.length];

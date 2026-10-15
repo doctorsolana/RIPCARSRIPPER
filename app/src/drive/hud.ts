@@ -1,7 +1,8 @@
 // The drive page's overlay: lap and times (top left), speed (bottom right), the gate prompt (under the course's name),
-// toasts (PERFECT!, BOOST, BEST LAP, the hidden tier's rainbow MAX DRIFT!; outlined, so they read on the sky and the
-// grass), split deltas, a big WRONG WAY sign, a dip to black on respawn, the results card (with a button to try the
-// other track), and an FPS readout with ?fps=1. Self-contained styles; text only changes when its value does.
+// toasts (PERFECT!, BOOST, a stacked boost's x2 x3 ..., an air record, BEST LAP, the hidden tier's rainbow MAX DRIFT!;
+// outlined, so they read on the sky and the grass), split deltas, a big WRONG WAY sign, a dip to black on respawn, the
+// results card (laps, the race's longest air against its record, a button to try the other track), and an FPS readout
+// with ?fps=1. Self-contained styles; text only changes when its value does.
 
 export interface RaceResult {
   total: number;
@@ -10,6 +11,9 @@ export interface RaceResult {
   newBestLap: boolean;
   newBestTotal: boolean;
   medal: 'gold' | 'silver' | 'bronze' | null;
+  air?: number; // this race's longest flight (s), if it had a real one
+  airRecord?: number; // the car's longest on this course, ever (this race's included)
+  newAir?: boolean; // this race set it (beating an earlier one)
 }
 
 export interface Hud {
@@ -122,6 +126,7 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .card li { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
 #hud .card li span { opacity: 0.6; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; }
 #hud .card li.best b { color: var(--car); }
+#hud .card li small { font-size: 11px; font-weight: 600; opacity: 0.55; margin-left: 6px; }
 #hud .card .btns { display: flex; gap: 10px; margin-top: 18px; }
 #hud .card button, #hud .card a { flex: 1; padding: 13px 10px; border-radius: 999px; border: 0; cursor: pointer; text-decoration: none;
   font: 700 12px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; }
@@ -290,7 +295,9 @@ export function createHud(root: HTMLElement): Hud {
         <div class="medal">${r.medal ? `${r.medal} medal` : 'Finished'}</div>
         <div class="total">${fmtTime(r.total)}</div>
         ${r.newBestTotal ? '<div class="nb">New personal best</div>' : r.newBestLap ? '<div class="nb">New best lap</div>' : ''}
-        <ol>${r.laps.map((t, i) => `<li class="${i === best ? 'best' : ''}"><span>Lap ${i + 1}</span><b>${fmtTime(t)}</b></li>`).join('')}</ol>
+        <ol>${r.laps.map((t, i) => `<li class="${i === best ? 'best' : ''}"><span>Lap ${i + 1}</span><b>${fmtTime(t)}</b></li>`).join('')}
+        ${r.air != null ? `<li class="${r.newAir ? 'best' : ''}"><span>${r.newAir ? 'Air record!' : 'Longest air'}</span><b>${r.air.toFixed(2)} s${
+          !r.newAir && r.airRecord != null && r.airRecord > r.air ? ` <small>record ${r.airRecord.toFixed(2)}</small>` : ''}</b></li>` : ''}</ol>
         <div class="btns"><button type="button">Again</button><a href="#">Rip a pack</a></div>
         ${other ? `<a class="try">Try ${other.name}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>` : ''}

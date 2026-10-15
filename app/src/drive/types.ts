@@ -47,6 +47,11 @@ export interface TrackFrame {
 // (the speed brought to it carries the car; too slow, it falls off and is put back before its pads)
 export type TrackTag = 'gate' | 'drop' | 'booster' | 'kicker' | 'gap' | 'loop' | 'helix' | 'finish' | 'bigjump' | 'inrun' | 'climb';
 
+/** How the page dresses a course (its tracks/<course>.ts sets it; a track without one gets the meadow's): `world`
+ *  picks world-outdoor.ts's style (STYLES), `hoop` - a hoop over the big jump's flight, which the camera's jump shot
+ *  holds back for - and `wide` - plastic wider than the channel, with connectors (the audio's joint ticks) across it. */
+export interface TrackLook { world: 'meadow' | 'sky'; hoop: boolean; wide: boolean }
+
 export interface Track {
   readonly length: number; // closed lap length (s wraps)
   readonly frames: TrackFrame[]; // every 0.5 u
@@ -59,6 +64,7 @@ export interface Track {
   frameAt(s: number, out?: TrackFrame): TrackFrame; // interpolated frame at s (wraps)
   nearest(p: THREE.Vector3, hintS: number, window?: number): { s: number; frame: TrackFrame; offset: THREE.Vector3 }; // search near hintS
   tagAt(s: number): TrackTag | null;
+  readonly look?: TrackLook; // how the world, camera and audio dress this course (none: the meadow's)
 }
 
 export interface VehicleEvents {
@@ -66,6 +72,7 @@ export interface VehicleEvents {
   landed?: number; // vertical speed at touchdown (u/s)
   perfectLanding?: boolean;
   boostStart?: boolean;
+  stackUp?: number; // a boost added onto one still running: the tank's stack is now this (x2, x3 ...: a higher top speed)
   tierUp?: 1 | 2 | 3 | 4; // drift spark tier reached (4: the hidden 'magic max', about twice tier 3's drift time)
   airborne?: boolean;
   respawn?: boolean;
@@ -84,6 +91,7 @@ export interface VehicleState {
   drifting: boolean;
   driftTier: 0 | 1 | 2 | 3 | 4; // 4 is the hidden max tier
   boosting: boolean;
+  boostStack: number; // boosts stacked in the running tank: 0 none, 1 a lone boost, 2+ stacked (each a higher top speed)
   grounded: boolean;
   accelLocal: THREE.Vector3; // car-frame acceleration (x forward, y up, z right) for body pitch/roll springs
   trackS: number; // distance along the track, wraps at track.length

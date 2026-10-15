@@ -43,7 +43,7 @@ import type { Track, TrackFrame, VehicleState } from './types';
 //         the chase position. The time left in the air is predicted every frame from the car's ballistic path against
 //         the track (or the meadow, short of it or beside it). The side is the one with the clearer view (no other part
 //         of the course in the way), then the one with the sun behind the camera; the car's centre is held inside the
-//         frame throughout. Track 2's sky jump flies through a hoop over the apex of its flight (track.ts hoop()): side-on
+//         frame throughout. Track 2's sky jump flies through a hoop over the apex of its flight (tracks/sky.ts hoop()): side-on
 //         the ring is edge-on as the car goes through, then its near side sweeps between the camera and the car, so there
 //         the dolly holds back (adHoopLag) - the car flies on into the open ring, through it and out
 // Pass the interpolated render pose (e.g. the rig root) as `pose`, or the car jitters against the
@@ -197,7 +197,7 @@ export function createChaseCamera(): ChaseCamera {
     scanned = track;
     jumps.length = 0;
     for (const g of track.tags) if (g.tag === 'bigjump') jumps.push(g.s0, g.s1);
-    hoop = (track.object.userData as { course?: string }).course === 'sky'; // (track 2: the hoop over its sky jump)
+    hoop = track.look?.hoop ?? false; // (track 2: the hoop over its sky jump)
     let minY = 0;
     for (const f of track.frames) minY = Math.min(minY, f.p.y);
     groundY = Math.min(0, minY - 0.3); // as world-outdoor's meadow

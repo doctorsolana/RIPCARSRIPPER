@@ -25,7 +25,8 @@ import type { CarSpec, Track, TrackFrame, VehicleState } from './types';
 //           phone pays for)
 //   flame   twin boost flames at the exhaust, in the top-tier colour (a tier-4 boost: rainbow plasma, longer and
 //           shedding rainbow sparks): view-aligned billboards from nozzle to tip, so from behind they read as
-//           glowing discs and from the side as jets
+//           glowing discs and from the side as jets. Boosts stacked in the tank (state.boostStack x2, x3 ...) burn
+//           longer, wider and hotter, and each one added bursts again, bigger
 //   trail   the big jump's boost trail: twin ribbons laid from the pipes through the flight (segment by segment,
 //           world-fixed, an even brightness along each), in the car's rarity colour, spreading and fading over 1.5 s,
 //           and faded where they pass close to the camera - they draw the arc across the sky for the side view
@@ -418,6 +419,7 @@ const FLAME_FS = /* glsl */ `
   uniform float uTime;
   uniform float uAlpha;
   uniform float uMagic; // a tier-4 boost: rainbow plasma, bands of hue streaming out of the pipe
+  uniform float uHeat; // boosts stacked: 0 (one) .. 1 (many): hotter, brighter
   uniform vec3 uColor;
   varying vec2 vUv;
   ${HUE}
@@ -429,7 +431,7 @@ const FLAME_FS = /* glsl */ `
     float a = min(1.0, core * 1.4) * pow(1.0 - along, 0.6) * flick * uAlpha;
     float hot = (1.0 - smoothstep(0.0, 0.45, along)) * (1.0 - smoothstep(0.0, width * 0.6, abs(vUv.y)));
     vec3 base = mix(uColor, hue(along * 1.4 - uTime * 2.6 + vUv.y * 0.6), uMagic);
-    vec3 c = mix(base * 1.5, vec3(1.0, 0.94, 0.8) * 1.8, hot * (1.0 - 0.35 * uMagic));
+    vec3 c = mix(base * 1.5, vec3(1.0, 0.94, 0.8) * 1.8, min(1.0, hot * (1.0 + uHeat)) * (1.0 - 0.35 * uMagic)) * (1.0 + 0.6 * uHeat);
     gl_FragColor = vec4(c, a);
     ${OUT}
   }`;
@@ -582,7 +584,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   const flameW = Math.min(0.5, car.height * 0.42);
   const flameMat = new THREE.ShaderMaterial({
     uniforms: {
-      uTime: { value: 0 }, uAlpha: { value: 0 }, uLen: { value: 1.6 }, uWidth: { value: flameW }, uMagic: { value: 0 },
+      uTime: { value: 0 }, uAlpha: { value: 0 }, uLen: { value: 1.6 }, uWidth: { value: flameW }, uMagic: { value: 0 }, uHeat: { value: 0 },
       uColor: { value: topTierColor.clone() },
     },
     vertexShader: FLAME_VS,
@@ -633,7 +635,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   const hot = new THREE.Color(1, 0.86, 0.55);
   const nose = new THREE.Vector3(), upv = new THREE.Vector3(), side = new THREE.Vector3(), dir = new THREE.Vector3();
   const tmp = new THREE.Vector3(), prevVel = new THREE.Vector3(), dv = new THREE.Vector3(), q1 = new THREE.Vector3();
-  let sparkAcc = 0, lineAcc = 0, flameA = 0, havePrev = false;
+  let sparkAcc = 0, lineAcc = 0, flameA = 0, heatA = 0, havePrev = false;
   // the drift tier last frame, the tier the running boost was charged at (4: magic flames), their strength, sparks shed
   let lastTier = 0, boostTier = 0, magicA = 0, shedAcc = 0;
   // the big jump: the track's 'bigjump' spans [s0, s1, ...]; time aloft, whether this flight left a big jump's lip; the
@@ -767,7 +769,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     const gapR = lim - dc - reach, gapL = lim + dc - reach;
     const ws = gapR < gapL ? 1 : -1;
     wallGap = Math.min(gapR, gapL);
-    // as the vehicle's wallOf; track.ts lines the far edge of every verge with hay bales, so that is straw too (SOFT, a
+    // as the vehicle's wallOf; tracks/props.ts lines the far edge of every verge with hay bales, so that is straw too (SOFT, a
     // bare grass limit, is kept for a course without them)
     wallMat = f.edge === 'grass' || (f.edge === 'barrier' && surf === DIRT) ? HAY : f.edge === 'barrier' ? TYRE : RAIL;
     // the corner reaching furthest toward that wall (mid-flank while the car runs parallel to it), bumper high
@@ -1291,14 +1293,17 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     magicA += ((magicOn ? 1 : 0) - magicA) * (1 - Math.exp(-dt / 0.08));
     flareT = Math.max(0, flareT - dt);
     const flameOn = state.boosting || flareT > 0;
+    // the stack: 0 for one boost, rising toward 1 per boost stacked onto it (x2 0.35, x3 0.58, x5 0.82 ...)
+    heatA += ((state.boosting ? 1 - 0.65 ** Math.max(0, state.boostStack - 1) : 0) - heatA) * (1 - Math.exp(-dt / 0.12));
     flameA += ((flameOn ? 1 : 0) - flameA) * (1 - Math.exp(-dt / (flameOn ? 0.04 : 0.09)));
     flameRig.visible = flameA > 0.01;
     if (flameRig.visible) {
       flameRig.position.copy(P);
       flameRig.quaternion.copy(Q);
       const len = (1.05 + 0.25 * Math.sin(time * 41) + 0.15 * Math.sin(time * 97)) * (0.4 + 0.6 * flameA) * (1 + 0.7 * smoothstep(0, 0.8, flareT));
-      flameMat.uniforms.uLen.value = len * 1.8 * (1 + 0.4 * magicA);
-      flameMat.uniforms.uWidth.value = flameW * (1 + 0.25 * magicA);
+      flameMat.uniforms.uLen.value = len * 1.8 * (1 + 0.4 * magicA) * (1 + 0.6 * heatA);
+      flameMat.uniforms.uWidth.value = flameW * (1 + 0.25 * magicA) * (1 + 0.35 * heatA);
+      flameMat.uniforms.uHeat.value = heatA;
       flameMat.uniforms.uMagic.value = magicA;
       flameMat.uniforms.uAlpha.value = flameA;
       flameMat.uniforms.uTime.value = time;
@@ -1327,7 +1332,8 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
           );
         }
       } else {
-        for (let i = 0; i < 18; i++) {
+        const n = ev.stackUp ? 18 + 8 * Math.min(4, ev.stackUp - 1) : 18; // a stacked boost bursts bigger
+        for (let i = 0; i < n; i++) {
           col.copy(i % 2 ? hot : topTierColor);
           streak(
             tmp.x, tmp.y, tmp.z,
@@ -1339,7 +1345,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     }
     if (state.boosting || state.speed > VTOP * 1.08) {
       // world-fixed streaks seeded around where the chase camera is about to pass: they whip by it
-      lineAcc += 90 * dt;
+      lineAcc += 90 * (1 + 0.6 * heatA) * dt;
       const sp = Math.max(state.speed, 1);
       dir.copy(V).multiplyScalar(1 / sp);
       while (lineAcc >= 1) {
@@ -1391,7 +1397,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     trail.clear();
     confettiPool.clear();
     breakStrips();
-    sparkAcc = lineAcc = flameA = scrapeAcc = scrapeHold = hitN = airT = flareT = windAcc = 0;
+    sparkAcc = lineAcc = flameA = heatA = scrapeAcc = scrapeHold = hitN = airT = flareT = windAcc = 0;
     lastTier = boostTier = magicA = shedAcc = 0;
     bigAir = trailHave = false;
     trailUntil = confettiUntil = -1;

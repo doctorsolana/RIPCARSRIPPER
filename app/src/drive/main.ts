@@ -9,12 +9,12 @@ import { createHud, type RaceResult } from './hud';
 import { createInput } from './input';
 import { startLoop } from './loop';
 import { loadRig, type Rig } from './rig';
-import { buildTrack, COURSES, isCourse, type CourseId } from './track';
+import { buildTrack, courseOf, COURSES, DEFAULT_COURSE, isCourse, type CourseId } from './tracks';
 import type { DriveInput, TrackFrame, VehicleFactory, VehicleState } from './types';
 import { VEHICLES } from './vehicles';
 import { buildWorld } from './world-outdoor';
 
-// /drive.html?car=<id>[&track=sky]: take the car you just ripped for a spin. Two courses (track.ts COURSES): the meadow
+// /drive.html?car=<id>[&track=sky]: take the car you just ripped for a spin. Two courses (tracks/index.ts COURSES): the meadow
 // (the default) - country roads, a dirt stretch and orange Hot Wheels set pieces (the start gate, the big jump, a loop) -
 // and the Sky Tower, the crazy one. The top bar's track switch and the results card's "Try <the other one>" reload
 // the page on the other course with the same car and knobs; the bar's car picker and Random car keep the course. The
@@ -33,43 +33,36 @@ import { buildWorld } from './world-outdoor';
 const q = new URLSearchParams(location.search);
 const CAR = q.get('car') ?? 'skyline-hck01';
 const trackQ = q.get('track');
-const COURSE: CourseId = isCourse(trackQ) ? trackQ : 'meadow'; // ?track=<id> (track.ts COURSES); anything else: the meadow
-const COURSE_NAME = COURSES.find((c) => c.id === COURSE)!.name;
-/** The course's colour: its dot in the top bar's switch and its "Try" button on the results card. */
-const COURSE_COLOR: Record<CourseId, string> = { meadow: '#6fd35a', sky: '#ff6b00' }; // the grass; the orange plastic
+const COURSE: CourseId = isCourse(trackQ) ? trackQ : DEFAULT_COURSE; // ?track=<id> (tracks/ COURSES); anything else: the meadow
+const COURSE_DEF = courseOf(COURSE); // its name, colour (the switch's dot, the Try button) and medal pace
 const MODEL = VEHICLES[q.get('model') ?? ''] ? q.get('model')! : 'arcade';
 const AUTO = q.get('auto') === '1';
 const LAPS = Math.min(9, Math.max(1, Math.round(Number(q.get('laps')) || 3)));
 const FAST = Math.min(16, Math.max(1, Math.round(Number(q.get('fast')) || 1))); // tests: run the sim N x real time
 const KMH = 4.3; // u/s -> km/h at toy scale
-// u/s: the autopilot's average speed over 3 laps (3 x the lap's length / its 3-lap total in node laps.ts 'auto'), per
-// course and car (each drives its own way: PROFILES in vehicles/arcade.ts; a key is any word of the car's id, '*' the
-// stock car's, for a car without a profile); medals at x1.03 / 1.10 / 1.20 of laps x length / PAR. A course without a
-// car's number takes the meadow's: the same pace, so its par time is the meadow's scaled by the lap's length. Each row
-// is one line keyed like the meadow's ('*': the stock car's run); remeasure a course's row whenever its layout changes.
-const PARS: Record<CourseId, Record<string, number>> = {
-  meadow: { skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26, civic: 42.64, mustang: 43.18, '*': 42.1 },
-  sky: { skyline: 47.17, impala: 46.15, roxy: 47.12, gt3: 47.13, '964': 46.64, firebird: 46.52, beach: 45.34, civic: 46.00, mustang: 46.98, '*': 46.58 },
-};
+// u/s: the medal pace, the autopilot's average speed over 3 laps per course and car (each course's `pars`, in its
+// tracks/<course>.ts: a key is any word of the car's id, '*' the stock car's); medals at x1.03 / 1.10 / 1.20 of laps x
+// length / PAR. A course without a car's number takes the default course's: the same pace, so its par time is the
+// meadow's scaled by the lap's length.
 const parIn = (row: Record<string, number>): number | undefined =>
   CAR.toLowerCase().split('-').map((w) => row[w]).find((x) => x !== undefined) ?? row['*'];
-const PAR = parIn(PARS[COURSE]) ?? parIn(PARS.meadow)!;
+const PAR = parIn(COURSE_DEF.pars) ?? parIn(courseOf(DEFAULT_COURSE).pars)!;
 const HARD_HIT = 25; // u/s square into a wall: an extra camera kick and a hard buzz (the camera scales its own shake by the hit)
 const BOOST_NAMES = ['', 'Boost', 'Super boost', 'Ultra boost', 'Hyper boost!']; // 4: the hidden 'magic max' tier
 /** Hay bales are the wall here (the dirt's barriers, and the far edge of every verge; as the vehicle's wallOf). */
 const isHay = (f: TrackFrame) => f.edge === 'grass' || (f.edge === 'barrier' && f.surface === 'dirt');
 
-interface Best { lap?: number; total?: number; splits?: number[] }
+interface Best { lap?: number; total?: number; splits?: number[]; air?: number } // air: the longest flight (s), landed
 /** Bests are kept per car and per course: the key carries the course (the meadow's has none - it predates track 2, and
  *  keeps the bests already set: ripcars.drive.<car>.<length>, the sky's ripcars.drive.<car>.sky.<length>) and the lap's
  *  length, so a new layout starts afresh (a best from an older, shorter course would stand unbeatable and skew every
  *  split). */
 const bestKey = (lapLength: number) =>
-  `ripcars.drive.${CAR}.${COURSE === 'meadow' ? '' : `${COURSE}.`}${Math.round(lapLength)}`;
+  `ripcars.drive.${CAR}.${COURSE === DEFAULT_COURSE ? '' : `${COURSE}.`}${Math.round(lapLength)}`;
 /** This page on a course: the same car and knobs (the meadow is the bare URL, as before track 2). */
 function courseHref(id: CourseId) {
   const p = new URLSearchParams(location.search);
-  if (id === 'meadow') p.delete('track');
+  if (id === DEFAULT_COURSE) p.delete('track');
   else p.set('track', id);
   const s = p.toString();
   return `${location.pathname}${s ? `?${s}` : ''}`;
@@ -91,9 +84,9 @@ function saveBest(key: string, b: Best) {
 
 async function main() {
   const hud = createHud(document.getElementById('hud')!);
-  hud.setCourse(COURSE_NAME, COURSE_COLOR[COURSE]);
+  hud.setCourse(COURSE_DEF.name, COURSE_DEF.color);
   // the top bar: a track switch before the car picker (both reload the page, keeping the other's pick and the knobs)
-  const options = COURSES.map((c) => ({ name: c.name, href: courseHref(c.id), on: c.id === COURSE, title: c.blurb, color: COURSE_COLOR[c.id] }));
+  const options = COURSES.map((c) => ({ name: c.name, href: courseHref(c.id), on: c.id === COURSE, title: c.blurb, color: c.color }));
   mountNav('drive', { switch: { label: 'Track', options } }).then((n) => n.setCar(CAR));
   const canvas = document.getElementById('c') as HTMLCanvasElement;
 
@@ -128,7 +121,7 @@ async function main() {
   const tier = tierOf(String(meta.rarity ?? 'common'));
   const carName = [meta.make, meta.model].filter(Boolean).join(' ') || CAR;
   hud.setCar(carName, tier.color);
-  document.title = `Drive · ${carName} · ${COURSE_NAME} · RIPCARS`;
+  document.title = `Drive · ${carName} · ${COURSE_DEF.name} · RIPCARS`;
 
   const cam = createChaseCamera();
   scene.add(cam.camera); // anything parented to the camera renders too
@@ -163,6 +156,7 @@ async function main() {
     rs.drifting = st.drifting;
     rs.driftTier = st.driftTier;
     rs.boosting = st.boosting;
+    rs.boostStack = st.boostStack;
     rs.grounded = st.grounded;
     rs.trackS = st.trackS;
     rs.lapDelta = st.lapDelta;
@@ -174,7 +168,7 @@ async function main() {
   const clearEvents = () => {
     const e = st.events;
     e.wallHit = e.landed = undefined;
-    e.perfectLanding = e.boostStart = e.airborne = e.respawn = e.spinOut = undefined;
+    e.perfectLanding = e.boostStart = e.airborne = e.respawn = e.spinOut = e.stackUp = undefined;
     e.tierUp = undefined;
   };
 
@@ -184,6 +178,10 @@ async function main() {
   let phase: 'gate' | 'race' | 'done' = 'gate';
   let time = 0, lapStart = 0, lapMax = 0, nextSplit = 1, lastTier = 0, far = false, wrong = false;
   let clock = 0, airFrom = -1; // sim time (every step, any phase), and when the car last left the ground
+  // flights timed in the sim's steps (off the ground to touching down): this race's longest, and one that just beat
+  // the record (for the landing's toast; 0: none). Only a flight that lands counts (a miss is put back, not timed).
+  let wasGrounded = true, flyFrom = 0, raceAir = 0, recordAir = 0;
+  const AIR_MIN = 0.9; // s: a flight shorter than this is a hop, not a record
   const hitF = track.frameAt(0); // scratch: the frame at a hard hit (what the wall is made of)
   const lapTimes: number[] = [], splits = [0, 0];
   const BEST = bestKey(track.length);
@@ -212,6 +210,8 @@ async function main() {
     far = false;
     nextSplit = 1;
     lapTimes.length = 0;
+    raceAir = recordAir = 0;
+    wasGrounded = true;
     bestAtStart = { ...best };
     hud.hideResults();
     hud.setLap(1, LAPS);
@@ -256,9 +256,11 @@ async function main() {
       newBestLap: bestAtStart.lap != null && bestLap < bestAtStart.lap,
       newBestTotal: newBestTotal && bestAtStart.total != null,
       medal: ratio <= 1.03 ? 'gold' : ratio <= 1.1 ? 'silver' : ratio <= 1.2 ? 'bronze' : null,
+      air: raceAir >= AIR_MIN ? raceAir : undefined, airRecord: best.air,
+      newAir: raceAir >= AIR_MIN && bestAtStart.air != null && raceAir > bestAtStart.air,
     };
     const next = COURSES[(COURSES.findIndex((c) => c.id === COURSE) + 1) % COURSES.length]; // the other course
-    const other = next.id === COURSE ? undefined : { name: next.name, href: courseHref(next.id), color: COURSE_COLOR[next.id] };
+    const other = next.id === COURSE ? undefined : { name: next.name, href: courseHref(next.id), color: next.color };
     hud.results(result, () => reset(true), () => (location.href = `/?car=${encodeURIComponent(CAR)}`), other);
     fx.confetti(st.position, 160);
   }
@@ -310,6 +312,20 @@ async function main() {
       if (st.events.respawn) snap(); // no streak across a teleport
       if (phase !== 'race') return;
       time += h;
+      // the flight record (per car and course, kept with the bests): announced when one from an earlier race is beaten
+      if (wasGrounded && !st.grounded) flyFrom = clock;
+      else if (!wasGrounded && st.grounded && !st.events.respawn) {
+        const air = clock - flyFrom;
+        if (air >= AIR_MIN) {
+          raceAir = Math.max(raceAir, air);
+          if (best.air == null || air > best.air) {
+            if (bestAtStart.air != null) recordAir = air; // (a first race only sets it)
+            best.air = air;
+            saveBest(BEST, best);
+          }
+        }
+      }
+      wasGrounded = st.grounded;
       // A lap counts when the car crosses the line forward having been round the far side since the last one: no
       // lap for starting on the line (a reset can land a hair behind it) or for backing over it and driving on again.
       const r = rel(st.trackS);
@@ -362,13 +378,17 @@ async function main() {
       else if (ev.landed && ev.landed > 8) input.rumble(Math.min(1, ev.landed / 25), 70);
       else if (ev.boostStart) input.rumble(0.3, 120);
       const big = air > 1.5 ? ` ${air.toFixed(1)} s` : '';
-      if (ev.perfectLanding) hud.toast(`Perfect!${big}`, '#3ddc84');
+      const stackX = ev.stackUp ? ` x${ev.stackUp}` : ''; // a boost stacked onto one still running
+      if (recordAir > 0) {
+        hud.toast(`${ev.perfectLanding ? 'Perfect!' : 'Big air'} ${recordAir.toFixed(1)} s, record!`, '#ffd23d');
+        recordAir = 0;
+      } else if (ev.perfectLanding) hud.toast(`Perfect!${big}${stackX}`, '#3ddc84');
       else if (big) hud.toast(`Big air${big}`);
       else if (ev.tierUp === 4) hud.toast('Max drift!', '#fff', 'max'); // the hidden tier: a surprise
       else if (ev.boostStart && lastTier > 0) {
         const c = lastTier === 4 ? '#fff' : lastTier === 3 ? tier.color : lastTier === 2 ? '#a35cff' : '#3d8bff';
-        hud.toast(BOOST_NAMES[lastTier], c, lastTier === 4 ? 'max' : undefined);
-      }
+        hud.toast(BOOST_NAMES[lastTier] + stackX, c, lastTier === 4 ? 'max' : undefined);
+      } else if (stackX) hud.toast(`Boost${stackX}`, '#ffb000');
       if (ev.respawn) hud.flash();
       lastTier = st.driftTier;
       clearEvents();

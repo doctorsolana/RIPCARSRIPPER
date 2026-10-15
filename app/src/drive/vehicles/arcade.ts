@@ -24,6 +24,9 @@ import type { CarSpec, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, V
 // wheel, so S-bends link. On dirt a hard steer at speed loosens the rear a little by itself. Sparks charge through
 // three tiers while it really slides - and a hidden fourth, the magic max, for a slide kept going twice as long as gold
 // (linked through a whole S) - cashed in as a mini-turbo when it ends clean.
+// Every boost - a booster pad, a drift's mini-turbo, a PERFECT landing - pours its time into one shared tank (nothing
+// is wasted under another), and boosts stacked onto one still running raise the boost's top speed, without limit: a run
+// of pads (or a big drift cashed in just before one) throws the car as far as the physics says (see stackSpeed).
 // The throttle pushes up to the car's top speed and no further, but nothing else holds it there: past it only the air
 // drags (~v^2), gently, so a hill (or a boost) carries the car well over its top speed for a few seconds - into the
 // corners after the drop and the big jump faster than it ever drives there, and the tyres' grip doesn't grow with the
@@ -105,7 +108,17 @@ const K = {
   turboAccel: 31, // ... pushing this hard (u/s^2; the magic max's x turbo4; a booster's push is boostAccel)
   turbo4: 1.3,
   boostAccel: 45,
-  boostCap: 2, // s (a turbo stacked onto another; the magic max's alone runs its full boost4)
+  // One shared boost tank: a booster pad, a drift's mini-turbo and a PERFECT landing each add their time to it - nothing
+  // overwrites or wastes another, and there's no cap. It burns its strongest first - a booster's push (boostAccel),
+  // then a magic max's (turboAccel x turbo4), then a mini-turbo's (turboAccel) - so on its own each source pushes
+  // exactly as hard and as long as it always did. The stack is how many boosts are in the running tank (1 for a lone
+  // one; the state's boostStack): each one added while the tank still runs raises the boost's top speed (vboost) by
+  // stackSpeed - x1 56, x2 60, x3 64 u/s ... with no limit: a run of pads stacked up throws the car as fast and as far
+  // as the physics says (a stacked boost into a jump can overshoot its landing: that's the player's call). The bonus
+  // fades out over the tank's last stackFade s and the stack is gone once it's empty. A respawn's second of push tops
+  // the tank up without stacking.
+  stackSpeed: 4, // u/s per boost stacked
+  stackFade: 1, // s
   padBoost: 1, // s
   padKick: 8, // a booster adds this (u/s; it never sets a speed)
   // surfaces, as multipliers on the plastic numbers above, blended as the wheels cross from one to the next
@@ -166,7 +179,8 @@ const K = {
   airPitch: 6, // per s: in the air the nose follows the flight path, so a long arc noses over with it ...
   airLevel: 3, // ... and over its last half second the car levels itself to the track it lands on ...
   airTurn: 1.5, // ... turning (pitch and roll) at most this fast (rad/s): never a flip
-  airMax: 4.5, // s: lost in the air (the big jump's flight is ~2-2.5 s)
+  airMax: 60, // s: lost in the air - only a safety net: a flight comes down on the track or the ground by itself, however
+  // long stacked boosts throw it (the big jump's flight is ~2.3 s, the sky jump's ~3.3 s)
   perfectDeg: 12, // landing within this: PERFECT (+ boost)
   okDeg: 35, // within this: ok, keep okKeep of the speed; worse: badKeep and a wobble
   perfectBoost: 0.5,
@@ -340,8 +354,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   // (the profile rides on the state, read-only, for a driver that plans ahead: the autopilot)
   const state: VehicleState & { readonly profile: Readonly<Profile> } = {
     position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), velocity: new THREE.Vector3(), speed: 0,
-    steerVisual: 0, wheelSpinRate: 0, slip: 0, drifting: false, driftTier: 0, boosting: false, grounded: true,
-    accelLocal: new THREE.Vector3(), trackS: 0, lapDelta: 0, events: {}, wrongWay: false, profile: P,
+    steerVisual: 0, wheelSpinRate: 0, slip: 0, drifting: false, driftTier: 0, boosting: false, boostStack: 0,
+    grounded: true, accelLocal: new THREE.Vector3(), trackS: 0, lapDelta: 0, events: {}, wrongWay: false, profile: P,
   };
 
   // scratch (no allocation per step)
@@ -361,8 +375,9 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   // the slide: how far the rear has let go (0 grip .. 1 loose); a drift's time loose, time straight, whether it has
   // slid yet; a drift that ended spun gets no help coming round
   let slide = 0, looseT = 0, straightT = 0, slid = false, spun = false, settleT = 0;
-  // s left of a booster's (or a landing's) push, of a drift's mini-turbo (and that one's strength: the magic max's)
-  let boost = 0, turbo = 0, turboK = 1, onPad = false;
+  // the boost tank, by strength (burnt strongest first): s left of a booster's (or a landing's, a respawn's) push, of a
+  // magic max's mini-turbo, of a drift's mini-turbo; how many boosts are in it (the stack)
+  let boost = 0, magic = 0, turbo = 0, stack = 0, onPad = false;
   let safeS = 0, safeV = 0, vPrev = 0, steerVis = 0, spin = 0, aY = 0;
   // walls: the yaw a hit kicked in (it dies away by itself, apart from the steering's omega), the stun and spin-out
   // timers, how far the slip may go (a hit can leave it past slipMax), time since the corner last touched a wall
@@ -504,8 +519,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     drifting = slid = spun = false;
     tier = 0;
     charge = 0;
-    slide = looseT = straightT = settleT = turbo = 0;
-    turboK = 1;
+    slide = looseT = straightT = settleT = turbo = magic = 0;
+    stack = 0;
     aY = 0;
     kick = stunT = spinT = airYawRate = hayT = sag = 0;
     slipLim = K.slipMax * DEG;
@@ -556,7 +571,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     place(rs);
     const top = K.vtop * P.top;
     v = vPrev = clamp(safeV, K.respawnSpeed * top, top);
-    boost = Math.max(boost, 1);
+    boost = 1; // a second of push (a fresh tank: what was left of the old one doesn't come along)
+    stack = 1;
     pressT = 0;
     poseGround(fM);
     state.events.respawn = true;
@@ -582,14 +598,23 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (Math.abs(steer) >= K.driftSteer) omega += Math.sign(steer) * K.driftKick;
   }
 
+  /** Add t s of boost to the tank: kind 0 a booster's push (pads, landings), 1 a magic max's, 2 a mini-turbo's. On top
+   *  of a running tank it's a stack (a higher top speed: see stackSpeed). */
+  function addBoost(kind: 0 | 1 | 2, t: number) {
+    stack = boost + magic + turbo > 0 ? Math.max(1, stack) + 1 : 1;
+    if (stack > 1) state.events.stackUp = stack;
+    if (kind === 0) boost += t;
+    else if (kind === 1) magic += t;
+    else turbo += t;
+    state.events.boostStart = true;
+  }
+
   /** The drift is over (reward: cash the sparks in as a mini-turbo - the magic max's longer and stronger); the rear
    *  grips up again over driftOut. */
   function endDrift(reward: boolean) {
     if (reward && tier > 0) {
       const b = tier === 4 ? K.boost4 : tier === 3 ? K.boost3 : tier === 2 ? K.boost2 : K.boost1;
-      turboK = Math.max(turbo > 0 ? turboK : 1, tier === 4 ? K.turbo4 : 1);
-      turbo = Math.min(Math.max(K.boostCap, b), turbo + b);
-      state.events.boostStart = true;
+      addBoost(tier === 4 ? 1 : 2, b);
     }
     drifting = false;
     tier = 0;
@@ -740,9 +765,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       // graded on the worse of tilt (car up vs track up) and yaw (nose vs flight path)
       const err = Math.max(Math.acos(clamp(up.dot(f.up), -1, 1)), Math.abs(b)) / DEG;
       if (err <= K.perfectDeg) {
-        boost = Math.min(K.boostCap, boost + K.perfectBoost);
+        addBoost(0, K.perfectBoost);
         ev.perfectLanding = true;
-        ev.boostStart = true;
       } else if (err <= K.okDeg) v *= K.okKeep;
       else {
         v *= K.badKeep;
@@ -959,15 +983,17 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       a += drive * thr * K.accel * P.pull * (1 - x ** P.rev) * (1 - P.spool * (1 - smooth(0.1, 0.5, x)));
     }
     if (brk > 0 && v < 0.5) a -= brk * K.accel * 0.5 * Math.max(0, 1 + v / K.reverse); // reverse
-    // a booster's push, or a drift's mini-turbo
-    const push = boost > 0 ? K.boostAccel : turbo > 0 ? K.turboAccel * turboK : 0;
-    if (push > 0 && v > -0.5) a += drive * push * Math.max(0, 1 - (v / (K.vboost * sCap)) ** 2);
+    // the tank's push (its strongest part: a booster's, a magic max's, a mini-turbo's), up to the boost's top speed -
+    // higher per boost stacked in it, fading back over its last stackFade s
+    const push = boost > 0 ? K.boostAccel : magic > 0 ? K.turboAccel * K.turbo4 : turbo > 0 ? K.turboAccel : 0;
+    const vb = K.vboost + K.stackSpeed * Math.max(0, stack - 1) * Math.min(1, (boost + magic + turbo) / K.stackFade);
+    if (push > 0 && v > -0.5) a += drive * push * Math.max(0, 1 - (v / (vb * sCap)) ** 2);
     let fr = c * Math.abs(Math.sin(beta)) * av; // friction-like: never reverses the motion
     fr += (1 - thr) * (K.coast + K.drag * v * v); // part throttle: a lower top speed
     fr += sDrag * av;
     if (brk > 0 && v > 0.5) fr += K.brake * P.brake * brk;
     if (thr > 0 && v < -0.5) fr += K.brake * P.brake * thr;
-    const lim = push > 0 ? Math.max(K.vboost, top) : top, cap = lim * sCap;
+    const lim = push > 0 ? Math.max(vb, top) : top, cap = lim * sCap;
     if (av > cap) fr += K.overspeed * Math.min(1, (1 - sCap) / Math.max(K.overFull, 1e-3)) * (Math.min(av, lim) - cap);
     if (av > lim) fr += P.aero * (av - lim) * (K.airLin + K.airDrag * (av + lim));
     v += a * h;
@@ -1086,8 +1112,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const pad = tag === 'booster' && (!narrow || overPad(s, d));
     if (pad && !onPad && v > 0) {
       v += K.padKick;
-      boost = Math.min(K.boostCap, Math.max(boost, K.padBoost));
-      ev.boostStart = true;
+      addBoost(0, K.padBoost);
     }
     onPad = pad;
 
@@ -1131,6 +1156,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     reset(s0: number) {
       place(s0);
       boost = 0;
+      state.boostStack = 0;
       pressT = 0;
       held = false;
       safeS = s;
@@ -1159,8 +1185,15 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       if (respawnIn > 0 && (respawnIn -= h) <= 0) respawn();
       else if (grounded) groundStep(h, inp);
       else airStep(h, inp);
-      if (boost > 0) boost = Math.max(0, boost - h);
-      if (turbo > 0) turbo = Math.max(0, turbo - h);
+      // the tank burns its strongest part first; empty, the stack is gone
+      let burn = h, x = Math.min(boost, burn);
+      boost -= x;
+      burn -= x;
+      x = Math.min(magic, burn);
+      magic -= x;
+      burn -= x;
+      turbo = Math.max(0, turbo - burn);
+      if (boost + magic + turbo <= 0) stack = 0;
       if (pressT > 0) pressT = Math.max(0, pressT - h);
       // a hit's yaw dies away (slower through a spin-out); the stun and spin wear off
       kick *= Math.exp(-h / (spinT > 0 ? K.spinTime * 0.5 : K.wallYawTime));
@@ -1185,7 +1218,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       state.slip = grounded ? beta : 0;
       state.drifting = drifting;
       state.driftTier = tier;
-      state.boosting = boost > 0 || turbo > 0;
+      state.boosting = boost > 0 || magic > 0 || turbo > 0;
+      state.boostStack = stack;
       state.grounded = grounded || !shown; // (a hop skimming the surface still counts as on it)
       state.steerVisual = steerVis;
       state.wheelSpinRate = spin;

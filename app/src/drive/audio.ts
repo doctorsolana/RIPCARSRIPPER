@@ -26,8 +26,8 @@ import type { CarSpec, DriveInput, Track, TrackFrame, VehicleState } from './typ
 //            verge    a low rumble wobbling over the bumps, and a soft swish of grass (a ~0.8 kHz band, in waves)
 //   joints   THE Hot Wheels sound, on the plastic only: a round plastic 'tock' (~1.4 kHz over a hollow ~0.56 kHz,
 //            three pitches, every hit a little different) per axle each time trackS crosses a multiple of 17 u where
-//            the 8 u channel has a connector (track 2: wherever its plastic has one, its wide decks too - track.ts
-//            channelGeometry), front then rear a wheelbase later; the rhythm is a speedometer, in the background
+//            the 8 u channel has a connector (track 2: wherever its plastic has one, its wide decks too -
+//            tracks/channel.ts channelGeometry), front then rear a wheelbase later; the rhythm is a speedometer, in the background
 //   squeal   band-passed noise x smoothstep(4 deg, 20 deg, |slip|) on plastic and asphalt; a slide on dirt or
 //            grass is a heavier crunch / rumble instead
 //   scrape   a corner held on a wall while the car runs along it: noise through two resonances set by the
@@ -56,7 +56,7 @@ export interface DriveAudio {
   setCar(car: CarSpec): void;
 }
 
-const JOINT = 17; // u between track connectors (track.ts's tabEvery) ...
+const JOINT = 17; // u between track connectors (tracks/kit.ts's tabEvery) ...
 const CHANNEL = 8; // ... which sit where the plastic is its plain 8 u channel (not the funnels out to a road)
 const WHEELBASE = 2.3; // u between the axles (all three cars are 2.26-2.39)
 const HALF_L = 2, HALF_W = 0.8, TYRE_Y = 0.62; // u: the cars' footprint (~4 x 1.5-1.65) and their tyres off the centre
@@ -683,7 +683,7 @@ function build(ctx: BaseAudioContext, muted: boolean) {
 
   return {
     master, mute, white, wander, humF, humG, road, roadF, roadG, dirt, dirtF, dirtG, crunchG, grassF, grassG,
-    swishG, sqG, sqF1, sqF2, scF1, scF2, scG, jetG, windF, windG, windLowF, windLowG, whistleF, whistleG,
+    swishG, sqG, sqF1, sqF2, scF1, scF2, scG, jetF, jetG, windF, windG, windLowF, windLowG, whistleF, whistleG,
     pops: [0, 1, 2].map((kind) => [0, 1, 2].map((k) => render(ctx, [0.05, 0.1, 0.18][kind], popFn(kind, k), 0.9, 0x4c1d + 31 * kind + 7 * k))),
     tick: render(ctx, 0.03, tickFn, 0.9),
     tock: [1300, 1420, 1560].map((f, i) => render(ctx, 0.03, tockFn(f), 0.9, 0x2f6b + i)),
@@ -874,7 +874,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     return false;
   }
 
-  /** A connector at f (track.ts channelGeometry: on the 8 u channel - on track 2 on any plastic, but not within 3 u of
+  /** A connector at f (tracks/channel.ts channelGeometry: on the 8 u channel - on track 2 on any plastic, but not within 3 u of
    *  where a piece ends (at a jump's gap or a road), nor where a wide deck twists as a bank eases in or out). */
   const isJoint = (f: TrackFrame) => {
     if (f.surface !== 'plastic') return false;
@@ -904,7 +904,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     const lim = f.edge === 'grass' ? half + Math.max(0, f.shoulder || 0) : half;
     const reach = HALF_L * Math.abs(nose.dot(f.right)) + HALF_W * Math.abs(side.dot(f.right));
     wallGap = Math.min(lim - d - reach, lim + d - reach);
-    // track.ts lines the far edge of every verge with hay bales: they sound like the dirt's (SOFT, a bare grass limit,
+    // tracks/props.ts lines the far edge of every verge with hay bales: they sound like the dirt's (SOFT, a bare grass limit,
     // is kept for a course without them)
     wallMat = f.edge === 'grass' || (f.edge === 'barrier' && f.surface === 'dirt') ? HAY : f.edge === 'barrier' ? TYRE : RAIL;
     vAlong = Math.abs(state.velocity.dot(f.t));
@@ -940,6 +940,8 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       slip = Math.max(slip, Math.min(off, Math.PI - off));
     }
     const slipDeg = slip / DEG, slide = smoothstep(6, 26, slipDeg);
+    // boosts stacked in the tank (x2, x3 ...): 0 for one, toward 1 for many - the hiss and the engine louder
+    const heat = state.boosting ? 1 - 0.65 ** Math.max(0, state.boostStack - 1) : 0;
 
     // Engine: the revs from the wheels (their spin: wheelspin, and free in the air) through the car's gearbox; the
     // load from the throttle (cut in a shift, stabbed by a blip); the turbo's boost; then the voice's controls.
@@ -1033,7 +1035,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       eng.rasp.gain.setTargetAtTime(P.body[P.body.length - 1][2] * (0.25 + 0.75 * lo), now, 0.05);
       eng.lp.frequency.setTargetAtTime(P.lp[0] + (P.lp[1] - P.lp[0]) * lo ** 1.3 * (0.3 + 0.7 * rpmN) + 900 * xc, now, 0.03);
       eng.drive.gain.setTargetAtTime(0.14 + 0.12 * lo, now, 0.03);
-      eng.out.gain.setTargetAtTime(P.level * (0.36 + 0.64 * lo ** 0.8) * (0.55 + 0.45 * rpmN) * (1 + 0.4 * xc) * (1 + 2.5 * hunt), now, 0.03);
+      eng.out.gain.setTargetAtTime(P.level * (0.36 + 0.64 * lo ** 0.8) * (0.55 + 0.45 * rpmN) * (1 + 0.4 * xc) * (1 + 2.5 * hunt) * (1 + 0.35 * heat), now, 0.03);
       if (eng.whistle && eng.wG && eng.hG) {
         eng.whistle.frequency.setTargetAtTime(1200 + 1700 * boost * (0.6 + 0.4 * rpmN), now, 0.05);
         eng.wG.gain.setTargetAtTime(0.025 * P.level * P.turbo * boost * boost, now, 0.05);
@@ -1077,7 +1079,8 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     }
     g.scG.gain.setTargetAtTime(0.22 * scr * SCRAPE[wallMat][4], now, scr > 0 ? 0.03 : 0.08);
 
-    g.jetG.gain.setTargetAtTime(state.boosting ? 0.07 : 0, now, state.boosting ? 0.03 : 0.15);
+    g.jetG.gain.setTargetAtTime(state.boosting ? 0.07 * (1 + 1.2 * heat) : 0, now, state.boosting ? 0.03 : 0.15);
+    g.jetF.frequency.setTargetAtTime(1400 * (1 + 0.6 * heat), now, 0.1);
 
     // Wind: builds with time aloft and speed (a hop barely breathes, the big jump howls); cut on touchdown.
     const wk = grounded ? 0 : smoothstep(0.08, 1.6, airT) * clamp(v / 48, 0.3, 1.25), wt = grounded ? 0.05 : 0.25;
@@ -1098,6 +1101,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       tone(64, now, 0.85, 0.55, 'sine', 30);
       tone(128, now, 0.25, 0.35, 'sine', 60); // so phone speakers hear the whump
       whoosh(now, 0.3, 350, 2600, 0.6);
+      if (ev.stackUp) whoosh(now + 0.05, 0.35, 700, 3600 + 300 * Math.min(6, ev.stackUp), 0.55); // a stack: a rising rush on top
     }
     // Lift-off: a soft whoosh at speed; off a big jump's lip, the roar.
     if (ev.airborne && !grounded) {
@@ -1214,7 +1218,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     },
     setTrack(t: Track) {
       track = t;
-      wideTabs = (t.object.userData as { course?: string }).course === 'sky';
+      wideTabs = t.look?.wide ?? false;
       lips.length = 0;
       for (const b of t.tags) if (b.tag === 'bigjump') lips.push(b.s0, b.s1);
     },
