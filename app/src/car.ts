@@ -91,7 +91,8 @@ export class Frame {
 }
 
 // ---- material: one shader for every car part ------------------------------------------------------
-// diffuse = mix(paint|glass, texture, sideness·uTex). uReveal blacks it out (silhouette stage), uRim adds
+// diffuse = mix(paint|glass, texture, sideness·uTex). uReveal 0 turns it into a matte light-grey ghost - the
+// silhouette stage: the shape lit, no paint, decals or chrome (a mystery challenger) - and 1 is the car; uRim adds
 // a fresnel edge glow, uTex fades the texture in (profile reveal), and uUnlit swaps the final lit colour
 // for the raw pack-photo texel so the hand-off to the real photo is seamless. The procedural car's
 // texture *is* the photo; a modelled car instead gets the photo projected through the final camera
@@ -158,6 +159,7 @@ export function carMaterial(
         uniform vec3 uPaint; uniform vec3 uGlass; uniform float uReveal; uniform float uUnlit;
         uniform float uRim; uniform vec3 uRimColor; uniform float uTex;
         varying float vSide; varying float vGlass;
+        #define REVEAL_GHOST vec3(0.8, 0.84, 0.9) // the unrevealed car: a cool light grey (linear, before tone mapping)
         vec3 gTexel;
         #ifdef PHOTO_PROJ
           uniform sampler2D uPhotoMap; varying vec2 vPhotoUv;
@@ -167,13 +169,18 @@ export function carMaterial(
         '#include <map_fragment>',
         `#include <map_fragment>
         gTexel = diffuseColor.rgb;
-        diffuseColor.rgb = mix(mix(uPaint, uGlass, vGlass), gTexel, vSide * uTex) * uReveal;`,
+        diffuseColor.rgb = mix(REVEAL_GHOST, mix(mix(uPaint, uGlass, vGlass), gTexel, vSide * uTex), uReveal);`,
       )
       // The photo already has its own reflections baked in, so photo-textured surfaces get less metal.
-      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= mix(1.0, 0.3, vSide * uTex);')
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= mix(1.0, 0.3, vSide * uTex) * uReveal;')
+      // ...and the ghost is matte: no chrome or paint gloss until it's revealed
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.75, roughnessFactor, uReveal);')
       .replace(
         '#include <opaque_fragment>',
-        `outgoingLight += uRimColor * uRim * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 4.0);
+        `// the unrevealed ghost lights itself: an even light grey, brightest where it faces the camera, softer toward the
+        // edges (where the rim takes over) - it reads as a shape, the same whatever the scene's lights are doing
+        outgoingLight = mix(REVEAL_GHOST * (0.62 + 0.5 * pow(saturate(dot(normal, normalize(vViewPosition))), 0.7)), outgoingLight, uReveal);
+        outgoingLight += uRimColor * uRim * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 4.0);
         #include <opaque_fragment>`,
       )
       .replace(

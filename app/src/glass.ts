@@ -27,7 +27,12 @@ function patch(m: THREE.MeshStandardMaterial, mode: 'body' | 'glass', opacity: n
         : `if (glassMask < 0.5) discard;
            float dark = step(0.095, glassR);
            diffuseColor.rgb = mix(${TINT}, ${DARK_TINT}, dark);
-           diffuseColor.a *= mix(${opacity.toFixed(3)}, ${DARK_OPACITY.toFixed(3)}, dark);`}
+           diffuseColor.a *= mix(${opacity.toFixed(3)}, ${DARK_OPACITY.toFixed(3)}, dark);
+           #ifdef REVEAL_GHOST
+             // the reveal's unrevealed ghost: the windows are part of the one light-grey shape
+             diffuseColor.rgb = mix(REVEAL_GHOST, diffuseColor.rgb, uReveal);
+             diffuseColor.a = mix(1.0, diffuseColor.a, uReveal);
+           #endif`}
       #include <alphamap_fragment>`,
     );
   };
