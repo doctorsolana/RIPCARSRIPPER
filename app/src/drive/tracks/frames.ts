@@ -107,6 +107,7 @@ function settle(P: Path, wide = false) {
   };
   for (const g of P.tags) { g.s0 = remap(g.s0); g.s1 = remap(g.s1); }
   for (const g of P.sup) { g.s0 = remap(g.s0); g.s1 = remap(g.s1); }
+  for (const g of P.splits) { g.s0 = remap(g.s0); g.s1 = remap(g.s1); }
   for (const k of keys) k.s = remap(Math.min(k.s, L));
   P.keys = keys;
 }
@@ -157,5 +158,5 @@ export function framesOf(course: Course) {
   for (let i = 0; i < N; i++) minDot = Math.min(minDot, frames[i].up.dot(frames[(i + 1) % N].up));
   if (minDot <= 0.99) console.warn(`track: neighbouring up vectors diverge (min dot ${minDot.toFixed(4)})`);
   if (seam.pos > 1e-3 || seam.tan > 1e-4 || seam.up > 1e-4) console.warn('track: lap does not close', seam);
-  return { frames, L, N, ds, tags: P.tags, sup: P.sup, keys: P.keys, seam, minDot, free: { A, B }, turned };
+  return { frames, L, N, ds, tags: P.tags, sup: P.sup, keys: P.keys, splits: P.splits, seam, minDot, free: { A, B }, turned };
 }

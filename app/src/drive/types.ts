@@ -58,13 +58,36 @@ export interface Track {
   readonly object: THREE.Object3D; // the track's meshes (channel, tabs, boosters)
   readonly collider: { positions: Float32Array; indices: Uint32Array }; // channel surface + rails (for a physics engine)
   // tagged ranges along s; a booster with d0..d1 (lateral, + right) is a narrow pad: only a car over it boosts (none:
-  // the pad spans the track)
-  readonly tags: { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number }[];
+  // the pad spans the track); one with a `lane` belongs to that lane of a split (track.split) alone
+  readonly tags: { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number; lane?: -1 | 1 }[];
   readonly start: number; // s of the start line (in the gate)
   frameAt(s: number, out?: TrackFrame): TrackFrame; // interpolated frame at s (wraps)
   nearest(p: THREE.Vector3, hintS: number, window?: number): { s: number; frame: TrackFrame; offset: THREE.Vector3 }; // search near hintS
-  tagAt(s: number): TrackTag | null;
+  /** The tag at s (the shortest span there). A lane's own tags (`lane`) count only when asked for that lane. */
+  tagAt(s: number, lane?: number): TrackTag | null;
+  /** Where the track splits into two lanes side by side round an island (track 2's sky bridge); none on the meadow. */
+  readonly split?: TrackSplit;
   readonly look?: TrackLook; // how the world, camera and audio dress this course (none: the meadow's)
+}
+
+/** A lane split (tracks/split.ts): over s0..s1 the track (its full width) is two lanes, left (-1) and right (+1),
+ *  either side of an island - a gap between two separate channels, whose inner rails are walls - that opens from a
+ *  point (`nose`) and closes to one (`tail`). Lateral offsets stay the track's own (d across the centre line); each
+ *  lane can rise off the deck on its own (its jump: `lift`), and tags with a `lane` are that lane's. */
+export interface TrackSplit {
+  readonly s0: number; // a car is in one lane or the other from s0 (just before the nose) to s1 (just past the tail)
+  readonly s1: number;
+  readonly nose: number; // s of the island's points
+  readonly tail: number;
+  /** The island's half-width at s (its rails' faces stand at +-island): < 0 just before the nose and after the tail
+   *  (where its point is still ahead, or behind: the wedge's line carried on), -Infinity off the split. */
+  island(s: number): number;
+  /** d island / ds at s. */
+  slope(s: number): number;
+  /** |d| of a lane's line at s: the middle of its own width off the island (a catch tray widens it outward). */
+  centre(s: number): number;
+  /** The lane's rise off the deck at s (h u, pitch th, dth/ds); false where it lies flat on the deck. */
+  lift(lane: number, s: number, out: { h: number; th: number; dth: number }): boolean;
 }
 
 export interface VehicleEvents {

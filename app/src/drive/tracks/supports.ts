@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { TrackFrame } from '../types';
+import type { TrackFrame, TrackSplit } from '../types';
 import { BASE, LIP, newFrame, rng, v3, type FrameAt, type Range, type Span } from './kit.ts';
 import { BLUE, BLUE2, GREY, METAL, ORANGE, STONE, STONE2, TIMBER, WOOD, Geo, basis, beam, box, column, prism } from './geo.ts';
 
@@ -23,7 +23,7 @@ export interface Stack { x: number; z: number; ax: number; az: number; hx: numbe
  *  blue). `start`: the start line's s (the start tower's middle bent); a kind not built in is the course's own (`hooks`).
  *  Returns the world-shadow hints: `posts` are the centre-line points over each support. */
 export function supports(G: Geo, frameAt: FrameAt, sup: Range<Support>[], tags: Span[], metal: THREE.Color = METAL, frames: TrackFrame[] = [],
-  start = 0, hooks: Record<string, SupportHook> = {}) {
+  start = 0, hooks: Record<string, SupportHook> = {}, split?: TrackSplit) {
   const f = newFrame(), m = new THREE.Matrix4(), a = v3(), b = v3(), r = rng(29);
   const posts: [number, number][] = [];
   const bottom = (h: TrackFrame) => h.p.y - BASE * h.up.y; // underside of the channel
@@ -188,7 +188,10 @@ export function supports(G: Geo, frameAt: FrameAt, sup: Range<Support>[], tags: 
         posts.push([f.p.x, f.p.z]);
       }
     } else if (sp.kind === 'pylons') pylons(G, frameAt, sp, posts);
-    else if (sp.kind === 'stilts') stilts(G, frameAt, sp, inGap, posts, frames);
+    else if (sp.kind === 'stilts') {
+      // (a split's lanes stand on their own stilts: tracks/build.ts)
+      stilts(G, frameAt, sp, split ? (s, pad) => inGap(s, pad) || (s > split.nose - 2 && s < split.tail + 2) : inGap, posts, frames);
+    }
     else if (sp.kind === 'climb') climbRig(G, frameAt, sp, frames, posts);
     else if (sp.kind === 'loop') {
       // Two poles hold the loop at its front and back (outside the channel), clamped to its base.

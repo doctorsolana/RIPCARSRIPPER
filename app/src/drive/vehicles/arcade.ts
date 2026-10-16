@@ -189,6 +189,7 @@ const K = {
   respawnBack: 24, // u behind the last safe spot ...
   respawnClear: 60, // ... with this much track before a booster (not a narrow one), kicker or gap (time to line up: no
   // miss loop) - and never inside a big jump's in-run (tag 'inrun'): back to its top ...
+  respawnLane: 40, // ... (in a split's lane, this much: put back in the middle of the lane, lined up)
   respawnSpeed: 0.75, // ... at least this x vtop, plus a second of boost
   wrongTime: 1, // s driving nose first against the lap direction: WRONG WAY ...
   wrongRespawn: 4, // ... and after this long, put back on the track facing the right way
@@ -389,7 +390,17 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   // this flight is a hop off a crest (not a jump), shown yet as airborne; s on the ground since landing
   let hop = false, shown = true, groundT = 0;
 
-  /** The track frame at s, written into `o` (whatever frameAt does with `out`). */
+  // A lane split (track.split: track 2's sky bridge, two channels either side of an island): the car's lane (-1 left,
+  // +1 right, 0 none) - taken by the side it's on as it reaches the island's point and kept to the far end (laneAt) -
+  // whose tags are the car's (tagL) and whose lift off the deck (its own jump) the frames under the car carry (frame).
+  // The island's faces are walls like any rail (wallHit); d stays the track's own, across its centre line.
+  const SP = track.split;
+  let lane = 0, safeLane = 0;
+  const lq = { h: 0, th: 0, dth: 0 }, vL = new THREE.Vector3();
+  const tagL = (ss: number) => track.tagAt(ss, lane);
+
+  /** The track frame at s, written into `o` (whatever frameAt does with `out`) - in a split, the car's lane's surface
+   *  (raised onto its jump, pitched with it). */
   function frame(ss: number, o: TrackFrame): TrackFrame {
     const f = track.frameAt(ss, o);
     if (f !== o) {
@@ -405,7 +416,24 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       o.edge = f.edge;
       o.shoulder = f.shoulder;
     }
+    if (lane !== 0 && SP!.lift(lane, ss, lq)) {
+      const c = Math.cos(lq.th), sn = Math.sin(lq.th);
+      o.p.addScaledVector(o.up, lq.h);
+      vL.copy(o.t);
+      o.t.multiplyScalar(c).addScaledVector(o.up, sn);
+      o.up.multiplyScalar(c).addScaledVector(vL, -sn);
+      o.kappaN -= lq.dth * c; // (+: a crest)
+    }
     return o;
+  }
+
+  /** In a split, which lane: the side the car is on as it reaches the island's point; in the air, the other one once it
+   *  is over it (past the island); off the split, none. */
+  function laneAt() {
+    if (!SP) return;
+    if (s < SP.s0 || s > SP.s1) lane = 0;
+    else if (lane === 0) lane = d < 0 ? -1 : 1;
+    else if (!grounded && d * lane < -Math.max(0, SP.island(s))) lane = -lane;
   }
 
   /** How far s1 lies ahead of s0 along the lap (0 .. LEN). */
@@ -431,7 +459,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   function overPad(ss: number, dd: number) {
     for (let i = 0; i < pads.length; i++) {
       const g = pads[i];
-      if (ahead(g.s0, ss) < g.s1 - g.s0 && (g.d0 === undefined || (dd >= g.d0 && dd <= (g.d1 ?? g.d0)))) return true;
+      if (ahead(g.s0, ss) < g.s1 - g.s0 && (g.d0 === undefined || (dd >= g.d0 && dd <= (g.d1 ?? g.d0))) && (g.lane === undefined || g.lane === lane)) return true;
     }
     return false;
   }
@@ -513,6 +541,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     grounded = true;
     falling = false;
     respawnIn = airTime = stuck = wrongT = 0;
+    lane = 0;
     hop = false;
     shown = true;
     groundT = 0;
@@ -525,7 +554,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     kick = stunT = spinT = airYawRate = hayT = sag = 0;
     slipLim = K.slipMax * DEG;
     wallAgo = 1;
-    onPad = track.tagAt(s) === 'booster';
+    onPad = tagL(s) === 'booster';
     poseGround(frame(s, fM));
     surfaceAt(fM, 0);
     accBase.set(0, 0, 0);
@@ -544,6 +573,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     let over: { s0: number; s1: number } | null = null;
     for (const c of climbs) if (ahead(c.s1, safeS) < 120) over = c;
     let rs = wrapS(safeS - K.respawnBack);
+    lane = safeLane; // (a lane's jump is that lane's: stepping back clear of it, and put back in that lane)
     for (let i = 0; i < 120; i++) {
       if (landed && ahead(landed.lip, rs) < ahead(landed.lip, landed.end) + 2) {
         rs = wrapS(landed.end + 2);
@@ -558,21 +588,33 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
         rs = wrapS(run.s0 - 4); // the whole in-run again, from the top
         continue;
       }
-      const tg = track.tagAt(rs);
+      const tg = tagL(rs);
       let ok = frame(rs, fA).up.y > 0.8 && tg !== 'gap' && tg !== 'kicker' && tg !== 'loop' && tg !== 'climb' && tg !== 'bigjump' &&
         tg !== 'booster';
-      for (let x = 4; ok && x <= K.respawnClear; x += 4) {
-        const tx = track.tagAt(rs + x);
+      // (in a split's lane - or just before the island, on its side - the car is put back in the middle of it, lined
+      // up: a clear run of respawnLane is enough before that lane's kicker)
+      const clear = safeLane !== 0 && rs >= SP!.s0 - K.respawnLane && rs <= SP!.s1 ? K.respawnLane : K.respawnClear;
+      for (let x = 4; ok && x <= clear; x += 4) {
+        const tx = tagL(rs + x);
         ok = tx !== 'kicker' && tx !== 'gap' && tx !== 'bigjump' && tx !== 'climb' && (tx !== 'booster' || (narrow && !widePadAt(rs + x)));
       }
       if (ok) break;
       rs = wrapS(rs - 2);
     }
     place(rs);
+    let inLane = false;
+    if (SP && safeLane !== 0 && rs > SP.s0 - K.respawnClear && rs < SP.s1) {
+      // in a split: in the middle of the lane it was in (never on the island), or on its way to it before the point
+      lane = rs >= SP.s0 ? safeLane : 0;
+      d = safeLane * Math.min(SP.centre(rs), frame(rs, fM).width / 2 - 2);
+      inLane = true;
+    }
     const top = K.vtop * P.top;
     v = vPrev = clamp(safeV, K.respawnSpeed * top, top);
-    boost = 1; // a second of push (a fresh tank: what was left of the old one doesn't come along)
-    stack = 1;
+    // a second of push (a fresh tank: what was left of the old one doesn't come along) - but not in a split's lane, put
+    // back a short run before its jump: there it goes at its own pace (a boost would throw it past the landing)
+    boost = inLane ? 0 : 1;
+    stack = inLane ? 0 : 1;
     pressT = 0;
     poseGround(fM);
     state.events.respawn = true;
@@ -698,6 +740,19 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     }
   }
 
+  /** A wall hit on `side` (impact): an island's face in a split stands at an angle to the track where it opens or closes
+   *  (its point's wedge) - the hit is taken square to that face, so a nose-on hit glances off it to one side. */
+  function wallHit(side: number, f: TrackFrame, vT: number, vR: number, yawRel: number) {
+    if (lane === 0 || side !== -lane) return impact(side, f, vT, vR, yawRel);
+    const g = Math.atan(lane * SP!.slope(s)), c = Math.cos(g), sn = Math.sin(g), p0 = psi;
+    psi -= g;
+    impact(side, f, vT * c + vR * sn, vR * c - vT * sn, yawRel);
+    psi = p0;
+    const t = oT;
+    oT = t * c - oR * sn;
+    oR = t * sn + oR * c;
+  }
+
   /** Leave the surface with the current pose and velocity - exactly what the car brought, nothing added. A drift held
    *  carries on when it lands; one being let go of is over. A hop off a crest only shows as airborne
    *  once it's clear of the surface (airStep). */
@@ -731,7 +786,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
         ss = wrapS(ss + ds);
         f = frame(ss, fL);
       }
-      if (track.tagAt(ss) !== 'gap' && preO.subVectors(preP, f.p).dot(f.up) <= geo.ride) return t;
+      if (tagL(ss) !== 'gap' && preO.subVectors(preP, f.p).dot(f.up) <= geo.ride) return t;
     }
     return Infinity;
   }
@@ -784,6 +839,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const ext = geo.hl * Math.abs(Math.sin(psi)) + geo.hw * Math.abs(Math.cos(psi));
     const dMax = Math.max(0, limitOf(f) - ext);
     d = clamp(d, -dMax, dMax);
+    if (lane !== 0) d = lane < 0 ? Math.min(d, -SP!.island(s) - ext) : Math.max(d, SP!.island(s) + ext);
     poseGround(frame(s, fM));
   }
 
@@ -791,11 +847,18 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     airTime += h;
     airV.y -= K.g * h;
     airP.addScaledVector(airV, h);
-    const f = project(airP);
-    const off = v1.subVectors(airP, f.p);
+    let f = project(airP);
+    let off = v1.subVectors(airP, f.p);
     d = off.dot(f.right);
+    if (SP) {
+      const was = lane;
+      laneAt();
+      if (lane !== was) (f = frame(s, fM)), (off = v1.subVectors(airP, f.p));
+    }
     const hb = off.dot(f.up) - geo.ride; // tyres above the surface
-    const tag = track.tagAt(s);
+    const tag = tagL(s);
+    // (in a split, over the island: no surface under the car)
+    const deck = lane === 0 || lane * d >= SP!.island(s);
     if (!shown && (airTime >= K.hopShow || hb > K.hopClear)) {
       shown = true; // a hop clear of the surface: now it's in the air
       state.events.airborne = true;
@@ -842,13 +905,25 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
         impact(side, f, airV.dot(f.t), airV.dot(f.right), airYawRate);
         airV.copy(f.t).multiplyScalar(oT).addScaledVector(f.right, oR).addScaledVector(f.up, vN);
       }
+      // ... and the island's faces in a split
+      if (lane !== 0 && tag !== 'gap' && hb < wallH && hb > -0.6) {
+        const ext = geo.hl * Math.abs(Math.sin(psi)) + geo.hw * Math.abs(Math.cos(psi)), e = SP!.island(s);
+        const x = lane * d - (e + ext); // < 0: a corner past the island's face
+        if (x < 0 && lane * d > e - 0.4) {
+          airP.addScaledVector(f.right, -lane * x);
+          d -= lane * x;
+          const vN = airV.dot(f.up);
+          wallHit(-lane, f, airV.dot(f.t), airV.dot(f.right), airYawRate);
+          airV.copy(f.t).multiplyScalar(oT).addScaledVector(f.right, oR).addScaledVector(f.up, vN);
+        }
+      }
       // touchdown: on a surface (not over a gap), coming down onto it, within the edges (a verge counts)
-      if (tag !== 'gap' && hb <= 0 && hb > -0.75 && airTime > 0.05 && airV.dot(f.up) < 0 && Math.abs(d) <= lim) {
+      if (tag !== 'gap' && hb <= 0 && hb > -0.75 && airTime > 0.05 && airV.dot(f.up) < 0 && Math.abs(d) <= lim && deck) {
         land(f);
         return;
       }
       // missed the track: the ground, under a surface (short of a landing ramp: it would fall through it), or lost
-      if (airP.y < floorY || airTime > K.airMax || (tag !== 'gap' && hb <= -0.75 && Math.abs(d) <= lim)) {
+      if (airP.y < floorY || airTime > K.airMax || (tag !== 'gap' && hb <= -0.75 && Math.abs(d) <= lim && deck)) {
         falling = true;
         respawnIn = 0.6;
       }
@@ -872,7 +947,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     // ---- leave the surface? Only where the track means it to: over the gap off the kicker, or a loop's ceiling too
     // slow. Anywhere else the toy track's magnet holds the car over crests (no accidental jumps). The crest curvature
     // is averaged over the wheelbase (the axle frames of the last pose), so one kinked sample can't throw the car.
-    const tag0 = track.tagAt(s);
+    const tag0 = tagL(s);
     const vt = v * cph;
     const crest = (f.kappaN + fA.kappaN + fB.kappaN) / 3;
     const hold = g * f.up.y - vt * vt * crest + K.stick * g;
@@ -1059,11 +1134,14 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     phi = psi - beta;
     cph = Math.cos(phi);
     sph = Math.sin(phi);
-    const sdot = (v * cph) / Math.max(0.3, 1 - f.kappa * d);
+    // (a lane's jump: its surface runs longer than the track's s under it, by 1 / cos of its pitch)
+    const jac = lane !== 0 && SP!.lift(lane, s, lq) ? 1 / Math.cos(lq.th) : 1;
+    const sdot = (v * cph) / Math.max(0.3, 1 - f.kappa * d) / jac;
     s = wrapS(s + sdot * h);
     d += v * sph * h;
     const yawRel = omega + kick - f.kappa * sdot; // the car's turn against the track (and its walls)
     psi = wrapA(psi + yawRel * h);
+    laneAt();
     f = frame(s, fM);
 
     if (sag !== 0) d += sag * h; // (sliding down a steep bank)
@@ -1071,12 +1149,18 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     // ---- walls: the half-width the car needs depends on its heading; a corner past the edge's limit is on the wall
     const ext = geo.hl * Math.abs(Math.sin(psi)) + geo.hw * Math.abs(Math.cos(psi));
     const dMax = Math.max(0, limitOf(f) - ext);
-    if (d > dMax || d < -dMax) {
-      const side = d > 0 ? 1 : -1;
-      d = side * dMax;
+    let hi = dMax, lo = -dMax; // (in a split, the island's face is the lane's inner wall)
+    if (lane !== 0) {
+      const e = SP!.island(s) + ext;
+      if (lane < 0) hi = Math.min(hi, -e);
+      else lo = Math.max(lo, e);
+    }
+    if (d > hi || d < lo) {
+      const side = d > hi ? 1 : -1;
+      d = side > 0 ? hi : lo;
       if (sag * side > 0) sag = 0; // the rail stops the slide
       const ph = psi - beta;
-      impact(side, f, v * Math.cos(ph), v * Math.sin(ph), yawRel);
+      wallHit(side, f, v * Math.cos(ph), v * Math.sin(ph), yawRel);
       // back to speed and slip (a hit can turn the travel past side-on: then it's going backwards)
       const sp = Math.hypot(oT, oR);
       let b = sp > 1e-3 ? wrapA(psi - Math.atan2(oR, oT)) : 0, sg = 1;
@@ -1108,7 +1192,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     }
 
     // ---- boosters
-    const tag = track.tagAt(s);
+    const tag = tagL(s);
     const pad = tag === 'booster' && (!narrow || overPad(s, d));
     if (pad && !onPad && v > 0) {
       v += K.padKick;
@@ -1124,6 +1208,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (f.up.y > 0.8 && tag !== 'kicker' && tag !== 'loop' && tag !== 'climb' && Math.abs(psi) < 0.6 && v > 5 && Math.abs(d) < f.width * 0.5 && ctl > 0.99) {
       safeS = s;
       safeV = v;
+      safeLane = lane;
     }
     const crawl = sb > steep0 || sb < -steep0 ? K.wallCrawl : K.stuckSpeed; // (too slow to climb back up a wall)
     stuck = av3 < crawl && (f.up.y < 0.5 || thr > 0.5 || brk > 0.5) ? stuck + h : 0;

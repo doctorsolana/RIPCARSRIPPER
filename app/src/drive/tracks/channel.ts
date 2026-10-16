@@ -29,8 +29,22 @@ const TWIST = Number((globalThis as any).__TWIST ?? 0.75);
  *  the road's width, the big jump's landing ramp is a wide catch tray), the rails ramp down to nothing at a road and
  *  end square at a gap, where a striped lip plate thickens the edge. The blue connectors every 17 u of s go in the same
  *  mesh (vertex colours; the material is white). */
-export function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L: number, ds: number, gaps: Span[], wideTabs = false) {
-  const G = new Geo(), f = newFrame(), p = v3(), nr = v3(), orange = col(KIT.color), c = new THREE.Color();
+export function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L: number, ds: number, gaps: Span[], wideTabs = false,
+  o: { bare?: number[]; more?: ChannelPart[]; extra?: (G: Geo) => void } = {}) {
+  const G = new Geo(), more = o.more ?? [];
+  let tabs = channelInto(G, frameAt, plastic, L, ds, gaps, wideTabs, o.bare ?? []);
+  for (const m of more) tabs += channelInto(G, m.frameAt, m.runs, L, ds, m.gaps, wideTabs, m.bare);
+  o.extra?.(G); // (more plastic in the same mesh: a split's island noses)
+  return { geo: G.build(), tabs };
+}
+
+/** More channel in the same mesh: a split's lanes (tracks/split.ts) - their own frames, runs and gaps, and the s where
+ *  a run ends `bare` (no taper, no cap: it carries straight on as other channel). */
+export interface ChannelPart { frameAt: FrameAt; runs: [number, number][]; gaps: Span[]; bare: number[] }
+
+function channelInto(G: Geo, frameAt: FrameAt, plastic: [number, number][], L: number, ds: number, gaps: Span[], wideTabs: boolean, bare: number[]) {
+  const f = newFrame(), p = v3(), nr = v3(), orange = col(KIT.color), c = new THREE.Color();
+  const isBare = (s: number) => bare.some((b) => Math.abs(b - s) < 1e-6);
   const pieces: { s0: number; s1: number; road0: boolean; road1: boolean }[] = [];
   for (const [a, b] of plastic) {
     // the gaps inside this run (in its own s, which may pass L), in order: the run is split at each
@@ -47,6 +61,9 @@ export function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L
   const yellow = col('#ffc21a'), black = col('#1d1d1f');
   for (const pc of pieces) {
     const closed = !pc.road0 && !pc.road1 && pc.s1 - pc.s0 >= L - 1e-6;
+    const bare0 = bare.length > 0 && isBare(pc.s0), bare1 = bare.length > 0 && isBare(pc.s1);
+    if (bare0) pc.road0 = false;
+    if (bare1) pc.road1 = false;
     const near = (s: number) => (pc.road0 && s - pc.s0 < TAPER) || (pc.road1 && pc.s1 - s < TAPER);
     // (track 2's long wide decks: a ring every 4 deg of turn or 5 u, the channel's look at a lighter count - and every
     // TWIST deg of roll, so a bank easing in keeps the floor true)
@@ -77,6 +94,7 @@ export function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L
     // square in yellow and a plate thickens the slab, its face striped yellow and black.
     for (const [s, sign, road] of [[pc.s0, -1, pc.road0], [pc.s1, 1, pc.road1]] as const) {
       if (closed) break;
+      if (sign < 0 ? bare0 : bare1) continue;
       frameAt(s, f);
       nr.copy(f.t).multiplyScalar(sign);
       const w = f.width / 2, o = w + LIP, quad = (x0: number, x1: number, y0: number, y1: number, cc: THREE.Color, a = 0) => {
@@ -115,7 +133,7 @@ export function channelGeometry(frameAt: FrameAt, plastic: [number, number][], L
     for (const sg of [-1, 1]) box(G, m, [0, RAIL + 0.025, sg * (w + LIP / 2)], [0.4, 0.07, LIP + 0.12], blue);
     tabs++;
   }
-  return { geo: G.build(), tabs };
+  return tabs;
 }
 
 /** The booster pad's plate across the track (u). */

@@ -1,5 +1,6 @@
 import type { Surface, TrackTag } from '../types';
 import { DEG, KIT, smooth, type Key, type Range, type Span, type Style } from './kit.ts';
+import { laneJump, type LaneJump, type SplitDef } from './split.ts';
 import type { Support } from './supports.ts';
 
 // The piece builder every course's layout is written in: a turtle (Path) that integrates analytic pieces - each with
@@ -57,6 +58,7 @@ export class Path {
   sup: Range<Support>[] = [];
   humps: { s0: number; s1: number; amp: number; wave: number }[] = [];
   free: { x: number; z: number }[] = [];
+  splits: SplitDef[] = [];
   private cur: Style = { surface: 'plastic', edge: 'rail', width: KIT.width, shoulder: 0 };
 
   /** Starts at height y heading +x, in the style given (the plain channel by default). */
@@ -223,6 +225,24 @@ export class Path {
   widen(w: number, len: number) {
     return this.key(this.s, {}).key(this.s + len, { width: w });
   }
+  /** A lane split over the next `len` u (a straight; tracks/split.ts): the island's point `nose` u in, opening at
+   *  `slope` to `half` u either side of the centre line and closing to its other point `tail` u in; each lane `lane` u
+   *  wide (its line down the middle of that: wider is a catch tray, outward), each (left, right) flat on the deck or
+   *  with its own jump (LaneJump: tags kicker and gap, that lane's). The width is the layout's own: the two lanes and
+   *  the island between them (widen it first). */
+  split(len: number, o: { nose: number; tail: number; half: number; slope: number; lane: number; lanes: [LaneJump | null, LaneJump | null] }) {
+    const s0 = this.s, knots: [number, number][][] = [];
+    o.lanes.forEach((J, i) => {
+      if (!J) return void knots.push([]);
+      const j = laneJump(J), lane = i ? 1 : -1;
+      if (j.end > o.tail - 10 || J.at < o.nose + 10) throw new Error('split: a lane jump runs past the island');
+      this.tags.push({ tag: 'kicker', s0: s0 + j.kicker[0], s1: s0 + j.kicker[1], lane }, { tag: 'gap', s0: s0 + j.gap[0], s1: s0 + j.gap[1], lane });
+      knots.push(j.knots);
+    });
+    this.splits.push({ s0, s1: s0 + len, nose: o.nose, tail: o.tail, half: o.half, slope: o.slope, lane: o.lane, lanes: knots });
+    return this.seg(len);
+  }
+
   /** A kicker over a gap onto a landing: the lip eases up to `lip` deg over lipLen, the gap's virtual surface eases on
    *  to the landing's `land` deg over `gap` u, the landing holds it for `hold` u and eases flat over `out`. */
   kicker(J: { lip: number; lipLen: number; gap: number; land: number; hold: number; out: number }) {

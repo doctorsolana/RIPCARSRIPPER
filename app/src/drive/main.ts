@@ -378,17 +378,16 @@ async function main() {
       else if (ev.landed && ev.landed > 8) input.rumble(Math.min(1, ev.landed / 25), 70);
       else if (ev.boostStart) input.rumble(0.3, 120);
       const big = air > 1.5 ? ` ${air.toFixed(1)} s` : '';
-      const stackX = ev.stackUp ? ` x${ev.stackUp}` : ''; // a boost stacked onto one still running
       if (recordAir > 0) {
         hud.toast(`${ev.perfectLanding ? 'Perfect!' : 'Big air'} ${recordAir.toFixed(1)} s, record!`, '#ffd23d');
         recordAir = 0;
-      } else if (ev.perfectLanding) hud.toast(`Perfect!${big}${stackX}`, '#3ddc84');
+      } else if (ev.perfectLanding) hud.toast(`Perfect!${big}`, '#3ddc84');
       else if (big) hud.toast(`Big air${big}`);
       else if (ev.tierUp === 4) hud.toast('Max drift!', '#fff', 'max'); // the hidden tier: a surprise
       else if (ev.boostStart && lastTier > 0) {
         const c = lastTier === 4 ? '#fff' : lastTier === 3 ? tier.color : lastTier === 2 ? '#a35cff' : '#3d8bff';
-        hud.toast(BOOST_NAMES[lastTier] + stackX, c, lastTier === 4 ? 'max' : undefined);
-      } else if (stackX) hud.toast(`Boost${stackX}`, '#ffb000');
+        hud.toast(BOOST_NAMES[lastTier], c, lastTier === 4 ? 'max' : undefined);
+      } // (a stacked boost has no text: the flames, the sound and the speed say it)
       if (ev.respawn) hud.flash();
       lastTier = st.driftTier;
       clearEvents();

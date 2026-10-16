@@ -4,6 +4,7 @@ import { BLUE, BLUE2, Geo, ORANGE, basis, beam, box, column, mr } from './geo.ts
 import { BASE, DEG, KIT, LIP, col, newFrame, v3, type FrameAt, type Range, type Span } from './kit.ts';
 import { CLOSE, FLARE, GROW, Path, easeRun, rampRise, solve } from './path.ts';
 import { checkpoint, gateWide, launchArchWide } from './props.ts';
+import type { LaneJump } from './split.ts';
 import type { Support } from './supports.ts';
 
 // Track 2, the Sky Tower (?track=sky), built like every course (tracks/path.ts) and wide for racing in a pack (16-24
@@ -12,8 +13,9 @@ import type { Support } from './supports.ts';
 // boosters, a 30 deg banked 180, a double jump, a 70 deg wall ride ridden UP onto from the meadow (one narrow booster
 // pad in the middle of its approach), a rounded crest off it, esses and a chicane on the road, three rhythm humps on
 // the straight east (SKY_BUMPS: hopped at speed, rolled over slowly), the climb - chained pads into a pull-up past
-// vertical, over the top upside down and a half roll out into a banked right-hander, onto a deck 41 u up (CLIMB,
-// Path.immelmann) - the sky jump's in-run - the dive: off the deck's end a 270 deg descending right-hander that comes
+// vertical, over the top upside down and a half roll out into a banked right-hander that tightens into a drift corner,
+// onto a narrow deck 41 u up (CLIMB, Path.immelmann) - the sky bridge, which splits into two lanes round an island, each
+// lane its own jump (BRIDGE, Path.split) - the sky jump's in-run - the dive: off the deck's end a 270 deg descending right-hander that comes
 // round UNDER the deck (an over/under) and plunges to a pad at its foot - and the jump itself (3+ s of air through a
 // hoop: SKYJ), and a 2.5-turn spiral round the tower back up to the gate. Its own props: the Sky Tower (support
 // 'spire'), the wide gate and its grid, the arch and the hoop over the sky jump, checkpoint arches.
@@ -84,6 +86,25 @@ export const SKYJ = {
 export const CLIMB = {
   east: 100, pre: 20, pads: 3, w: 20, lead: 16,
   r1: 18, e1: 16, over: 95, wall: 9, r2: 12, e2: 8, rTop: 34, e3: 10, roll: 34, dive: 1, pull: 0.5, turnR: 28, bank: 30, out: 16,
+};
+
+/** The sky bridge (founder: smaller, a more aggressive curve to drift, then two smaller tracks side by side - a choice,
+ *  and fun in a pack). Out of the climb's half roll the right-hander (CLIMB.turnR, banked CLIMB.bank) tightens to `r`
+ *  over `tighten` u and eases out over `out`, narrowing from the roll's 20 u to `w` over `narrow` u: a drift corner (in
+ *  grip ~38 u/s; drifted it holds too, a little slower through, out faster with its mini-turbo). Onto the deck `w` wide
+ *  (the free straight A), then the split (Path.split, tracks/split.ts): the deck flares over `flare` u to two lanes
+ *  `lane` wide either side of an island `half` u each side of the centre line - a gap you see the meadow through - whose
+ *  point is `nose` u in, opening at `slope`; it closes again `tailRoom` u before the split's end (`len`), and the deck
+ *  narrows on to the dive's width over `rejoin`. From `catch0` to `catch1` u in both lanes widen outward by `catch`
+ *  (catch trays over the landings: a crooked take-off still comes down on its lane). Each lane has its own jump - the
+ *  left one early and steeper (26 deg, ~1.55-1.7 s of air), the right one later and flatter (24 deg, ~1.45-1.6 s), a
+ *  bit over the double jump's and far from the sky jump's - kicker, gap and landing hill solved so a straight run at race
+ *  speed lands PERFECT (scratch jd.ts); the two lanes lap within ~0.05 s of each other. */
+export const BRIDGE = {
+  r: 18, tighten: 14, out: 14, w: 11, narrow: 30,
+  flare: 16, half: 2, lane: 9.5, slope: 0.25, nose: 24, len: 158, tailRoom: 4, rejoin: 12, catch: 5, catch0: 56, catch1: 144,
+  left: { at: 44, lip: 26, lipLen: 10, gap: 22, land: -14, out: 12 } as LaneJump | null,
+  right: { at: 64, lip: 24, lipLen: 10, gap: 26, land: -14, out: 12 } as LaneJump | null,
 };
 
 /** Track 2: the Sky Tower lap. A and B are the free straights that close it (the deck at the top of the climb, the
@@ -170,13 +191,24 @@ function layoutSky(A: number, B: number) {
   P.seg(C.lead).support('stilts', s0);
   const c0 = P.s;
   P.immelmann(C).tag('climb', c0);
-  // ... the rest of the right-hander to the north (yaw rate 1 / turnR), the bank and turn easing out together
-  const left = 3 * Math.PI / 2 - (P.pose.yaw - 2 * Math.PI * Math.floor(P.pose.yaw / (2 * Math.PI))), kT = 1 / C.turnR;
-  P.seg(left / kT - C.out / 2).seg(C.out, { k: 0, bank: 0 }).support('climb', c0);
+  // ... the rest of the right-hander to the north, tightening from turnR to the bridge's r (a drift corner) and
+  // narrowing to the bridge's width, the bank and turn easing out together
+  const BR = BRIDGE, left = 3 * Math.PI / 2 - (P.pose.yaw - 2 * Math.PI * Math.floor(P.pose.yaw / (2 * Math.PI)));
+  const kT = 1 / C.turnR, kB = 1 / BR.r, bendHold = (left - (BR.tighten * (kT + kB)) / 2 - (BR.out * kB) / 2) / kB;
+  P.widen(BR.w, BR.narrow);
+  P.seg(BR.tighten, { k: kB }).seg(bendHold).seg(BR.out, { k: 0, bank: 0 }).support('climb', c0);
   s0 = P.s;
-  P.widen(J2.width, 16);
-  P.seg(16);
+  P.seg(6);
   P.freeStraight(A);
+  // ... the split: two lanes, each its own jump, round an island, and back to one deck before the dive
+  P.widen(2 * (BR.half + BR.lane), BR.flare);
+  // (both lanes widen outward into catch trays over the jumps' landings - a crooked take-off still comes down on the
+  // lane - and narrow back gently before the island closes)
+  const sp0 = P.s, W = 2 * (BR.half + BR.lane);
+  P.key(sp0 + BR.catch0, {}).key(sp0 + BR.catch0 + 16, { width: W + 2 * BR.catch }).key(sp0 + BR.catch1, {});
+  P.key(sp0 + BR.len + BR.rejoin, { width: J2.width }); // (the rejoin: narrowing all the way down to the dive's width)
+  P.split(BR.len, { nose: BR.nose, tail: BR.len - BR.tailRoom, half: BR.half, slope: BR.slope, lane: BR.lane, lanes: [BR.left, BR.right] });
+  P.seg(BR.rejoin);
   // ... then the dive (all of it tag 'inrun': flat out, crests hold, a miss is put back at its top): off the deck's far
   // end to the right and down - a 270 deg descending right-hander - that comes back heading west UNDER the deck (the
   // over/under), lines up and plunges to the foot of the launch ramp
@@ -342,5 +374,5 @@ export const sky: Course<'sky'> = {
   supports: { spire: (G, frameAt, sp, o) => spire(G, frameAt, sp, o.tags, o.posts) },
   props,
   // medal pace (u/s) per car: see Course.pars
-  pars: { skyline: 47.56, impala: 46.15, roxy: 47.38, gt3: 47.54, '964': 46.92, firebird: 46.63, beach: 45.35, civic: 46.21, mustang: 47.15, '*': 46.90 },
+  pars: { skyline: 47.30, impala: 45.89, roxy: 47.20, gt3: 47.28, '964': 46.67, firebird: 46.36, beach: 45.11, civic: 46.11, mustang: 46.88, '*': 46.65 },
 };

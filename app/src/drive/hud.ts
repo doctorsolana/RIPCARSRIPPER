@@ -1,5 +1,5 @@
 // The drive page's overlay: lap and times (top left), speed (bottom right), the gate prompt (under the course's name),
-// toasts (PERFECT!, BOOST, a stacked boost's x2 x3 ..., an air record, BEST LAP, the hidden tier's rainbow MAX DRIFT!;
+// toasts (PERFECT!, BOOST, an air record, BEST LAP, the hidden tier's rainbow MAX DRIFT!;
 // outlined, so they read on the sky and the grass), split deltas, a big WRONG WAY sign, a dip to black on respawn, the
 // results card (laps, the race's longest air against its record, a button to try the other track), and an FPS readout
 // with ?fps=1. Self-contained styles; text only changes when its value does.

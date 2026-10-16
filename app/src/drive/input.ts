@@ -280,8 +280,11 @@ function cornerSpeed(k: number, sy: number, sb: number, kl: number, slip: number
  *  in-run, tag 'inrun', and the climb, tag 'climb', from 40 u before its pads), and it never steers in the air. A
  *  narrow booster pad ahead (a tag with d0..d1) it lines up on its middle. Deterministic: a function of the state and
  *  track. */
-export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
+export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -1 | 1 } = {}) {
   const mode = opts.drift ?? 'auto';
+  // A lane split (track.split): it takes a lane as it comes up to the island - the side it's clearly on, else the other
+  // one from last time (so a lap takes each in turn; `lane` fixes one) - and keeps to its middle until the lanes rejoin.
+  let lane = 0, lastLane: number = opts.lane ? -opts.lane : 1;
   const out: DriveInput = { steer: 0, throttle: 1, brake: 0, drift: false };
   const f0 = newFrame(), f1 = newFrame();
   const nose = new THREE.Vector3(), tmp = new THREE.Vector3();
@@ -292,7 +295,8 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
   // and which corner each frame is in (-1: none).
   const GAP = 1, RUN = 2;
   let prepped: Track | null = null, flags = new Uint8Array(0), corner = new Int16Array(0), ds = 0.5;
-  let aims: { s0: number; s1: number; d: number }[] = []; // narrow booster pads (d0..d1): it lines up on their middle
+  let kicks: { s0: number; s1: number; lane: number }[] = []; // a split's lanes' kickers: it holds straight up them
+  let aims: { s0: number; s1: number; d: number; lane?: number }[] = []; // narrow booster pads (d0..d1): it lines up on their middle
   let cS1 = new Float64Array(0), cTurn = new Float64Array(0), cK = new Float64Array(0), cCalm = new Uint8Array(0);
   const idx = (s: number) => {
     const n = flags.length;
@@ -320,7 +324,8 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
       for (const b of track.tags) if (b.tag === 'booster' && back(g.s0, b.s0) < 120) from = Math.min(from, g.s0 - back(g.s0, b.s0) - 40);
       for (let x = from; back(g.s1, x) > 0.5 && back(g.s1, x) < L / 2; x += ds) flags[idx(x)] |= RUN;
     }
-    aims = track.tags.filter((g) => g.tag === 'booster' && g.d0 !== undefined).map((g) => ({ s0: g.s0, s1: g.s1, d: (g.d0! + (g.d1 ?? g.d0!)) / 2 }));
+    kicks = track.tags.filter((g) => g.tag === 'kicker' && g.lane !== undefined).map((g) => ({ s0: g.s0, s1: g.s1, lane: g.lane! }));
+    aims = track.tags.filter((g) => g.tag === 'booster' && g.d0 !== undefined).map((g) => ({ s0: g.s0, s1: g.s1, d: (g.d0! + (g.d1 ?? g.d0!)) / 2, lane: g.lane }));
     // the corners (a run may wrap round the lap's start: begin the scan where the road is straight)
     const bend = (i: number) => {
       const k = fs[i % n].kappa, tg = track.tagAt((i % n) * ds);
@@ -384,13 +389,29 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all' } = {}) {
     const bank = (BANK_ASSIST * G * -f.right.y * v) / (v * v + 25);
     // ... and a correction of the heading and offset toward the centre line, gentler on the wide roads - and on the
     // wide plastic (track 2's stadium decks, over 16 u: the channel's quick correction weaves there at speed)
-    const wp = f.surface === 'plastic' ? smooth01((f.width - 16) / 2) : 0;
+    let wp = f.surface === 'plastic' ? smooth01((f.width - 16) / 2) : 0;
     const la = f.surface === 'plastic' ? 7 + v * 0.1 + (5 + v * 0.15) * wp : 10 + v * 0.2;
-    // (toward a narrow booster pad ahead - within 70 u, or on it - its middle is the line)
+    // (in a split - from 30 u before the island's point - the middle of its lane is the line)
     let aim: number | null = null;
+    const sp = track.split;
+    if (sp) {
+      const x = (((st.trackS - sp.s0) % L) + L) % L;
+      if (x > L - 30 || x < sp.s1 - sp.s0) {
+        if (lane === 0) lane = opts.lane ?? (d > 1.5 ? 1 : d < -1.5 ? -1 : -lastLane);
+        aim = lane * sp.centre(st.trackS);
+        // (each lane is a channel of its own, as the line's correction goes; up its kicker - and the 14 u before it -
+        // it holds the heading straight along the lane, whatever its line: the jump flies off the way it's pointed)
+        wp = 0;
+        for (const g of kicks) {
+          const y = (((g.s0 - st.trackS) % L) + L) % L;
+          if (g.lane === lane && (y < 14 || y > L - (g.s1 - g.s0))) aim = d;
+        }
+      } else if (lane !== 0) (lastLane = lane), (lane = 0);
+    }
+    // (toward a narrow booster pad ahead - within 70 u, or on it - its middle is the line; a lane's only in that lane)
     for (let i = 0; i < aims.length; i++) {
       const g = aims[i], x = (((g.s0 - st.trackS) % L) + L) % L;
-      if (x < 70 || x > L - (g.s1 - g.s0)) aim = g.d;
+      if ((x < 70 || x > L - (g.s1 - g.s0)) && (g.lane === undefined || g.lane === lane)) aim = g.d;
     }
     const err = (aim === null ? Math.atan2(-d, la) : Math.atan2(aim - d, la)) - phi;
 

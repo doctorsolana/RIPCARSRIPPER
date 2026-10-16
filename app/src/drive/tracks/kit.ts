@@ -17,8 +17,8 @@ export const KIT = {
 export const DEG = Math.PI / 180;
 export const smooth = (u: number) => u * u * (3 - 2 * u);
 
-/** A tagged range along s; d0..d1: a narrow booster pad's lateral extent. */
-export interface Span { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number }
+/** A tagged range along s; d0..d1: a narrow booster pad's lateral extent; lane: one lane's alone (a split's). */
+export interface Span { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number; lane?: -1 | 1 }
 /** What a stretch is made of and how wide (style keys along s; tracks/path.ts). */
 export interface Style { surface: Surface; edge: Edge; width: number; shoulder: number }
 export interface Key extends Style { s: number }
