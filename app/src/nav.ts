@@ -1,6 +1,7 @@
-// The top bar shared by the reveal, the inspector and the drive page: RIPCARS, the pages, and on the reveal
-// and the drive page a car picker plus "random pack" (the drive page adds its track switch). Self-contained (its own
-// styles), so it drops into any page.
+// The top bar shared by the reveal, the inspector, the drive page and the online lobby: RIPCARS, the pages (Race online
+// is the way into multiplayer: online.html, the room browser), and on the reveal and the drive page a car picker plus
+// "random pack" (the drive page adds its track switch; in an online room the picker swaps the car in place: onCar).
+// Self-contained (its own styles), so it drops into any page.
 interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean }
 
 /** A segmented switch of links in the bar, before the car picker (the drive page's tracks); the current option is lit
@@ -30,7 +31,10 @@ const CSS = `
 #nav .links a { color: rgba(238, 240, 243, 0.7); text-decoration: none; padding: 8px 10px; border-radius: 8px; }
 #nav .links a:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
 #nav .links a.on { color: #fff; box-shadow: inset 0 -2px 0 #ff3d6e; border-radius: 0; }
+#nav .links a.race { display: inline-flex; align-items: center; gap: 7px; color: #fff; }
+#nav .links a.race::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #ff3d6e; box-shadow: 0 0 8px #ff3d6e; }
 #nav .spacer { flex: 1; }
+#nav .narrow { display: none; }
 #nav select, #nav button { font: inherit; color: #eef0f3; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px; padding: 7px 10px; cursor: pointer; max-width: 46vw; min-width: 0; }
 #nav button { display: inline-flex; align-items: center; gap: 6px; flex: none; }
@@ -54,12 +58,19 @@ const CSS = `
   #nav { gap: 6px; }
   #nav .brand { font-size: 18px; }
   #nav .brand small, #nav .wide { display: none; }
+  #nav .narrow { display: inline; }
+  #nav .links { gap: 0; }
   #nav .links a { padding: 8px 6px; }
-  #nav select { max-width: 34vw; }
+  #nav .links a.race { gap: 5px; }
+  #nav select { max-width: 24vw; }
 }
+/* a phone's bar with the car picker has no room for every page: Inspect (a review tool) steps out for it */
+@media (max-width: 440px) { #nav.picker .links a[data-page="inspect"] { display: none; } }
 `;
 
-export async function mountNav(page: 'rip' | 'inspect' | 'drive', opts: { switch?: NavSwitch } = {}): Promise<Nav> {
+/** `onCar`: the car picker and Random car call this instead of reloading the page with ?car= (an online room swaps
+ *  the car in place); it also puts the picker on a page that has none. */
+export async function mountNav(page: 'rip' | 'inspect' | 'drive' | 'online', opts: { switch?: NavSwitch; onCar?: (id: string) => void } = {}): Promise<Nav> {
   // embedded (the inspector's Reveal tab shows the reveal in a frame): the outer page has the bar
   if (window.top !== window.self) return { el: document.createElement('header'), setCar() {} };
   document.body.classList.add('nav-on');
@@ -74,6 +85,7 @@ export async function mountNav(page: 'rip' | 'inspect' | 'drive', opts: { switch
       <a href="/" data-page="rip">Rip<span class="wide"> a pack</span></a>
       <a href="/inspect.html" data-page="inspect">Inspect<span class="wide"> cars</span></a>
       <a href="/drive.html" data-page="drive">Drive</a>
+      <a href="/online.html" data-page="online" class="race" title="Race other players: join a room or make one"><span class="wide">Race online</span><span class="narrow">Online</span></a>
     </nav>
     <span class="spacer"></span>`;
   el.querySelector(`[data-page="${page}"]`)!.classList.add('on');
@@ -103,26 +115,29 @@ export async function mountNav(page: 'rip' | 'inspect' | 'drive', opts: { switch
   const rip = el.querySelector<HTMLAnchorElement>('[data-page="rip"]')!;
   const inspect = el.querySelector<HTMLAnchorElement>('[data-page="inspect"]')!;
   const drive = el.querySelector<HTMLAnchorElement>('[data-page="drive"]')!;
+  const online = el.querySelector<HTMLAnchorElement>('[data-page="online"]')!;
   let select: HTMLSelectElement | null = null;
 
-  if ((page === 'rip' || page === 'drive') && modelled.length) {
+  if ((page === 'rip' || page === 'drive' || opts.onCar) && modelled.length) {
     // pick a car, or rip a random one; both reload the page with ?car=
     select = document.createElement('select');
-    select.title = page === 'drive' ? 'Which car to drive' : 'Which car to reveal';
+    select.title = page !== 'rip' ? 'Which car to drive' : 'Which car to reveal';
     select.innerHTML = modelled.map((c) => `<option value="${c.id}">${c.make} ${c.model}${c.year ? ` · ${c.year}` : ''}</option>`).join('');
     select.addEventListener('change', () => go(select!.value));
     const random = document.createElement('button');
-    random.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.2" cy="5.2" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.8" cy="10.8" r="1.2" fill="currentColor"/></svg><span class="wide">${page === 'drive' ? 'Random car' : 'Random pack'}</span>`;
-    random.setAttribute('aria-label', page === 'drive' ? 'Drive a random car' : 'Rip a random car');
-    random.title = page === 'drive' ? 'Drive a random car' : 'Rip a random car';
+    random.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.2" cy="5.2" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.8" cy="10.8" r="1.2" fill="currentColor"/></svg><span class="wide">${page !== 'rip' ? 'Random car' : 'Random pack'}</span>`;
+    random.setAttribute('aria-label', page !== 'rip' ? 'Drive a random car' : 'Rip a random car');
+    random.title = page !== 'rip' ? 'Drive a random car' : 'Rip a random car';
     random.addEventListener('click', () => {
       const others = modelled.filter((c) => c.id !== select!.value);
       go((others.length ? others : modelled)[Math.floor(Math.random() * (others.length || modelled.length))].id);
     });
     el.append(select, random);
+    el.classList.add('picker');
   }
 
   function go(id: string) {
+    if (opts.onCar) return opts.onCar(id);
     const q = new URLSearchParams(location.search);
     q.set('car', id);
     location.search = q.toString();
@@ -140,6 +155,7 @@ export async function mountNav(page: 'rip' | 'inspect' | 'drive', opts: { switch
         drive.href = `/drive.html?car=${id}${track ? `&track=${encodeURIComponent(track)}` : ''}`;
       }
       inspect.href = `/inspect.html?car=${id}`;
+      if (modelled.some((c) => c.id === id)) online.href = `/online.html?car=${id}`;
     },
   };
 }

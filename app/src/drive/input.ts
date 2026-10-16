@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { DriveInput, Surface, Track, TrackFrame, VehicleState } from './types';
+import type { DriveInput, Surface, Track, TrackFrame, TrafficView, VehicleState } from './types';
 import type { Profile } from './vehicles/arcade';
 
 // Keyboard, gamepad and touch merged into one DriveInput, plus an autopilot for ?auto=1 and tests.
@@ -25,7 +25,7 @@ export interface InputSource {
   rumble(strength: number, ms: number): void;
 }
 
-const STEER_IN = 6, STEER_OUT = 12; // per s
+export const STEER_IN = 6, STEER_OUT = 12; // per s (online play checks a client's steering against STEER_OUT: net/protocol.ts)
 const DRIFT_BUFFER = 150; // ms
 const TOUCH_DEAD = 6, TOUCH_FULL = 70; // px
 const AUTO_DRIFT = 150, LIFT_GRACE = 100, CENTRE_RELEASE = 250; // ms
@@ -240,6 +240,13 @@ const DRIFT_TURN = 0.6; // rad: it drifts corners turning at least this far ...
 const DRIFT_R = 70; // ... at least this tight (u)
 const BRAKE = 42; // u/s^2 it plans to brake with (the stock car manages ~65), x the car's brakes, less a downhill's pull
 const DEG = Math.PI / 180;
+// Online bots in traffic (opts.traffic; the server's): it plans for one step a call (the sim's 1/120 s) ...
+const STEP = 1 / 120;
+const EDGE = 0.4; // ... keeps this far off the rails (u) ...
+const ROOM = 0.8; // ... and this much room beside another car (u, body to body) ...
+const MERGE = 1.5; // ... eases back toward the line at most this fast (u/s: off the grid, after a pass) ...
+const SHIFT = 6; // ... moves its target across the road at most this fast around other cars (u/s) ...
+const SLOT = 0.25; // ... picking it from slots this far apart (u)
 type Sense = Pick<Profile, 'turn' | 'brake' | 'slide' | 'angle' | 'steer' | 'float' | 'dirt'>;
 const STOCK: Sense = { turn: 1, brake: 1, slide: 1, angle: 1, steer: 1, float: 1, dirt: 1 };
 
@@ -279,8 +286,19 @@ function cornerSpeed(k: number, sy: number, sb: number, kl: number, slip: number
  *  and holds it straight up the ramp (no drift, no brake: the jump is its own speed and line; on track 2 the whole
  *  in-run, tag 'inrun', and the climb, tag 'climb', from 40 u before its pads), and it never steers in the air. A
  *  narrow booster pad ahead (a tag with d0..d1) it lines up on its middle. Deterministic: a function of the state and
- *  track. */
-export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -1 | 1 } = {}) {
+ *  track.
+ *  With `traffic` (online play's server bots: a function of the race's state, the other cars as the bot sees them) it
+ *  races like a decent player, not a ghost: off the grid it keeps its lane and eases toward the line (MERGE: no dive
+ *  across the pack), and it picks its line across the road among slots (SLOT apart) - near the line and where it's
+ *  steering already, clear of the cars beside it (ROOM between them, and never across one), clear of the ones it's
+ *  catching where they'll be - inside the narrowest the road gets over the next stretch (a funnel ahead squeezes it in
+ *  early). Boxed in - no slot clear of a car beside it - it gives way to the one that has the place (ahead, or level and
+ *  nearer the line): it lifts, and brakes while the road narrows, and tucks in behind; the one with the place keeps it.
+ *  A car ahead in its path that it's catching: it follows at a gap rather than run into it - easing off the throttle
+ *  smoothly (no on-off flicker: the pages predict a bot on the input it was last on), braking when well over - unless
+ *  it's going round it. No drift with a car close by. Without `traffic` none of this runs (single player, ?auto=1:
+ *  exactly as before). */
+export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -1 | 1; traffic?: () => TrafficView } = {}) {
   const mode = opts.drift ?? 'auto';
   // A lane split (track.split): it takes a lane as it comes up to the island - the side it's clearly on, else the other
   // one from last time (so a lap takes each in turn; `lane` fixes one) - and keeps to its middle until the lanes rejoin.
@@ -289,6 +307,12 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -
   const f0 = newFrame(), f1 = newFrame();
   const nose = new THREE.Vector3(), tmp = new THREE.Vector3();
   let cur = -1, tapped = false;
+  // in traffic (opts.traffic): the offset it keeps (u across), the one it steers for, where it was a step ago; scratch
+  // for the cars near it (offset across where they'll be, room needed, beside it now, how far ahead, catching speed)
+  const TR = opts.traffic;
+  let hold = 0, aimT = 0, lastS = NaN;
+  const nd = new Float64Array(16), nw = new Float64Array(16), nds = new Float64Array(16), ncl = new Float64Array(16);
+  const nby = new Uint8Array(16), nk = new Int16Array(16);
   // Per track, once: flags (a jump's gap, a big jump's run-up from 40 u before its booster to the lip) and the
   // corners - runs of curvature one way (R < 150), each with its end, how far it turns and its tightest curvature, and
   // whether it ends close before a big jump's run-up (taken in grip: a slide still settling there launches crooked) -
@@ -392,7 +416,7 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -
     let wp = f.surface === 'plastic' ? smooth01((f.width - 16) / 2) : 0;
     const la = f.surface === 'plastic' ? 7 + v * 0.1 + (5 + v * 0.15) * wp : 10 + v * 0.2;
     // (in a split - from 30 u before the island's point - the middle of its lane is the line)
-    let aim: number | null = null;
+    let aim: number | null = null, held = false; // (held: lined up straight for a kicker - traffic leaves it be)
     const sp = track.split;
     if (sp) {
       const x = (((st.trackS - sp.s0) % L) + L) % L;
@@ -404,14 +428,114 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -
         wp = 0;
         for (const g of kicks) {
           const y = (((g.s0 - st.trackS) % L) + L) % L;
-          if (g.lane === lane && (y < 14 || y > L - (g.s1 - g.s0))) aim = d;
+          if (g.lane === lane && (y < 14 || y > L - (g.s1 - g.s0))) (aim = d), (held = true);
         }
       } else if (lane !== 0) (lastLane = lane), (lane = 0);
     }
     // (toward a narrow booster pad ahead - within 70 u, or on it - its middle is the line; a lane's only in that lane)
     for (let i = 0; i < aims.length; i++) {
       const g = aims[i], x = (((g.s0 - st.trackS) % L) + L) % L;
-      if ((x < 70 || x > L - (g.s1 - g.s0)) && (g.lane === undefined || g.lane === lane)) aim = g.d;
+      if ((x < 70 || x > L - (g.s1 - g.s0)) && (g.lane === undefined || g.lane === lane)) (aim = g.d), (held = false);
+    }
+    // (online bots: room for the other cars - the line it takes across the road, giving way, following)
+    let cut = 1, push = 0, crowd = false;
+    if (TR) {
+      const { me, cars } = TR();
+      const s0 = st.trackS;
+      let jump = s0 - lastS;
+      if (jump > L / 2) jump -= L;
+      else if (jump < -L / 2) jump += L;
+      if (!(Math.abs(jump) < 8)) (hold = d), (aimT = d); // (the grid, a respawn: from where it is)
+      lastS = s0;
+      // the road it can take: the narrowest it gets over the next ~0.9 s (its lane's, in a split), less a car's width
+      const look = 8 + 0.9 * v;
+      let lo = -1e9, hi = 1e9;
+      for (let x = 0; x <= look; x += 3) {
+        const g = track.frameAt(s0 + x, f1);
+        const half = g.width * 0.5 - me.hw - EDGE;
+        let l = -half, h = half;
+        if (lane !== 0 && sp) {
+          const e = sp.island(s0 + x) + me.hw + EDGE;
+          if (lane < 0) h = Math.min(h, -e);
+          else l = Math.max(l, e);
+        }
+        if (l > lo) lo = l;
+        if (h < hi) hi = h;
+      }
+      if (lo > hi) lo = hi = (lo + hi) / 2;
+      // the offset it keeps: a lane's middle or a pad's at once; else it eases toward the line - off the grid it
+      // merges, after a pass it drifts back, never a dive across the road
+      const base = Math.max(lo, Math.min(hi, aim ?? 0));
+      hold = aim !== null ? base : Math.max(lo, Math.min(hi, aimT + Math.max(-MERGE * STEP, Math.min(MERGE * STEP, base - aimT))));
+      // the cars that matter: beside it (any overlap along), or ahead and being caught within 1.5 s (where they'll be)
+      let nn = 0;
+      for (let k = 0; k < cars.length && nn < 16; k++) {
+        const j = cars[k];
+        if (j === me || j.gone || (me.lane !== 0 && j.lane !== 0 && j.lane !== me.lane)) continue;
+        let ds = j.s - s0;
+        if (ds > L / 2) ds -= L;
+        else if (ds < -L / 2) ds += L;
+        const Ls = me.hl + j.hl;
+        if (ds < -Ls - 0.5 || ds > 40) continue;
+        if (Math.abs(ds) < 12 && Math.abs(j.d - d) < 4) crowd = true;
+        const by = ds <= Ls + 0.5, cl = me.vs - j.vs;
+        const t = by ? 0 : cl > 0.3 ? (ds - Ls) / cl : 9;
+        if (!by && t > 1.5) {
+          if (ds > 0) (nds[nn] = ds), (ncl[nn] = cl), (nd[nn] = j.d), (nw[nn] = me.hw + j.hw + 0.25), (nby[nn] = 2), (nk[nn] = k), nn++;
+          continue;
+        }
+        nd[nn] = j.d + j.vd * Math.min(t, 0.4);
+        nw[nn] = me.hw + j.hw + ROOM;
+        nds[nn] = ds;
+        ncl[nn] = cl;
+        nby[nn] = by ? 1 : 0;
+        nk[nn] = k;
+        nn++;
+      }
+      // its slot across the road: near what it keeps and where it's steering already, clear of the cars beside it (and
+      // never across one), clear of those it's catching where they'll be (what it keeps, exactly, or a slot SLOT apart)
+      let best = Infinity, bestC = hold, bestHard = 0, near = 0;
+      for (let q = 0; q < nn; q++) if (nby[q] !== 2) near++;
+      for (let c = hold, i = -1; near && c <= hi + 1e-9; c = lo + ++i * SLOT) {
+        let cost = (c - hold) * (c - hold) * 0.4 + (c - aimT) * (c - aimT) * 0.2, hard = 0;
+        for (let q = 0; q < nn; q++) {
+          if (nby[q] === 2) continue;
+          const g = Math.abs(c - nd[q]);
+          if (nby[q] === 1) {
+            if (g < nw[q]) hard += (nw[q] - g) * 10;
+            if ((c - nd[q]) * (d - nd[q]) < 0) hard += 10;
+          } else if (g < nw[q]) cost += ((nw[q] - g) * 4) / (1 + (2 * (nds[q] - me.hl)) / Math.max(ncl[q], 0.3));
+        }
+        if (cost + hard < best) (best = cost + hard), (bestC = c), (bestHard = hard);
+      }
+      // boxed in: give way to a car beside it that has the place - ahead, or level and nearer the line - lifting off,
+      // and braking while the road closes in (it tucks in behind); the one with the place keeps it
+      if (bestHard > 0) {
+        for (let q = 0; q < nn; q++) {
+          if (nby[q] !== 1) continue;
+          if (Math.abs(bestC - nd[q]) >= nw[q] && (bestC - nd[q]) * (d - nd[q]) >= 0) continue;
+          const ds = nds[q];
+          if (ds > 0.5 || (ds > -0.5 && (Math.abs(nd[q]) < Math.abs(d) || (Math.abs(nd[q]) === Math.abs(d) && nk[q] < cars.indexOf(me))))) {
+            cut = 0;
+            if (me.vs > 3 && hi - lo < 2 * nw[q]) push = Math.max(push, 0.35);
+          }
+        }
+      }
+      // (alone on the road it steers for what it keeps; around others its slot moves over at most SHIFT)
+      aimT = near ? aimT + Math.max(-SHIFT * STEP, Math.min(SHIFT * STEP, bestC - aimT)) : hold;
+      if (!held) aim = aimT;
+      // a car ahead in its path, being caught: follow it at a gap (1 u + 0.1 s) - easing off the throttle around the
+      // speed that keeps the gap (smoothly: no on-off flicker), braking when well over
+      for (let q = 0; q < nn; q++) {
+        if (nds[q] <= 0) continue;
+        const k = nk[q], j = cars[k], gap = nds[q] - me.hl - j.hl, cl = me.vs - j.vs;
+        const tC = cl > 0.1 ? Math.max(0, gap) / cl : 9;
+        const dAt = d + (aimT - d) * Math.min(1, tC / 0.6);
+        if (Math.abs(j.d - dAt) >= me.hw + j.hw + 0.25) continue;
+        const over = me.vs - (j.vs + Math.max(0, gap - 1 - 0.1 * Math.max(0, me.vs)) * 1.6);
+        cut = Math.min(cut, Math.max(0, Math.min(1, 0.5 - over / 4)));
+        if (over > 3) push = Math.max(push, Math.min(1, (over - 3) / 10));
+      }
     }
     const err = (aim === null ? Math.atan2(-d, la) : Math.atan2(aim - d, la)) - phi;
 
@@ -435,6 +559,10 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -
     const over = runUp ? 0 : v - vWant;
     out.throttle = over > 0 && !(st.drifting && over < 4) ? 0 : 1;
     out.brake = over > 2 && st.grounded ? Math.min(1, over / 6) : 0;
+    if (TR) {
+      if (out.throttle > cut) out.throttle = cut;
+      if (push > out.brake && st.grounded && v > 3) out.brake = push;
+    }
 
     let steer: number;
     out.drift = false;
@@ -463,7 +591,7 @@ export function createAutopilot(opts: { drift?: 'auto' | 'off' | 'all'; lane?: -
         const g = track.frameAt(st.trackS + x, f1);
         if (v * cK[c] > 1.1 * LOOSE_GRIP * LOOSE_THR * surfDrift(g.surface, car) * car.slide * maxSlip) continue;
         const sg = Math.sign(cTurn[c]);
-        if (!runUp && st.grounded && v > 18 && steer * sg > 0.15) (out.drift = true), (cur = c);
+        if (!runUp && st.grounded && v > 18 && steer * sg > 0.15 && !crowd) (out.drift = true), (cur = c);
       }
     }
     out.steer = st.grounded ? steer : 0; // never steers in the air

@@ -50,6 +50,10 @@ export interface Fx {
   confetti(at: THREE.Vector3, count?: number): void;
   /** The track, so the effects know the surface under each tyre and what the walls are made of (call once). */
   setTrack(track: Track): void;
+  /** Online: a hit between two cars at `at` (`normal` into the car), `n` u/s closing, the car moving at `v`: metal
+   *  sparks out of the seam (hot and many when hard), a scuff of paint dust, chips off a big one. (This car's own hits -
+   *  events.carHit / carScrape at state.contact - play by themselves in update.) */
+  carBurst(at: THREE.Vector3, normal: THREE.Vector3, n: number, v: THREE.Vector3): void;
 }
 
 const VTOP = 44;
@@ -1055,6 +1059,40 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
     confettiUntil = Math.max(confettiUntil, time + 2.5);
   }
 
+  // ---- online: car-to-car hits (never offline: the events don't happen there)
+  const cT1 = new THREE.Vector3(), cT2 = new THREE.Vector3(), cN = new THREE.Vector3();
+  let carScrapeAcc = 0, carHitT = -1, carHitN = 0;
+  function carBurst(at: THREE.Vector3, normal: THREE.Vector3, n: number, v: THREE.Vector3) {
+    const k = smoothstep(3, 30, n);
+    cN.copy(normal);
+    cT1.crossVectors(cN, upv);
+    if (cT1.lengthSq() < 1e-6) cT1.crossVectors(cN, nose);
+    cT1.normalize();
+    cT2.crossVectors(cN, cT1);
+    // sparks fan out along the seam between the two bodies, up and back over the car
+    const cnt = n < 3 ? 0 : Math.round(clamp(2 + n * 1.5, 4, 56));
+    for (let i = 0; i < cnt; i++) {
+      const a = rand(0, Math.PI * 2), sp = rand(3, 7 + 7 * k), u = rand(2, 5 + 4 * k), o = rand(-1, 2);
+      streak(
+        at.x, at.y, at.z,
+        v.x * 0.55 + (cT1.x * Math.cos(a) + cT2.x * Math.sin(a)) * sp + upv.x * u - cN.x * o,
+        v.y * 0.55 + (cT1.y * Math.cos(a) + cT2.y * Math.sin(a)) * sp * 0.5 + upv.y * u - cN.y * o,
+        v.z * 0.55 + (cT1.z * Math.cos(a) + cT2.z * Math.sin(a)) * sp + upv.z * u - cN.z * o,
+        rand(0.2, 0.45 + 0.2 * k), rand(0.05, 0.1), hot, HOT_I, 0.7,
+      );
+    }
+    // a scuff of paint and dust where they met; chips of paint and trim off a big hit
+    for (let i = 0, m = 1 + Math.round(3 * k); i < m; i++) puff(at, v.x * 0.4 + cN.x * 0.6, v.y * 0.4 + 0.5, v.z * 0.4 + cN.z * 0.6, 0.35, 1.2 + 1.2 * k, 0.6 + 0.3 * k, 0.25 + 0.2 * k, time, C_SCUFF, 0.8);
+    if (n > 18) for (let i = 0, m = Math.round(4 + n * 0.3); i < m; i++) debris(at, v, 0.5, cN, rand(-2, 3), rand(2, 6), i % 3 ? C_CRUMB : col.copy(topTierColor), rand(0.05, 0.08), rand(0.35, 0.6), 1, time);
+  }
+  /** One spark of a flank scraping along another car's (born at `born`). */
+  function carScrapeBit(at: THREE.Vector3, normal: THREE.Vector3, v: THREE.Vector3, born: number) {
+    const u = rand(1.5, 5), o = rand(0.3, 2), carry = rand(0.3, 0.7);
+    col.copy(hot).lerp(colours[0], Math.random() < 0.25 ? 0.7 : 0.3);
+    streak(at.x, at.y, at.z, v.x * carry - normal.x * o + upv.x * u + rand(-1, 1), v.y * carry - normal.y * o + upv.y * u + rand(-0.6, 0.6),
+      v.z * carry - normal.z * o + upv.z * u + rand(-1, 1), rand(0.2, 0.4), rand(0.06, 0.1), col, HOT_I, 0.45, born);
+  }
+
   function update(state: VehicleState, dtIn: number, pose?: Pose) {
     const dt = clamp(dtIn, 0, 0.1);
     time += dt;
@@ -1236,6 +1274,23 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
       }
     } else scrapeAcc = 0;
 
+    // Another car (online): a hit bursts at the contact point (a light knock between bursts only counts when much
+    // harder), a flank scraping along another's streams sparks from there
+    const ch = ev.carHit ?? 0, cs = ev.carScrape ?? 0, cc = state.contact;
+    if (cc && ch > 2 && (time - carHitT > 0.09 || ch > carHitN * 1.5)) {
+      carHitT = time;
+      carHitN = ch;
+      carBurst(cc.at, cc.normal, ch, V);
+    }
+    if (cc && cs > 4) {
+      carScrapeAcc += (30 + 3 * cs) * dt;
+      while (carScrapeAcc >= 1) {
+        carScrapeAcc -= 1;
+        const fr0 = Math.random();
+        carScrapeBit(tmp.copy(cc.at).addScaledVector(V, -fr0 * dt), cc.normal, V, time - fr0 * dt);
+      }
+    } else carScrapeAcc = 0;
+
     // landing: dust from every tyre (of the ground it lands on), a scrape of sparks off a hard surface when it was
     // hard (clods or grass off a soft one), a gold ring when perfect
     if (ev.landed && ev.landed > 5) {
@@ -1410,7 +1465,7 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
   }
 
   return {
-    update, reset,
+    update, reset, carBurst,
     confetti(at: THREE.Vector3, count = 120) {
       confettiBurst(at, null, 0, count);
     },

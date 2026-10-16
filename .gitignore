@@ -18,3 +18,6 @@ asset-generation/qa/
 # - the sheet crops in review/ are kept: the inspector's "vs sheet" tab needs them on a fresh clone
 asset-generation/assets/cars/*/snapshots/
 asset-generation/assets/cars/*/tripo/*/views/
+
+# the drive server's race logs (npm run server)
+app/server/logs/

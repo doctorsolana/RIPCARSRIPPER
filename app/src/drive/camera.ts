@@ -362,6 +362,13 @@ export function createChaseCamera(): ChaseCamera {
         // and the lens punches in: the impact frame (the hardest hits, past ~22 u/s square, half as much again)
         pop.v -= C.hitPop * sev * (1 + 0.5 * smoothstep(20, 30, n));
       }
+      if (ev.carHit && state.contact) {
+        // another car hit this one (online): the same kick, the camera carrying on toward the car that hit
+        const n = ev.carHit, sev = smoothstep(4, 30, n);
+        trauma = Math.min(1, trauma + C.hitShake * sev);
+        jolt.v += (state.contact.normal.dot(right) > 0 ? -1 : 1) * Math.min(4, C.hitJolt * n) * (0.3 + 0.7 * sev);
+        pop.v -= C.hitPop * sev * (1 + 0.5 * smoothstep(20, 30, n));
+      }
       if (ev.landed) {
         const v = Math.min(ev.landed, 25);
         const slam = C.landSlam * smoothstep(0.6, 2.4, airWas); // a long flight comes down hard

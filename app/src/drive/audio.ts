@@ -54,6 +54,9 @@ export interface DriveAudio {
   setTrack(track: Track): void;
   /** The car, so the engine is its own (call once, after loading it; a neutral six until then). */
   setCar(car: CarSpec): void;
+  /** Online: two other cars hit each other `dist` u away, `n` u/s closing (a metal bang, quieter far off). (Your own
+   *  car's hits - events.carHit / carScrape - play by themselves in update.) */
+  carHit(n: number, dist: number): void;
 }
 
 const JOINT = 17; // u between track connectors (tracks/kit.ts's tabEvery) ...
@@ -68,13 +71,14 @@ const BLEND = 0.07; // s: time constant of a surface change (~0.2 s to settle)
 // joints' tock against the landing's tick.
 const ROAD = 0.23, DIRT = 0.15, CRUNCH = 0.36, SWISH = 0.25, TOCK = 0.31;
 // What a wall is made of (as fx.ts), and the scrape's two resonances on each: [f1, Q1, f2, Q2, level].
-const RAIL = 0, TYRE = 1, HAY = 2, SOFT = 3;
+const RAIL = 0, TYRE = 1, HAY = 2, SOFT = 3, METAL = 4;
 // Levels even out the bands' widths (a narrow band passes less noise): all four ~0.065 RMS at the master.
 const SCRAPE = [
   [1500, 5, 3300, 7, 3.6], // plastic rail: a squeaky grind
   [420, 3, 900, 4, 5], // tyre wall: a rubbery rub
   [700, 0.8, 1500, 0.9, 0.45], // hay: a muffled brush of straw (low and soft - a bright hiss here grated)
   [800, 0.8, 1700, 0.9, 0.45], // the verge's soft limit: a brush of grass
+  [1100, 4, 2600, 6, 3.2], // (online) a flank along another car's: a harsh metal grind
 ];
 
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
@@ -233,6 +237,18 @@ const clackFn = (t: number, rnd: () => number) =>
       0.4 * sin(TAU * 2470 * t + 2) * e(t, 0.008) +
       0.3 * sin(TAU * 3900 * t) * e(t, 0.004)) +
   0.7 * rnd() * e(t, 0.003);
+// Car against car (online): a metal bang - a body thump (110 -> 55 Hz) under the panels' inharmonic ring, which dies
+// fast, and a crunch of noise.
+const bangFn = (t: number, rnd: () => number) =>
+  Math.min(1, t / 0.0008) *
+    (0.9 * sin(TAU * (55 * t + 55 * 0.03 * (1 - e(t, 0.03)))) * e(t, 0.07) +
+      0.6 * sin(TAU * 310 * t) * e(t, 0.05) +
+      0.5 * sin(TAU * 470 * t + 0.7) * e(t, 0.04) +
+      0.45 * sin(TAU * 735 * t + 1.3) * e(t, 0.03) +
+      0.35 * sin(TAU * 1180 * t + 0.2) * e(t, 0.02) +
+      0.25 * sin(TAU * 1760 * t + 2.1) * e(t, 0.012) +
+      0.18 * sin(TAU * 2650 * t) * e(t, 0.008)) +
+  0.6 * rnd() * e(t, 0.01);
 // Landing: a falling low thump (150 -> 55 Hz) plus the plastic wheels slapping the track.
 const thudFn = (t: number, rnd: () => number) =>
   sin(TAU * (55 * t + 95 * 0.03 * (1 - e(t, 0.03)))) * e(t, 0.09) +
@@ -693,6 +709,7 @@ function build(ctx: BaseAudioContext, muted: boolean) {
     thud: render(ctx, 0.3, thudFn, 0.95),
     thump: render(ctx, 0.3, thumpFn, 0.95),
     hay: render(ctx, 0.35, hayFn(), 0.9),
+    bang: render(ctx, 0.35, bangFn, 0.95),
   };
 }
 
@@ -723,6 +740,15 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
   const nose = new THREE.Vector3(), side = new THREE.Vector3(), rel = new THREE.Vector3(), prevNose = new THREE.Vector3(1, 0, 0);
   let mixP = 1, mixA = 0, mixD = 0, mixV = 0, wallMat = RAIL, wallGap = Infinity, vAlong = 0, hAbove = 0;
   let scrapeHold = 0, scMat = -1, hitT = -1, hitN = 0, spinT = -1, spinning = false;
+  let carScrapeHold = 0, carScrapeV = 0, carT = -1, carN = 0; // (online: another car)
+  /** A hit with another car, by severity (a knock for a touch; the heavy thud and the boom for a hard one). */
+  function carBang(n: number, now: number, level: number) {
+    if (!g) return;
+    const k = clamp(n / 25, 0.15, 1), r = 0.9 + 0.2 * Math.random();
+    play(g.bang, now, 0.85 * k * level, r);
+    if (n > 14) play(g.thud, now + 0.004, 0.7 * clamp((n - 14) / 15, 0.3, 1) * level, 0.8);
+    if (n > 24) play(g.slam, now + 0.006, 0.45 * clamp((n - 24) / 12, 0.3, 1) * level, 1.1);
+  }
   // the big jump: the track's 'bigjump' spans [s0, s1, ...]; time aloft, and whether this flight left a big jump's lip
   const lips: number[] = [];
   let airT = 0, bigAir = false;
@@ -1069,15 +1095,20 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     // Scrape: a corner on the wall while the car runs along it; the hold rides out the little bounces off it.
     scrapeHold = track && wallGap < 0.12 && v > 4 && hAbove < 1.2 ? 0.12 : Math.max(0, scrapeHold - dt);
     const scr = scrapeHold > 0 ? smoothstep(4, 30, vAlong) : 0;
-    if (wallMat !== scMat) {
-      const m = SCRAPE[wallMat];
+    // (online: a flank along another car's is a metal grind, when it's the louder of the two)
+    if (ev.carScrape) carScrapeV = ev.carScrape;
+    carScrapeHold = (ev.carScrape ?? 0) > 4 ? 0.1 : Math.max(0, carScrapeHold - dt);
+    const cscr = carScrapeHold > 0 ? smoothstep(4, 25, carScrapeV) : 0, mat = cscr > scr ? METAL : wallMat;
+    if (mat !== scMat) {
+      const m = SCRAPE[mat];
       g.scF1.frequency.setTargetAtTime(m[0], now, 0.02);
       g.scF1.Q.setTargetAtTime(m[1], now, 0.02);
       g.scF2.frequency.setTargetAtTime(m[2], now, 0.02);
       g.scF2.Q.setTargetAtTime(m[3], now, 0.02);
-      scMat = wallMat;
+      scMat = mat;
     }
-    g.scG.gain.setTargetAtTime(0.22 * scr * SCRAPE[wallMat][4], now, scr > 0 ? 0.03 : 0.08);
+    const scl = Math.max(scr, cscr);
+    g.scG.gain.setTargetAtTime(0.22 * scl * SCRAPE[mat][4], now, scl > 0 ? 0.03 : 0.08);
 
     g.jetG.gain.setTargetAtTime(state.boosting ? 0.07 * (1 + 1.2 * heat) : 0, now, state.boosting ? 0.03 : 0.15);
     g.jetF.frequency.setTargetAtTime(1400 * (1 + 0.6 * heat), now, 0.1);
@@ -1146,6 +1177,13 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
       if (n > 22) play(g.thud, now + 0.004, (soft ? 0.4 : 0.75) * clamp((n - 22) / 15, 0.35, 1), 0.72);
       if (n > 25 && !soft) play(g.slam, now + 0.006, 0.4 * clamp((n - 25) / 12, 0.3, 1), 1.2); // the hardest boom
     }
+    // Another car (online): a metal bang by severity (light knocks between them count when much harder)
+    const cn = ev.carHit ?? 0;
+    if (cn > 2 && (time - carT > 0.07 || cn > carN * 1.5)) {
+      carT = time;
+      carN = cn;
+      carBang(cn, now, 1);
+    }
     // Spin-out: the vehicle says so, or the nose swings far off the travel at speed (a rollback has the angle
     // but no yaw rate). A long screech on the surfaces that squeal, a gravelly skid on the others.
     const turn = rel.crossVectors(prevNose, nose).length();
@@ -1212,6 +1250,10 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
   return {
     unlock,
     update,
+    carHit(n: number, dist: number) {
+      if (!ctx || !g || muted) return;
+      carBang(n, ctx.currentTime, clamp(12 / (12 + dist), 0.04, 0.8));
+    },
     setMuted(m: boolean) {
       muted = m;
       if (ctx && g) g.mute.gain.setTargetAtTime(m ? 0 : 1, ctx.currentTime, 0.03);

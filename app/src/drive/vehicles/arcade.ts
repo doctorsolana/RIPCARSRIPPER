@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CarSpec, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, VehicleState } from '../types';
+import type { CarHit, CarSpec, ContactBody, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, VehicleState } from '../types';
 
 // "arcade": the hand-written driving model. On the track it lives in track space - distance along (s), offset across
 // (d), heading relative to the track (psi), slip (beta = heading minus travel), speed (v), yaw rate (omega) - so the
@@ -45,7 +45,36 @@ import type { CarSpec, DriveInput, Track, TrackFrame, Vehicle, VehicleFactory, V
 // nothing allocates per step.
 
 const DEG = Math.PI / 180;
+/** Online play: snapshot()'s layout (its first number; bump it whenever the list changes) and length. */
+export const SNAP_VERSION = 3, SNAP_LENGTH = 102;
+/** ... of which the first CORE_LENGTH are the simulation's own (the rest, the state's outputs, follow from them:
+ *  restoreCore works them out again, bit for bit - the server sends a client only these when it corrects its car). */
+export const CORE_LENGTH = 77;
 const KICK_MAX = 8; // rad/s: the most yaw that hits can stack up
+
+/** Online play: car-to-car hits (net/contact.ts finds the contact and works out the impulse between the two cars'
+ *  boxes; carPush / carHit below apply it). Solid toy cars, not pinballs: a nudge moves a car a little and it keeps
+ *  control, a hard hit knocks it sideways with a wobble, and only a big T-bone on the rear quarter or a real PIT at
+ *  speed spins it out. Offline nothing here ever runs - and it isn't in TUNING. */
+export const CAR = {
+  e: 0.1, // restitution between two car bodies: a knock, not a bounce (the orange rails' is 0.3) ...
+  mu: 0.25, // ... and the friction of one flank sliding along another
+  inertia: 2.5, // yaw inertia: x a box's own, m (L^2 + W^2) / 12 (each car's footprint, its mass = its profile's heft) -
+  // the tyres resist being turned
+  yawMax: 1.5, // rad/s: the most one step's car hits turn a car (a wall hit's kick is capped too: K.wallYaw)
+  knockGrip: 36, // u/s^2: a car knocked sideways slides on its tyres, losing the sideways speed this fast (x the surface's
+  // grip) - it is never turned into speed along the heading the way the grip turns a slip ...
+  knockMax: 12, // ... and pushes build that slide up to this at most (u/s; the tyres take the rest) - a single hard hit
+  // knocks it as hard as it is
+  spinHit: 14, // a hit behind the car's middle, square on (past the walls' stunAngle), as hard as a wall hit of this
+  // (closing speed x the other car's share of the mass: 28 u/s between two of the same heft) knocks the tail out - it
+  // spins out (a T-bone on the rear quarter at speed)
+  spinRear: 3, // rad/s of yaw pushes on the rear quarter (closing faster than a touch) have kicked in lately (dying away
+  // as a wall's kick does: a PIT's push builds it up) - the tail knocked out: it spins out ...
+  spinMin: 30, // ... at speed (u/s; slower, the tyres catch it). Resting contact - two cars leaning on each other, door
+  // to door or nose to tail - never spins anyone
+  ghost: 1, // s: a car put back on the track passes through the others this long
+};
 
 const K = {
   vtop: 44, // top speed on the throttle (u/s; x4.3 = scale km/h), on plastic - each car's x its profile's top
@@ -303,6 +332,7 @@ export function profileOf(id: string): Profile {
 }
 
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
+const B = (x: boolean) => (x ? 1 : 0);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smooth = (a: number, b: number, x: number) => {
   const t = clamp((x - a) / (b - a), 0, 1);
@@ -340,6 +370,7 @@ function carGeometry(car: CarSpec) {
     width,
     hl: length / 2, // the body's half-length and half-width (the model is centred on its origin): the box that hits walls
     hw: width / 2,
+    hh: (car.height || 1.2) / 2, // ... and half its height (online: the box that hits other cars stands on the ground)
     tw: avg(car.wheels.map((w) => Math.abs(w.centre[2])), 0.6), // the wheels' half-track (which ones are on the verge)
   };
 }
@@ -389,6 +420,13 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
   let sGrip = 1, sDrift = 1, sYaw = 1, sCap = 1, sDrag = 0, sBump = 0, sLoose = 0;
   // this flight is a hop off a crest (not a jump), shown yet as airborne; s on the ground since landing
   let hop = false, shown = true, groundT = 0;
+  // online only (another car's hit: carPush): the sideways slide a hit knocked into the car (u/s, + right of its nose),
+  // which the tyres scrub off; the yaw pushes on its rear quarter kicked in lately (a PIT's: rad/s, dying away as the
+  // kick does); s left passing through the other cars after being put back. Always 0 offline.
+  let knock = 0, hitYaw = 0, ghostT = 0;
+  // (online, within a step: the knock before this step's car hits and what they have added - carPush caps the build-up;
+  // set by step(), read by the contact solver's pushes that follow it: no state of its own between steps)
+  let knock0 = 0, knockAdd = 0;
 
   // A lane split (track.split: track 2's sky bridge, two channels either side of an island): the car's lane (-1 left,
   // +1 right, 0 none) - taken by the side it's on as it reaches the island's point and kept to the far end (laneAt) -
@@ -513,6 +551,10 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     sLoose += (ls * (1 - w) - sLoose) * b;
   }
 
+  /** The slip the state shows (the effects' smoke and squeal, the autopilot): the heading against the travel - and,
+   *  knocked sideways by another car (online), against the slide too. */
+  const slipOut = () => (knock !== 0 ? beta - Math.atan2(knock, Math.max(Math.abs(v), 1)) : beta);
+
   /** World pose on the surface: both axles on the track (so the loop and ramps seat the car), the origin raised
    *  by the ride height. Also the world velocity. */
   function poseGround(f: TrackFrame) {
@@ -533,6 +575,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     state.position.copy(pR).lerp(pF, -geo.xr / (geo.xf - geo.xr)).addScaledVector(up, geo.ride);
     const ph = psi - beta;
     state.velocity.copy(f.t).multiplyScalar(v * Math.cos(ph)).addScaledVector(f.right, v * Math.sin(ph) + sag);
+    if (knock !== 0) state.velocity.addScaledVector(f.t, -Math.sin(psi) * knock).addScaledVector(f.right, Math.cos(psi) * knock);
   }
 
   function place(s0: number) {
@@ -552,6 +595,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     stack = 0;
     aY = 0;
     kick = stunT = spinT = airYawRate = hayT = sag = 0;
+    knock = hitYaw = ghostT = knock0 = knockAdd = 0;
     slipLim = K.slipMax * DEG;
     wallAgo = 1;
     onPad = tagL(s) === 'booster';
@@ -618,6 +662,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     pressT = 0;
     poseGround(fM);
     state.events.respawn = true;
+    ghostT = CAR.ghost; // (online: it passes through the other cars for a moment)
   }
 
   /** Go loose (the wheel turned: a flick of weight that way). A tail already out (the last drift's, or the dirt's own
@@ -766,6 +811,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     if (stall) respawnIn = 0.9; // fell off the loop's ceiling
     airP.copy(state.position);
     airV.copy(state.velocity);
+    knock = 0; // (a knock's sideways slide flies on in airV)
     airQ.copy(state.quaternion);
     if (!crest) state.events.airborne = true;
   }
@@ -1139,8 +1185,28 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     const sdot = (v * cph) / Math.max(0.3, 1 - f.kappa * d) / jac;
     s = wrapS(s + sdot * h);
     d += v * sph * h;
+    if (knock !== 0) {
+      // (online: knocked sideways by another car - it slides across its nose while the tyres scrub that off)
+      s = wrapS(s - (Math.sin(psi) * knock * h) / Math.max(0.3, 1 - f.kappa * d) / jac);
+      d += Math.cos(psi) * knock * h;
+      const kd = CAR.knockGrip * sGrip * h;
+      knock = knock > kd ? knock - kd : knock < -kd ? knock + kd : 0;
+    }
     const yawRel = omega + kick - f.kappa * sdot; // the car's turn against the track (and its walls)
     psi = wrapA(psi + yawRel * h);
+    if (knock !== 0) {
+      // (online: the slide keeps its way in the world while the car turns under it - what turns out of across the nose
+      // is along it, into the speed: a car spun by a hit slides on the way the hit sent it, not round with its nose)
+      const dk = (omega + kick) * h, lon = knock * Math.sin(dk);
+      knock *= Math.cos(dk);
+      const ph = psi - beta, vT = v * Math.cos(ph) + lon * Math.cos(psi), vR = v * Math.sin(ph) + lon * Math.sin(psi);
+      const sp = Math.hypot(vT, vR);
+      let bb = sp > 1e-3 ? wrapA(psi - Math.atan2(vR, vT)) : 0, sg = 1;
+      if (bb > Math.PI / 2 || bb < -Math.PI / 2) (bb = wrapA(bb + Math.PI)), (sg = -1);
+      v = sg * sp;
+      beta = bb;
+      if (Math.abs(bb) > slipLim) slipLim = Math.abs(bb);
+    }
     laneAt();
     f = frame(s, fM);
 
@@ -1160,7 +1226,14 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       d = side > 0 ? hi : lo;
       if (sag * side > 0) sag = 0; // the rail stops the slide
       const ph = psi - beta;
-      wallHit(side, f, v * Math.cos(ph), v * Math.sin(ph), yawRel);
+      let wT = v * Math.cos(ph), wR = v * Math.sin(ph);
+      if (knock !== 0) {
+        // (online: a knock's sideways slide hits the wall with the rest of the car's speed)
+        wT -= Math.sin(psi) * knock;
+        wR += Math.cos(psi) * knock;
+        knock = 0;
+      }
+      wallHit(side, f, wT, wR, yawRel);
       // back to speed and slip (a hit can turn the travel past side-on: then it's going backwards)
       const sp = Math.hypot(oT, oR);
       let b = sp > 1e-3 ? wrapA(psi - Math.atan2(oR, oT)) : 0, sg = 1;
@@ -1235,10 +1308,350 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
     poseGround(f);
   }
 
+  // ---- Online play (net/): the whole simulation state as a flat list of numbers - the closure's variables, the flight
+  // and the body-feel vectors, the axle frames' crest (read at the next step's start) and the state's outputs - so a
+  // client can rewind its car to the server's state at a step and replay its inputs since (prediction and
+  // reconciliation), bit for bit: restore(snapshot()) and the same inputs step on exactly as before. netState() is the
+  // short version the other cars travel as (what a car's next steps depend on; net/codec.ts quantizes it), so a client
+  // can predict them too; body(), carPush() and carHit() are car-to-car hits (net/contact.ts). Plus where the car is in
+  // track space. None of it runs offline: step() is as it was (knock and hitYaw stay 0 there; ghostT, set on a respawn,
+  // is only read by the contact).
+  const tp = { s: 0, d: 0, psi: 0, beta: 0, v: 0, grounded: true, lane: 0, hl: geo.hl, hw: geo.hw };
+  function writeSnap(o: { [i: number]: number }) {
+    const st = state;
+    let i = 0;
+    o[i++] = SNAP_VERSION;
+    o[i++] = s, o[i++] = d, o[i++] = psi, o[i++] = beta, o[i++] = v, o[i++] = omega;
+    o[i++] = B(grounded), o[i++] = B(falling), o[i++] = respawnIn, o[i++] = airTime, o[i++] = stuck, o[i++] = wrongT;
+    o[i++] = B(drifting), o[i++] = dir, o[i++] = charge, o[i++] = tier, o[i++] = pressT, o[i++] = B(held);
+    o[i++] = slide, o[i++] = looseT, o[i++] = straightT, o[i++] = B(slid), o[i++] = B(spun), o[i++] = settleT;
+    o[i++] = boost, o[i++] = magic, o[i++] = turbo, o[i++] = stack, o[i++] = B(onPad);
+    o[i++] = safeS, o[i++] = safeV, o[i++] = vPrev, o[i++] = steerVis, o[i++] = spin, o[i++] = aY;
+    o[i++] = kick, o[i++] = stunT, o[i++] = spinT, o[i++] = slipLim, o[i++] = wallAgo, o[i++] = wallSide, o[i++] = airYawRate, o[i++] = hayT;
+    o[i++] = sag, o[i++] = oT, o[i++] = oR;
+    o[i++] = sGrip, o[i++] = sDrift, o[i++] = sYaw, o[i++] = sCap, o[i++] = sDrag, o[i++] = sBump, o[i++] = sLoose;
+    o[i++] = B(hop), o[i++] = B(shown), o[i++] = groundT;
+    o[i++] = lane, o[i++] = safeLane, o[i++] = knock, o[i++] = ghostT, o[i++] = hitYaw;
+    o[i++] = airP.x, o[i++] = airP.y, o[i++] = airP.z, o[i++] = airV.x, o[i++] = airV.y, o[i++] = airV.z;
+    o[i++] = airQ.x, o[i++] = airQ.y, o[i++] = airQ.z, o[i++] = airQ.w;
+    o[i++] = accBase.x, o[i++] = accBase.y, o[i++] = accBase.z, o[i++] = fA.kappaN, o[i++] = fB.kappaN;
+    o[i++] = st.position.x, o[i++] = st.position.y, o[i++] = st.position.z;
+    o[i++] = st.quaternion.x, o[i++] = st.quaternion.y, o[i++] = st.quaternion.z, o[i++] = st.quaternion.w;
+    o[i++] = st.velocity.x, o[i++] = st.velocity.y, o[i++] = st.velocity.z, o[i++] = st.accelLocal.x, o[i++] = st.accelLocal.y, o[i++] = st.accelLocal.z;
+    o[i++] = st.speed, o[i++] = st.steerVisual, o[i++] = st.wheelSpinRate, o[i++] = st.slip, o[i++] = B(st.drifting), o[i++] = st.driftTier;
+    o[i++] = B(st.boosting), o[i++] = st.boostStack, o[i++] = B(st.grounded), o[i++] = st.trackS, o[i++] = st.lapDelta, o[i++] = B(!!st.wrongWay);
+    return i;
+  }
+  function restore(a: ArrayLike<number>) {
+    if (a[0] !== SNAP_VERSION || a.length !== SNAP_LENGTH) throw new Error(`arcade: not a snapshot of this model (${a[0]}, ${a.length})`);
+    let i = 1;
+    s = a[i++], d = a[i++], psi = a[i++], beta = a[i++], v = a[i++], omega = a[i++];
+    grounded = a[i++] !== 0, falling = a[i++] !== 0, respawnIn = a[i++], airTime = a[i++], stuck = a[i++], wrongT = a[i++];
+    drifting = a[i++] !== 0, dir = a[i++], charge = a[i++], tier = a[i++] as 0 | 1 | 2 | 3 | 4, pressT = a[i++], held = a[i++] !== 0;
+    slide = a[i++], looseT = a[i++], straightT = a[i++], slid = a[i++] !== 0, spun = a[i++] !== 0, settleT = a[i++];
+    boost = a[i++], magic = a[i++], turbo = a[i++], stack = a[i++], onPad = a[i++] !== 0;
+    safeS = a[i++], safeV = a[i++], vPrev = a[i++], steerVis = a[i++], spin = a[i++], aY = a[i++];
+    kick = a[i++], stunT = a[i++], spinT = a[i++], slipLim = a[i++], wallAgo = a[i++], wallSide = a[i++], airYawRate = a[i++], hayT = a[i++];
+    sag = a[i++], oT = a[i++], oR = a[i++];
+    sGrip = a[i++], sDrift = a[i++], sYaw = a[i++], sCap = a[i++], sDrag = a[i++], sBump = a[i++], sLoose = a[i++];
+    hop = a[i++] !== 0, shown = a[i++] !== 0, groundT = a[i++];
+    lane = a[i++], safeLane = a[i++], knock = a[i++], ghostT = a[i++], hitYaw = a[i++];
+    knock0 = knock, knockAdd = 0;
+    airP.set(a[i++], a[i++], a[i++]);
+    airV.set(a[i++], a[i++], a[i++]);
+    airQ.set(a[i++], a[i++], a[i++], a[i++]);
+    accBase.set(a[i++], a[i++], a[i++]);
+    fA.kappaN = a[i++];
+    fB.kappaN = a[i++];
+    const st = state;
+    st.position.set(a[i++], a[i++], a[i++]);
+    st.quaternion.set(a[i++], a[i++], a[i++], a[i++]);
+    st.velocity.set(a[i++], a[i++], a[i++]);
+    st.accelLocal.set(a[i++], a[i++], a[i++]);
+    st.speed = a[i++], st.steerVisual = a[i++], st.wheelSpinRate = a[i++], st.slip = a[i++], st.drifting = a[i++] !== 0;
+    st.driftTier = a[i++] as 0 | 1 | 2 | 3 | 4, st.boosting = a[i++] !== 0, st.boostStack = a[i++];
+    st.grounded = a[i++] !== 0, st.trackS = a[i++], st.lapDelta = a[i++], st.wrongWay = a[i++] !== 0;
+  }
+
+  /** restore() from the core alone (snapshot()[0..CORE_LENGTH)): the outputs worked out again exactly as a step leaves
+   *  them (the pose on the ground, the flight's in the air) - all but lapDelta, which only a step knows (0 here). */
+  function restoreCore(a: ArrayLike<number>) {
+    if (a[0] !== SNAP_VERSION) throw new Error(`arcade: not a snapshot of this model (${a[0]})`);
+    let i = 1;
+    s = a[i++], d = a[i++], psi = a[i++], beta = a[i++], v = a[i++], omega = a[i++];
+    grounded = a[i++] !== 0, falling = a[i++] !== 0, respawnIn = a[i++], airTime = a[i++], stuck = a[i++], wrongT = a[i++];
+    drifting = a[i++] !== 0, dir = a[i++], charge = a[i++], tier = a[i++] as 0 | 1 | 2 | 3 | 4, pressT = a[i++], held = a[i++] !== 0;
+    slide = a[i++], looseT = a[i++], straightT = a[i++], slid = a[i++] !== 0, spun = a[i++] !== 0, settleT = a[i++];
+    boost = a[i++], magic = a[i++], turbo = a[i++], stack = a[i++], onPad = a[i++] !== 0;
+    safeS = a[i++], safeV = a[i++], vPrev = a[i++], steerVis = a[i++], spin = a[i++], aY = a[i++];
+    kick = a[i++], stunT = a[i++], spinT = a[i++], slipLim = a[i++], wallAgo = a[i++], wallSide = a[i++], airYawRate = a[i++], hayT = a[i++];
+    sag = a[i++], oT = a[i++], oR = a[i++];
+    sGrip = a[i++], sDrift = a[i++], sYaw = a[i++], sCap = a[i++], sDrag = a[i++], sBump = a[i++], sLoose = a[i++];
+    hop = a[i++] !== 0, shown = a[i++] !== 0, groundT = a[i++];
+    lane = a[i++], safeLane = a[i++], knock = a[i++], ghostT = a[i++], hitYaw = a[i++];
+    knock0 = knock, knockAdd = 0;
+    airP.set(a[i++], a[i++], a[i++]);
+    airV.set(a[i++], a[i++], a[i++]);
+    airQ.set(a[i++], a[i++], a[i++], a[i++]);
+    accBase.set(a[i++], a[i++], a[i++]);
+    const kA = a[i++], kB = a[i++];
+    const st = state;
+    if (grounded) {
+      poseGround(frame(s, fM));
+      st.accelLocal.copy(accBase);
+      if (sBump > 0.01) {
+        const b = (sBump * K.dirtBump * Math.min(1, Math.abs(v) / 25)) / P.heft;
+        st.accelLocal.x += 24 * b * bumps(s + 5.3);
+        st.accelLocal.y += 55 * b * bumps(s);
+        st.accelLocal.z += 24 * b * bumps(s * 1.3 + 11);
+      }
+    } else {
+      st.position.copy(airP);
+      st.quaternion.copy(airQ);
+      st.velocity.copy(airV);
+      st.accelLocal.copy(accBase);
+    }
+    fA.kappaN = kA; // (on the ground the pose worked them out the same)
+    fB.kappaN = kB;
+    st.speed = grounded ? Math.abs(v) : airV.length();
+    st.steerVisual = steerVis;
+    st.wheelSpinRate = spin;
+    st.slip = grounded ? slipOut() : 0;
+    st.drifting = drifting;
+    st.driftTier = tier;
+    st.boosting = boost > 0 || magic > 0 || turbo > 0;
+    st.boostStack = stack;
+    st.grounded = grounded || !shown;
+    st.trackS = s;
+    st.lapDelta = 0;
+    st.wrongWay = wrongT > K.wrongTime;
+  }
+
+  /** The short state another client predicts this car from (NET_LEN numbers in net/codec.ts's order and units; the
+   *  input at 8..11 and the race at 68..71 are the caller's to fill). What only matters in the air is 0 on the ground,
+   *  and timers past the last value anything compares them with are clamped, so an idle field never changes. */
+  function netState(o: Float64Array) {
+    o[0] = s, o[1] = d, o[2] = psi, o[3] = beta, o[4] = v, o[5] = omega, o[6] = kick, o[7] = knock;
+    o[12] = steerVis, o[13] = accBase.x, o[14] = accBase.y, o[15] = accBase.z;
+    o[16] = sGrip, o[17] = sDrift, o[18] = sYaw, o[19] = sCap, o[20] = sDrag, o[21] = sBump, o[22] = sLoose, o[23] = lane;
+    let off = s - safeS;
+    if (off > LEN / 2) off -= LEN;
+    else if (off < -LEN / 2) off += LEN;
+    o[24] = off, o[25] = v - safeV, o[26] = safeLane, o[27] = respawnIn, o[28] = stuck, o[29] = wrongT, o[30] = ghostT;
+    o[31] = (grounded ? 1 : 0) | (falling ? 2 : 0) | (hop ? 4 : 0) | (shown ? 8 : 0) | (held ? 16 : 0) | (onPad ? 32 : 0);
+    o[32] = B(drifting), o[33] = dir, o[34] = charge, o[35] = tier, o[36] = pressT, o[37] = slide, o[38] = looseT, o[39] = straightT;
+    o[40] = B(slid), o[41] = B(spun), o[42] = settleT, o[43] = boost, o[44] = magic, o[45] = turbo, o[46] = stack, o[47] = grounded ? 0 : spin;
+    o[48] = stunT, o[49] = spinT, o[50] = hayT, o[51] = slipLim, o[52] = Math.min(wallAgo, 1.5), o[53] = wallSide, o[54] = sag;
+    o[55] = Math.min(groundT, 1);
+    if (grounded) o.fill(0, 56, 68);
+    else {
+      o[56] = Math.min(airTime, K.airMax), o[57] = airP.x, o[58] = airP.y, o[59] = airP.z, o[60] = airV.x, o[61] = airV.y, o[62] = airV.z;
+      o[63] = airYawRate, o[64] = airQ.x, o[65] = airQ.y, o[66] = airQ.z, o[67] = airQ.w;
+    }
+    o[71] = hitYaw;
+  }
+  /** Back from netState() (quantized): the car as another client predicts it - the pose and outputs worked out again. */
+  function restoreNet(a: ArrayLike<number>) {
+    s = wrapS(a[0]), d = a[1], psi = a[2], beta = a[3], v = a[4], omega = a[5], kick = a[6], knock = a[7];
+    knock0 = knock, knockAdd = 0;
+    steerVis = a[12];
+    accBase.set(a[13], a[14], a[15]);
+    sGrip = a[16], sDrift = a[17], sYaw = a[18], sCap = a[19], sDrag = a[20], sBump = a[21], sLoose = a[22], lane = a[23];
+    safeS = wrapS(s - a[24]), safeV = v - a[25], safeLane = a[26], respawnIn = a[27], stuck = a[28], wrongT = a[29], ghostT = a[30];
+    const fl = a[31];
+    grounded = (fl & 1) !== 0, falling = (fl & 2) !== 0, hop = (fl & 4) !== 0, shown = (fl & 8) !== 0, held = (fl & 16) !== 0, onPad = (fl & 32) !== 0;
+    drifting = a[32] !== 0, dir = a[33], charge = a[34], tier = a[35] as 0 | 1 | 2 | 3 | 4, pressT = a[36], slide = a[37], looseT = a[38], straightT = a[39];
+    slid = a[40] !== 0, spun = a[41] !== 0, settleT = a[42], boost = a[43], magic = a[44], turbo = a[45], stack = a[46];
+    stunT = a[48], spinT = a[49], hayT = a[50], slipLim = a[51], wallAgo = a[52], wallSide = a[53], sag = a[54], groundT = a[55];
+    hitYaw = a[71];
+    vPrev = v, aY = 0, oT = oR = 0;
+    const st = state;
+    if (grounded) {
+      airTime = 0;
+      spin = (v * Math.cos(beta)) / geo.r;
+      poseGround(frame(s, fM));
+    } else {
+      airTime = a[56];
+      airP.set(a[57], a[58], a[59]);
+      airV.set(a[60], a[61], a[62]);
+      airYawRate = a[63];
+      airQ.set(a[64], a[65], a[66], a[67]).normalize();
+      spin = a[47];
+      st.position.copy(airP);
+      st.quaternion.copy(airQ);
+      st.velocity.copy(airV);
+    }
+    st.accelLocal.copy(accBase);
+    st.speed = grounded ? Math.abs(v) : airV.length();
+    st.slip = grounded ? slipOut() : 0;
+    st.drifting = drifting;
+    st.driftTier = tier;
+    st.boosting = boost > 0 || magic > 0 || turbo > 0;
+    st.boostStack = stack;
+    st.grounded = grounded || !shown;
+    st.steerVisual = steerVis;
+    st.wheelSpinRate = spin;
+    st.trackS = s;
+    st.lapDelta = 0;
+    st.wrongWay = wrongT > K.wrongTime;
+  }
+
+  // ---- Car-to-car hits. The box another car hits: the body's footprint (the walls' box) standing on the ground, its
+  // height the model's; its mass the profile's heft and its yaw inertia a box's (CAR.inertia x m (L^2 + W^2) / 12).
+  const bd: ContactBody = {
+    c: new THREE.Vector3(), f: new THREE.Vector3(), u: new THREE.Vector3(), r: new THREE.Vector3(), v: new THREE.Vector3(), w: 0,
+    hl: geo.hl, hw: geo.hw, hh: geo.hh, m: P.heft, I: (P.heft * (geo.length * geo.length + geo.width * geo.width)) / 12, s: 0, lane: 0,
+    air: false, ghost: false, wn: new THREE.Vector3(),
+  };
+  // (a corner within PIN u of its rail is pressed against it - and held by it less and less out to PIN + PIN_FADE u:
+  // smooth, so a car predicted a hair off the rail isn't pushed in a different way)
+  const fW = newFrame(), PIN = 0.05, PIN_FADE = 0.25;
+  const contact = { at: new THREE.Vector3(), normal: new THREE.Vector3() };
+  (state as VehicleState).contact = contact;
+  function body(): ContactBody {
+    const q = state.quaternion;
+    bd.f.set(1, 0, 0).applyQuaternion(q);
+    bd.u.set(0, 1, 0).applyQuaternion(q);
+    bd.r.set(0, 0, 1).applyQuaternion(q);
+    bd.c.copy(state.position).addScaledVector(bd.u, geo.hh);
+    bd.v.copy(state.velocity);
+    bd.w = grounded ? omega + kick : airYawRate; // (+ right; in the air the kick is in airYawRate)
+    bd.I = (P.heft * (geo.length * geo.length + geo.width * geo.width) * CAR.inertia) / 12;
+    bd.s = s;
+    bd.lane = lane;
+    bd.air = !grounded;
+    bd.ghost = ghostT > 0 || respawnIn > 0 || falling;
+    // pressed against a rail (or a split's island): the rail's outward normal, as long as how firmly it holds the car
+    // (1 on it, fading to 0 a little off it) - another car can't push it further in
+    bd.wn.set(0, 0, 0);
+    if (grounded) {
+      const f = frame(s, fW);
+      const ext = geo.hl * Math.abs(Math.sin(psi)) + geo.hw * Math.abs(Math.cos(psi));
+      const dMax = Math.max(0, limitOf(f) - ext);
+      let hi = dMax, lo = -dMax;
+      if (lane !== 0) {
+        const e = SP!.island(s) + ext;
+        if (lane < 0) hi = Math.min(hi, -e);
+        else lo = Math.max(lo, e);
+      }
+      const gR = hi - d, gL = d - lo;
+      if (gR < gL && gR < PIN + PIN_FADE) bd.wn.copy(f.right).multiplyScalar(1 - smooth(PIN, PIN + PIN_FADE, gR));
+      else if (gL <= gR && gL < PIN + PIN_FADE) bd.wn.copy(f.right).multiplyScalar(smooth(PIN, PIN + PIN_FADE, gL) - 1);
+    }
+    return bd;
+  }
+  /** Another car's push, applied at once (the contact solver's iterations see it): the velocity changed by dv (world),
+   *  the yaw rate by dw (+ right), moved by dp (world). On the ground a push along the nose goes into the speed (the
+   *  wheels roll), a push across it into the knock - a sideways slide the tyres scrub off - and the yaw into the kick
+   *  (as a wall's); the car stays between the walls (pinned on one, not through it). In the air it all goes into the
+   *  flight. */
+  function carPush(dvx: number, dvy: number, dvz: number, dw: number, dpx: number, dpy: number, dpz: number) {
+    kick = clamp(kick + dw, -KICK_MAX, KICK_MAX);
+    if (!grounded) {
+      airV.x += dvx, airV.y += dvy, airV.z += dvz;
+      airP.x += dpx, airP.y += dpy, airP.z += dpz;
+      airYawRate += dw;
+      state.position.copy(airP);
+      state.velocity.copy(airV);
+      return;
+    }
+    let f = frame(s, fM);
+    const dT = dvx * f.t.x + dvy * f.t.y + dvz * f.t.z, dR = dvx * f.right.x + dvy * f.right.y + dvz * f.right.z;
+    const c = Math.cos(psi), sn = Math.sin(psi);
+    const lon = dT * c + dR * sn; // along the nose
+    // across it: pushes build the slide up to CAR.knockMax at most (beyond what one step's hits gave it, or had left)
+    knockAdd += -dT * sn + dR * c;
+    const kMax = Math.max(CAR.knockMax, Math.abs(knock0), Math.abs(knockAdd));
+    knock = clamp(knock0 + knockAdd, -kMax, kMax);
+    if (lon !== 0) {
+      const ph = psi - beta, vT = v * Math.cos(ph) + lon * c, vR = v * Math.sin(ph) + lon * sn, sp = Math.hypot(vT, vR);
+      let bb = sp > 1e-3 ? wrapA(psi - Math.atan2(vR, vT)) : 0, sg = 1;
+      if (bb > Math.PI / 2 || bb < -Math.PI / 2) (bb = wrapA(bb + Math.PI)), (sg = -1);
+      v = sg * sp;
+      beta = bb;
+      if (Math.abs(bb) > slipLim) slipLim = Math.abs(bb);
+    }
+    if (dpx !== 0 || dpy !== 0 || dpz !== 0) {
+      const pT = dpx * f.t.x + dpy * f.t.y + dpz * f.t.z, pR = dpx * f.right.x + dpy * f.right.y + dpz * f.right.z;
+      const jac = lane !== 0 && SP!.lift(lane, s, lq) ? 1 / Math.cos(lq.th) : 1;
+      s = wrapS(s + pT / Math.max(0.3, 1 - f.kappa * d) / jac);
+      d += pR;
+      f = frame(s, fM);
+      const ext = geo.hl * Math.abs(Math.sin(psi)) + geo.hw * Math.abs(Math.cos(psi));
+      const dMax = Math.max(0, limitOf(f) - ext);
+      let hi = dMax, lo = -dMax;
+      if (lane !== 0) {
+        const e = SP!.island(s) + ext;
+        if (lane < 0) hi = Math.min(hi, -e);
+        else lo = Math.max(lo, e);
+      }
+      if (d > hi) d = hi;
+      else if (d < lo) d = lo;
+      state.trackS = s;
+    }
+    poseGround(f);
+  }
+  /** What a step's car hits did to this car (after the contact solver's iterations; `h`: the hardest contact and the
+   *  sum of the pushes). As a wall hit: the hit's speed and angle (closing speed x the other car's share of the mass:
+   *  the wall it was as good as) end a drift, stun and spin out by the walls' own thresholds. Two more spin it out: a
+   *  hit behind the car's middle, square on and past CAR.spinHit (a T-bone on the rear quarter at speed), and a PIT -
+   *  pushes on the rear quarter that closed faster than a touch, whose yaw has built up past CAR.spinRear while the car
+   *  goes faster than CAR.spinMin. Nudges, scrapes and two cars leaning on each other never spin anyone (the tyres
+   *  catch it). Then the events the effects read. */
+  function carHit(h: CarHit) {
+    const ev = state.events;
+    contact.at.set(h.px, h.py, h.pz);
+    contact.normal.set(h.nx, h.ny, h.nz);
+    if (h.vn > K.bounceMin) ev.carHit = Math.max(ev.carHit ?? 0, h.vn);
+    if (h.slide > 4) ev.carScrape = Math.max(ev.carScrape ?? 0, h.slide);
+    // the body rocks with the push (the rig's springs)
+    const q = state.quaternion;
+    const fx = v1.set(1, 0, 0).applyQuaternion(q), rx = v2.set(0, 0, 1).applyQuaternion(q);
+    const lon = h.dvx * fx.x + h.dvy * fx.y + h.dvz * fx.z, lat = h.dvx * rx.x + h.dvy * rx.y + h.dvz * rx.z;
+    accBase.x = clamp(accBase.x + (lon * 3) / P.heft, -60, 60);
+    accBase.z = clamp(accBase.z + (lat * 3) / P.heft, -60, 60);
+    if (drifting && h.unq > K.driftHit) endDrift(false); // a hit ends a drift (no boost)
+    const sp = grounded ? Math.hypot(v, knock) : airV.length();
+    hitYaw += h.dwr;
+    const pit = Math.abs(hitYaw) > CAR.spinRear && hitYaw * h.dwr > 0 && sp > CAR.spinMin;
+    const tbone = h.xc < -0.3 * geo.hl && h.th > K.stunAngle * DEG && h.unq > CAR.spinHit;
+    if (spinT <= 0 && (pit || tbone || (h.th > K.spinAngle * DEG && h.unq > K.spinSpeed))) {
+      const yaw = pit ? hitYaw : h.dw;
+      const sg = yaw > 0 ? 1 : yaw < 0 ? -1 : Math.sin(psi) > 0 ? -1 : 1;
+      kick = sg * Math.max(K.spinYaw, sg * kick);
+      if (!grounded) airYawRate += kick - airYawRate;
+      spinT = K.spinTime;
+      hitYaw = 0;
+      ev.spinOut = true;
+      if (drifting) endDrift(false);
+      slide = 0;
+    } else if (h.th > K.stunAngle * DEG && h.unq > K.stunSpeed) {
+      stunT = Math.max(stunT, K.stunTime);
+      if (drifting) endDrift(false);
+    }
+  }
+
   return {
     state,
     tuning: TUNING,
-    reset(s0: number) {
+    snapshot: () => {
+      const a = new Array<number>(SNAP_LENGTH);
+      writeSnap(a);
+      return a;
+    },
+    snapshotInto: (o: Float64Array) => void writeSnap(o),
+    restore,
+    restoreCore,
+    netState,
+    restoreNet,
+    body,
+    carPush,
+    carHit,
+    trackPose() {
+      tp.s = s, tp.d = d, tp.psi = psi, tp.beta = beta, tp.v = v, tp.grounded = grounded, tp.lane = lane;
+      return tp;
+    },
+    reset(s0: number, d0?: number) {
       place(s0);
       boost = 0;
       state.boostStack = 0;
@@ -1259,6 +1672,12 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       state.trackS = s;
       state.lapDelta = 0;
       state.wrongWay = false;
+      if (d0) {
+        // (online: a start grid slot across the line)
+        d = d0;
+        poseGround(frame(s, fM));
+        surfaceAt(fM, 0);
+      }
     },
     step(h: number, inp: DriveInput) {
       const s0 = s;
@@ -1285,6 +1704,8 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       if (stunT > 0) stunT -= h;
       if (spinT > 0) spinT -= h;
       if (hayT > 0) hayT -= h;
+      if (ghostT > 0) ghostT -= h;
+      if (hitYaw !== 0) hitYaw *= Math.exp(-h / K.wallYawTime);
       wallAgo += h;
       if (!grounded) {
         accBase.multiplyScalar(Math.exp(-10 * h)); // weightless
@@ -1295,12 +1716,14 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
       if (grounded) spin = (v * Math.cos(beta)) / geo.r + inp.throttle * Math.max(0, 1 - Math.abs(v) / 12) * 30;
       else spin += ((inp.throttle * K.vtop * P.top * 1.2) / geo.r - spin) * (1 - Math.exp(-h * (inp.throttle > 0 ? 2 : 0.4)));
       steerVis += (inp.steer - steerVis) * (1 - Math.exp(-h * 25));
+      knock0 = knock;
+      knockAdd = 0;
 
       const r0 = wrapS(s0 - track.start), r1 = wrapS(s - track.start);
       state.lapDelta = r0 > 0.75 * LEN && r1 < 0.25 * LEN ? 1 : r0 < 0.25 * LEN && r1 > 0.75 * LEN ? -1 : 0;
       state.trackS = s;
       state.speed = grounded ? Math.abs(v) : airV.length();
-      state.slip = grounded ? beta : 0;
+      state.slip = grounded ? slipOut() : 0;
       state.drifting = drifting;
       state.driftTier = tier;
       state.boosting = boost > 0 || magic > 0 || turbo > 0;

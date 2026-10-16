@@ -50,6 +50,9 @@ async function main() {
   const spin = $('spin') as HTMLAnchorElement;
   spin.href = `/drive.html?car=${encodeURIComponent(car.id)}`;
   spin.hidden = !model;
+  const race = $('race') as HTMLAnchorElement; // ... or race it against other players (the online lobby browser)
+  race.href = `/online.html?car=${encodeURIComponent(car.id)}`;
+  race.hidden = !model;
 
   const resize = () => stage.resize(innerWidth, innerHeight);
   addEventListener('resize', resize);

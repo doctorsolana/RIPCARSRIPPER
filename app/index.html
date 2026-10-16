@@ -3,19 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" href="data:," />
     <title>RIPCARS Reveal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700&display=swap" rel="stylesheet" />
     <style>
-      /* the drive page hand-off, next to "Rip again" */
+      /* the drive page hand-offs (a spin, or online), next to "Rip again" */
       .p-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
       @media (min-aspect-ratio: 9/10) { .p-actions { justify-content: flex-start; } }
       #spin { margin-top: 12px; padding: 12px 22px; border-radius: 999px; text-decoration: none; cursor: pointer;
         font: 700 13px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #fff;
         background: color-mix(in srgb, var(--tier) 35%, transparent); border: 1px solid var(--tier); }
       #spin:hover { background: color-mix(in srgb, var(--tier) 55%, transparent); }
-      #spin[hidden] { display: none; }
+      #spin[hidden], #race[hidden] { display: none; }
+      #race { margin-top: 12px; padding: 12px 22px; border-radius: 999px; text-decoration: none; cursor: pointer;
+        font: 700 13px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #fff;
+        background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.22); }
+      #race:hover { background: rgba(255, 255, 255, 0.12); }
     </style>
   </head>
   <body>
@@ -40,6 +45,7 @@
       <div class="p-actions">
         <button id="replay">Rip again</button>
         <a id="spin" href="/drive.html">Take it for a spin</a>
+        <a id="race" href="/online.html">Race it online</a>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

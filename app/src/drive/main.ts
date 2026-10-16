@@ -23,7 +23,7 @@ import { buildWorld } from './world-outdoor';
 // restarts any time. WRONG WAY when you drive against the lap (the car puts itself back after a few seconds of it).
 // Game time never slows or stops (no slow-mo, no hit-stop: the sim stays fixed-step, deterministic and input-driven,
 // ready for lockstep multiplayer); a hard hit's drama is the camera's kick and shake, the sound, sparks and haptics.
-// URL knobs: ?track=meadow|sky  ?model=arcade
+// URL knobs: ?track=meadow|sky  ?model=arcade  ?online=1&room=<name>&name=<you> (multiplayer: net/online.ts)
 //            ?auto=1 autopilot  ?tune=1 driving sliders (?tune=camera: camera)  ?fps=1
 //            ?laps=<1-9>  ?fast=<2-16> runs the sim N x real time (tests)
 // For scripts: window.__ready after 3 frames; window.__drive = { state, lap (completed), laps, model, car, course,
@@ -83,6 +83,9 @@ function saveBest(key: string, b: Best) {
 }
 
 async function main() {
+  // ?online=1: the local multiplayer demo (net/online.ts, its own page wiring; the server is app/server/). Offline,
+  // nothing below changes.
+  if (q.get('online') === '1') return void (await import('./net/online')).runOnline();
   const hud = createHud(document.getElementById('hud')!);
   hud.setCourse(COURSE_DEF.name, COURSE_DEF.color);
   // the top bar: a track switch before the car picker (both reload the page, keeping the other's pick and the knobs)
