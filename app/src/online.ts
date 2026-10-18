@@ -1,14 +1,19 @@
-import { mountNav } from './nav';
+import { shortWallet } from './auth/address';
+import { checkSession, loadSession, onSession, type Session } from './auth/session';
+import { openCreateRoom } from './create-room';
+import { isDev } from './dev';
+import { mountNav, WALLET } from './nav';
 import type { RoomListing } from './drive/net/protocol';
-import {
-  cleanName, cleanRoom, DEFAULT_CAR, randomName, roomHref, saveCar, savedCar, savedName, saveName, serverHttp, serverUrl,
-} from './drive/net/prefs';
+import { DEFAULT_CAR, roomHref, saveCar, savedCar, serverHttp, serverUrl } from './drive/net/prefs';
 
-// /online.html: the way into multiplayer (the top bar's "Race online"). Your name and car (remembered), the open rooms
-// on the game server (GET /rooms, every 2 s) with a Join on each, and Create room (a name, the track, laps, bots).
-// Join and Create open the drive page in the room (?online=1&room=...: net/online.ts), where the room's own lobby is.
-// When the server isn't there it says so, with the command that starts it (a local demo: `npm run server`).
-// Knobs: ?car=<id> (from the top bar's links), ?server=ws://host:port.
+// /online.html: the way into multiplayer (the top bar's "Race online"). Who you race as - your wallet (signed in: its
+// short address; signed out: Connect wallet) - and your car (remembered), the open rooms on the game server (GET /rooms,
+// every 2 s) with a Join on each - all of them, or one track's (the switch; ?track=<id> from the landing's Race) - and
+// Create room (create-room.ts: a name, the track, laps, bots). Join and Create need a signed-in wallet: signed out they
+// open the wallet picker first (auth/wallets.ts), then go on to the room - the drive page in it (?online=1&room=...:
+// net/online.ts), where the room's own lobby is. A remembered sign-in the server no longer takes (it restarted with a
+// new secret, say) is dropped on load. When the server isn't there it says so (in dev mode with the command that starts
+// it). Knobs: ?car=<id> (from the top bar's links), ?track=<id>, ?server=ws://host:port.
 
 interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean }
 
@@ -19,14 +24,20 @@ const CSS = `
 html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 500 14px/1.45 Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased; }
 body { background: radial-gradient(90% 60% at 50% 0%, #181a22 0%, var(--bg) 70%) fixed; }
-#app { max-width: 820px; margin: 0 auto; padding: calc(48px + 40px) max(16px, env(safe-area-inset-right)) 64px max(16px, env(safe-area-inset-left)); }
+#app { max-width: 820px; margin: 0 auto; padding: calc(48px + 44px) max(16px, env(safe-area-inset-right)) 64px max(16px, env(safe-area-inset-left)); }
 h1 { font: 400 56px/1 Anton, Impact, sans-serif; letter-spacing: 0.02em; margin: 0; }
-.lead { color: var(--muted); font-size: 15px; margin: 12px 0 0; max-width: 560px; }
-.eyebrow { font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
-.you { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; margin-top: 28px; padding: 16px; background: var(--panel);
-  border: 1px solid var(--line); border-radius: 16px; }
-label { display: grid; gap: 7px; }
-label > span { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+.you { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; margin-top: 24px; padding: 16px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 16px; align-items: start; }
+label, .me { display: grid; gap: 7px; min-width: 0; }
+label > span, .me > span { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+.me-v { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 10px; background: var(--panel2);
+  border: 1px solid var(--line); font: 600 15px/1 Inter, system-ui, sans-serif; color: var(--text); }
+.me-v img, .me-v svg { width: 22px; height: 22px; border-radius: 6px; flex: none; }
+.me-v b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.me-v small { margin-left: auto; padding-left: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+button.me-v { width: 100%; cursor: pointer; color: #fff; background: rgba(255, 61, 110, 0.14); border-color: rgba(255, 61, 110, 0.55); }
+button.me-v:hover { background: rgba(255, 61, 110, 0.24); }
+button.me-v svg { width: 18px; height: 18px; border-radius: 0; }
 input, select { width: 100%; min-width: 0; font: 600 15px/1 Inter, system-ui, sans-serif; color: var(--text); background: var(--panel2);
   border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
 select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
@@ -34,8 +45,14 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 select option { color: #111; }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 36px 0 12px; }
-h2 { font: 400 26px/1 Anton, Impact, sans-serif; letter-spacing: 0.03em; margin: 0; display: flex; align-items: baseline; gap: 10px; }
+.head > div { display: flex; align-items: center; gap: 14px; min-width: 0; }
+h2 { font: 400 26px/1 Anton, Impact, sans-serif; letter-spacing: 0.03em; margin: 0; display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
 h2 small { font: 600 13px/1 Inter, system-ui, sans-serif; color: var(--muted); letter-spacing: 0; }
+.filter { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
+.filter a { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 12.5px; white-space: nowrap; }
+.filter a:hover { color: var(--text); }
+.filter a.on { color: #fff; background: rgba(255, 255, 255, 0.13); }
+.filter a i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
 button { font: inherit; cursor: pointer; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 20px; border-radius: 999px; border: 0;
   font: 700 12px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #0b0b0d; background: #fff;
@@ -67,53 +84,21 @@ button { font: inherit; cursor: pointer; }
 .r-count { font-size: 12px; color: var(--muted); }
 .r-go { display: grid; justify-items: end; gap: 6px; }
 .r-go .note { font-size: 11px; color: var(--muted); }
-.panel { padding: 28px 24px; text-align: center; background: var(--panel); border: 1px dashed #3a3d48; border-radius: 16px; color: var(--muted); }
-.panel b { display: block; color: var(--text); font: 400 24px/1.1 Anton, Impact, sans-serif; letter-spacing: 0.02em; margin-bottom: 8px; }
-.panel p { margin: 6px auto 0; max-width: 460px; }
-.panel .btn { margin-top: 18px; }
-.panel.down { border-style: solid; border-color: rgba(255, 176, 32, 0.35); }
-.panel.down b { color: var(--warn); }
-code { font: 600 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); background: #0a0b0e; border: 1px solid var(--line);
-  padding: 8px 12px; border-radius: 8px; display: inline-block; margin-top: 12px; user-select: all; }
-.how { margin-top: 36px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.how div { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
-.how b { display: block; color: var(--text); font-size: 13px; margin-bottom: 4px; }
-.how i { font-style: normal; font: 400 20px/1 Anton, Impact, sans-serif; color: var(--accent); margin-right: 8px; }
-
-dialog { width: min(calc(100vw - 32px), 480px); padding: 0; border: 1px solid #33353f; border-radius: 20px; background: #14151b; color: var(--text);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); }
-dialog::backdrop { background: rgba(5, 6, 8, 0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-dialog form { display: grid; gap: 18px; padding: 22px; }
-dialog h3 { font: 400 32px/1 Anton, Impact, sans-serif; letter-spacing: 0.02em; margin: 0; }
-label > span.field-hint, .field-hint { font: 500 12px/1.4 Inter, system-ui, sans-serif; letter-spacing: 0; text-transform: none; color: var(--muted); }
-label > span.field-hint.err { color: var(--warn); }
-.field-hint a { color: var(--text); }
-.tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.opt { position: relative; display: grid; gap: 4px; text-align: left; padding: 12px 12px 12px 14px; border-radius: 12px; color: var(--text);
-  background: var(--panel2); border: 1px solid var(--line); }
-.opt b { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-.opt small { color: var(--muted); font-size: 12px; line-height: 1.35; }
-.opt[aria-checked="true"] { border-color: var(--c, var(--accent)); background: color-mix(in srgb, var(--c, var(--accent)) 14%, var(--panel2)); }
-.seg { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); }
-.seg button { flex: 1; padding: 9px 6px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-weight: 700; }
-.seg button[aria-checked="true"] { background: rgba(255, 255, 255, 0.14); color: #fff; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
-.actions .btn { flex: 1; }
+.panel { padding: 22px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; color: var(--muted);
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.panel.down { color: var(--warn); border-color: rgba(255, 176, 32, 0.3); }
+code { font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); background: #0a0b0e; border: 1px solid var(--line);
+  padding: 7px 10px; border-radius: 8px; user-select: all; }
 
 @media (max-width: 640px) {
-  #app { padding-top: calc(48px + 24px); }
+  #app { padding-top: calc(48px + 28px); }
   h1 { font-size: 44px; }
-  .lead { font-size: 14px; }
   .you { grid-template-columns: 1fr; margin-top: 20px; }
-  .head { margin-top: 28px; }
+  .head { margin-top: 28px; flex-wrap: wrap; }
   .head .btn { padding: 12px 16px; }
   .room { grid-template-columns: 1fr auto; gap: 12px; padding: 14px; }
   .r-who { grid-column: 1 / -1; grid-row: 2; }
   .r-go { grid-column: 2; grid-row: 1; }
-  .how { grid-template-columns: 1fr; }
-  .row2 { grid-template-columns: 1fr; }
-  dialog form { padding: 18px; gap: 16px; }
 }
 `;
 
@@ -134,37 +119,35 @@ async function main() {
 
   const app = document.getElementById('app')!;
   app.innerHTML = `
-    <div class="eyebrow">Multiplayer</div>
     <h1>Race online</h1>
-    <p class="lead">Race other players live, on the same track. Join a room below, or create one and send your friends the invite link.</p>
     <section class="you" aria-label="You">
-      <label><span>Your name</span><input id="name" maxlength="20" autocomplete="nickname" placeholder="Your name"></label>
+      <div class="me" id="me"></div>
       <label><span>Your car</span><select id="car"></select></label>
     </section>
-    <div class="head"><h2>Open rooms <small id="count"></small></h2><button type="button" class="btn primary" id="create">${PLUS}Create room</button></div>
-    <div id="list" aria-live="polite"><div class="panel"><p>Looking for rooms…</p></div></div>
-    <section class="how" aria-label="How it works">
-      <div><b><i>1</i>Join or create</b>Pick an open room, or make your own and choose the track.</div>
-      <div><b><i>2</i>Invite</b>In the room, copy the invite link and send it. Up to 10 players.</div>
-      <div><b><i>3</i>Ready up</b>When everyone presses Ready, the countdown starts.</div>
-    </section>
-    <dialog id="dlg" aria-labelledby="dlg-t"></dialog>`;
+    <div class="head"><div><h2>Open rooms <small id="count"></small></h2><nav class="filter" id="filter" aria-label="Track"></nav></div>
+      <button type="button" class="btn primary" id="create">${PLUS}Create room</button></div>
+    <div id="list" aria-live="polite"></div>`;
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-  const nameIn = $<HTMLInputElement>('name'), carSel = $<HTMLSelectElement>('car'), list = $('list'), count = $('count');
-  const createBtn = $<HTMLButtonElement>('create'), dlg = $<HTMLDialogElement>('dlg');
+  const meBox = $('me'), carSel = $<HTMLSelectElement>('car'), list = $('list'), count = $('count');
+  const createBtn = $<HTMLButtonElement>('create'), filterEl = $('filter');
+  let only = q.get('track'); // one track's rooms (the landing's Race on a track), or all
 
-  // ---- you: name and car (remembered)
-  nameIn.value = savedName();
-  nameIn.addEventListener('change', () => {
-    nameIn.value = cleanName(nameIn.value);
-    saveName(nameIn.value);
-  });
-  const myName = () => {
-    let n = cleanName(nameIn.value);
-    if (!n) n = nameIn.value = randomName();
-    saveName(n);
-    return n;
-  };
+  // ---- you: your wallet (signed in or not: the top bar's chip shows it too) and your car (remembered)
+  function showMe(s: Session | null) {
+    meBox.innerHTML = s
+      ? `<span>Racing as</span><div class="me-v" title="${esc(s.wallet)}">${s.icon ? `<img src="${s.icon}" alt="">` : WALLET}<b>${esc(shortWallet(s.wallet))}</b>${s.name ? `<small>${esc(s.name)}</small>` : ''}</div>`
+      : `<span>You</span><button type="button" class="me-v" id="connect">${WALLET}Connect wallet</button>`;
+  }
+  showMe(loadSession());
+  onSession(showMe);
+  void checkSession(serverHttp(SERVER)); // (a sign-in this server no longer takes is dropped: the chip and this follow)
+  meBox.addEventListener('click', (e) => (e.target as HTMLElement).closest('#connect') && void signedIn());
+  /** A signed-in wallet - or the picker for one (false: closed without signing in). */
+  async function signedIn() {
+    if (loadSession()) return true;
+    const { connectWallet } = await import('./auth/wallets');
+    return !!(await connectWallet());
+  }
   const { cars } = (await fetch('/cars/index.json').then((r) => r.json()).catch(() => ({ cars: [] }))) as { cars: NavCar[] };
   const modelled = cars.filter((c) => c.modelled);
   carSel.innerHTML = modelled.map((c) => `<option value="${c.id}">${esc(`${c.make} ${c.model}`)}${c.year ? ` · ${c.year}` : ''}</option>`).join('');
@@ -200,25 +183,23 @@ async function main() {
   }
   function render() {
     createBtn.disabled = !data;
+    renderFilter();
     if (!data) {
       count.textContent = '';
-      list.innerHTML = `<div class="panel down"><b>Can't reach the game server</b>
-        <p>Online races run on a separate server, and it isn't answering at <span style="color:var(--text)">${esc(serverHttp(SERVER))}</span>.</p>
-        <p>Running it locally? Start it from the <span style="color:var(--text)">app</span> folder:</p>
-        <code>npm run server</code><p style="margin-top:14px">This page checks again every few seconds.</p></div>`;
+      list.innerHTML = `<div class="panel down"><span>Game server offline</span>${isDev() ? '<code>npm run server</code>' : ''}</div>`;
       return;
     }
-    const rooms = data.rooms;
+    const rooms = data.rooms.filter((r) => !only || r.track === only);
     count.textContent = rooms.length ? String(rooms.length) : '';
     if (!rooms.length) {
-      list.innerHTML = `<div class="panel"><b>No open rooms yet</b><p>Create one, then copy its invite link and send it to a friend.
-        Or open this page in a second tab to try it out on your own.</p><button type="button" class="btn primary" data-create>${PLUS}Create room</button></div>`;
+      const c = only && data.courses.find((x) => x.id === only);
+      list.innerHTML = `<div class="panel"><span>No open rooms${c ? ` on ${esc(c.name)}` : ''}</span></div>`;
       return;
     }
     list.innerHTML = rooms.map((r) => {
       const [label, busy] = STATE[r.phase] ?? ['', false];
       const full = r.players.length >= r.max;
-      const chips = r.players.map((p) => `<span class="chip${p.bot ? ' bot' : ''}">${esc(p.name)}${p.host ? ' ★' : ''}<small>${esc(p.carName)}</small></span>`).join('');
+      const chips = r.players.map((p) => `<span class="chip${p.bot ? ' bot' : ''}"${p.wallet ? ` title="${esc(p.wallet)}"` : ''}>${esc(p.name)}${p.host ? ' ★' : ''}<small>${esc(p.carName)}</small></span>`).join('');
       return `<article class="room" data-room="${esc(r.name)}">
         <div><div class="r-name">${esc(r.name)}</div><div class="r-meta"><i class="dot" style="--c:${esc(r.color)}"></i>${esc(r.trackName)} · ${r.laps} ${r.laps === 1 ? 'lap' : 'laps'}</div></div>
         <div class="r-who"><div><span class="r-state${busy ? ' busy' : ''}">${label}</span> <span class="r-count">· ${r.players.length}/${r.max} players</span></div>
@@ -229,88 +210,50 @@ async function main() {
     }).join('');
   }
   list.addEventListener('click', (e) => {
-    const t = e.target as HTMLElement;
-    if (t.closest('[data-create]')) return openCreate();
-    const j = t.closest<HTMLElement>('[data-join]');
+    const j = (e.target as HTMLElement).closest<HTMLElement>('[data-join]');
     if (j) join(j.dataset.join!);
   });
-  function join(name: string) {
+  /** The track switch: all rooms, or one track's (kept in the URL). */
+  function renderFilter() {
+    const cs = data?.courses ?? [];
+    if (only && cs.length && !cs.some((c) => c.id === only)) only = null;
+    const html = cs.length < 2 ? '' : [`<a href="#" data-only="" class="${only ? '' : 'on'}">All</a>`,
+      ...cs.map((c) => `<a href="#" data-only="${esc(c.id)}" class="${only === c.id ? 'on' : ''}" style="--c:${esc(c.color)}"><i></i>${esc(c.name)}</a>`)].join('');
+    if (filterEl.innerHTML !== html) filterEl.innerHTML = html;
+  }
+  filterEl.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLElement>('[data-only]');
+    if (!a) return;
+    e.preventDefault();
+    only = a.dataset.only || null;
+    const p = new URLSearchParams(location.search);
+    if (only) p.set('track', only);
+    else p.delete('track');
+    const qs = p.toString();
+    history.replaceState(null, '', `${location.pathname}${qs ? `?${qs}` : ''}`);
+    render();
+  });
+  async function join(name: string) {
     const r = data?.rooms.find((x) => x.name === name);
-    if (!r) return;
-    location.href = roomHref(r.name, r.track, r.laps, { name: myName(), car: myCar(), server: serverQ });
+    if (!r || !(await signedIn())) return;
+    location.href = roomHref(r.name, r.track, r.laps, { car: myCar(), server: serverQ });
   }
   refresh();
   setInterval(refresh, 2000);
 
-  // ---- create a room
-  createBtn.addEventListener('click', () => openCreate());
-  function openCreate() {
+  // ---- create a room (create-room.ts: the landing has the same)
+  createBtn.addEventListener('click', () => {
     if (!data) return;
-    const courses = data.courses;
-    let track = courses.find((c) => c.id === 'sky')?.id ?? courses[0].id, laps = 3, bots = 0;
-    const base = cleanRoom(cleanName(nameIn.value)) || 'room';
-    let room = `${base}-${10 + Math.floor(Math.random() * 90)}`;
-    dlg.innerHTML = `<form method="dialog">
-      <h3 id="dlg-t">Create a room</h3>
-      <label><span>Room name</span><input id="c-name" maxlength="32" value="${esc(room)}" autocomplete="off" spellcheck="false">
-        <span class="field-hint" id="c-hint">Players see this name in the list.</span></label>
-      <div><label style="margin-bottom:7px"><span>Track</span></label><div class="tracks" role="radiogroup" aria-label="Track">
-        ${courses.map((c) => `<button type="button" class="opt" role="radio" data-track="${c.id}" style="--c:${c.color}"><b><i class="dot"></i>${esc(c.name)}</b><small>${esc(c.blurb)}</small></button>`).join('')}
-      </div></div>
-      <div class="row2">
-        <div><label style="margin-bottom:7px"><span>Laps</span></label><div class="seg" role="radiogroup" aria-label="Laps">
-          ${[1, 2, 3, 5].map((n) => `<button type="button" role="radio" data-laps="${n}">${n}</button>`).join('')}</div></div>
-        <div><label style="margin-bottom:7px"><span>Fill with bots</span></label><div class="seg" role="radiogroup" aria-label="Bots">
-          ${[0, 2, 4, 6].map((n) => `<button type="button" role="radio" data-bots="${n}">${n ? n : 'Off'}</button>`).join('')}</div></div>
-      </div>
-      <span class="field-hint" style="margin-top:-8px">Bots are computer drivers. Friends can still join.</span>
-      <div class="actions"><button type="button" class="btn ghost" value="cancel" id="c-cancel">Cancel</button><button type="submit" class="btn primary" id="c-go">Create room</button></div>
-    </form>`;
-    const nameC = dlg.querySelector<HTMLInputElement>('#c-name')!, hint = dlg.querySelector<HTMLElement>('#c-hint')!;
-    const go = dlg.querySelector<HTMLButtonElement>('#c-go')!;
-    const sync = () => {
-      for (const b of dlg.querySelectorAll<HTMLElement>('[data-track]')) b.setAttribute('aria-checked', String(b.dataset.track === track));
-      for (const b of dlg.querySelectorAll<HTMLElement>('[data-laps]')) b.setAttribute('aria-checked', String(Number(b.dataset.laps) === laps));
-      for (const b of dlg.querySelectorAll<HTMLElement>('[data-bots]')) b.setAttribute('aria-checked', String(Number(b.dataset.bots) === bots));
-      room = cleanRoom(nameC.value);
-      const taken = data?.rooms.find((r) => r.name === room);
-      go.disabled = !room || !!taken;
-      if (!room) hint.textContent = 'Give it a name: letters, numbers and dashes.', hint.className = 'field-hint err';
-      else if (taken) {
-        hint.innerHTML = `A room called <b>${esc(room)}</b> is already open. Pick another name, or <a href="#" id="c-join">join it</a>.`;
-        hint.className = 'field-hint err';
-        hint.querySelector('#c-join')!.addEventListener('click', (e) => (e.preventDefault(), join(room)));
-      } else hint.textContent = 'Players see this name in the list.', hint.className = 'field-hint';
-    };
-    nameC.addEventListener('input', () => {
-      const c = cleanRoom(nameC.value);
-      if (c !== nameC.value) {
-        const at = nameC.selectionStart ?? c.length;
-        nameC.value = c;
-        nameC.setSelectionRange(Math.min(at, c.length), Math.min(at, c.length));
-      }
-      sync();
+    openCreateRoom({
+      courses: data.courses,
+      track: only ?? undefined,
+      taken: (n) => !!data?.rooms.some((r) => r.name === n),
+      go: async (room, track, laps, bots) => {
+        if (await signedIn()) location.href = roomHref(room, track, laps, { car: myCar(), bots, server: serverQ });
+      },
+      join: (n) => void join(n),
     });
-    dlg.onclick = (e) => {
-      const t = (e.target as HTMLElement).closest<HTMLElement>('[data-track],[data-laps],[data-bots]');
-      if (t?.dataset.track) track = t.dataset.track;
-      else if (t?.dataset.laps) laps = Number(t.dataset.laps);
-      else if (t?.dataset.bots) bots = Number(t.dataset.bots);
-      if (t) sync();
-      if (e.target === dlg) dlg.close(); // a click on the backdrop
-    };
-    dlg.querySelector('#c-cancel')!.addEventListener('click', () => dlg.close());
-    dlg.querySelector('form')!.addEventListener('submit', (e) => {
-      e.preventDefault();
-      sync();
-      if (go.disabled) return;
-      location.href = roomHref(room, track, laps, { name: myName(), car: myCar(), bots, server: serverQ });
-    });
-    sync();
-    dlg.showModal();
-    nameC.focus();
-    nameC.select();
-  }
+  });
   Object.assign(window as any, { __lobby: { get data() { return data; }, get down() { return down; } } });
 }
 

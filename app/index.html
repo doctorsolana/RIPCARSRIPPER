@@ -3,51 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0e12" />
+    <meta name="description" content="Race Hot Wheels Rip Cars online. Two tracks, a weekly leaderboard, your garage." />
     <link rel="icon" href="data:," />
-    <title>RIPCARS Reveal</title>
+    <title>RACECARS</title>
+    <script>
+      // old links to the pack-rip reveal (it was this page): / with its knobs goes to rip.html, the query kept
+      if (/[?&](car|mode|t|card|az|el|yaw|unlit|reveal|rarity)=/.test(location.search)) location.replace('/rip.html' + location.search + location.hash);
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700&display=swap" rel="stylesheet" />
-    <style>
-      /* the drive page hand-offs (a spin, or online), next to "Rip again" */
-      .p-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-      @media (min-aspect-ratio: 9/10) { .p-actions { justify-content: flex-start; } }
-      #spin { margin-top: 12px; padding: 12px 22px; border-radius: 999px; text-decoration: none; cursor: pointer;
-        font: 700 13px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #fff;
-        background: color-mix(in srgb, var(--tier) 35%, transparent); border: 1px solid var(--tier); }
-      #spin:hover { background: color-mix(in srgb, var(--tier) 55%, transparent); }
-      #spin[hidden], #race[hidden] { display: none; }
-      #race { margin-top: 12px; padding: 12px 22px; border-radius: 999px; text-decoration: none; cursor: pointer;
-        font: 700 13px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #fff;
-        background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.22); }
-      #race:hover { background: rgba(255, 255, 255, 0.12); }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/home/style.css" />
   </head>
   <body>
-    <canvas id="c"></canvas>
-    <div id="flash"></div>
-    <div id="tear"></div>
-    <div id="steps"><i></i><i></i><i></i></div>
-    <div id="stage-text">
-      <div class="block" id="b-era"><div class="label">Model year</div><div class="value" id="year"></div></div>
-      <div class="block" id="b-make">
-        <div class="label">Make</div>
-        <div class="value" id="make"></div>
-        <div class="badge" id="badge"></div>
-      </div>
-      <div class="block" id="b-model"><div class="label">Model</div><div class="value" id="model"></div></div>
-    </div>
-    <div id="panel">
-      <div class="chip" id="p-rarity"></div>
-      <div class="p-name" id="p-name"></div>
-      <div class="p-sub" id="p-sub"></div>
-      <div class="p-sub2" id="p-sub2"></div>
-      <div class="p-actions">
-        <button id="replay">Rip again</button>
-        <a id="spin" href="/drive.html">Take it for a spin</a>
-        <a id="race" href="/online.html">Race it online</a>
-      </div>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
+    <main id="home">
+      <section class="hero" id="hero">
+        <div class="wrap hero-in">
+          <div class="hero-txt">
+            <p class="eyebrow" id="h-eyebrow">Nissan · 1998</p>
+            <h1 id="h-name">LB-ER34 Skyline</h1>
+            <div class="hero-go">
+              <a class="btn primary big" id="h-race" href="/online.html?car=skyline-hck01">Race online</a>
+              <a class="btn big" id="h-drive" href="/drive.html?car=skyline-hck01">Drive</a>
+            </div>
+            <p class="live" id="h-live" hidden></p>
+          </div>
+          <div class="hero-car" id="h-car">
+            <div class="hero-make" id="h-make" aria-hidden="true">Nissan</div>
+            <img id="h-img" src="/src/home/img/car-skyline-hck01-1440.webp"
+              srcset="/src/home/img/car-skyline-hck01-640.webp 640w, /src/home/img/car-skyline-hck01-1440.webp 1440w"
+              sizes="(max-width: 760px) 100vw, 60vw" width="1440" height="900" alt="" fetchpriority="high" />
+            <canvas id="h-3d" aria-label="The car in 3D: drag to turn it"></canvas>
+          </div>
+        </div>
+      </section>
+      <section class="sec wrap" id="week" aria-labelledby="week-h">
+        <div class="sec-head"><h2 id="week-h">This week</h2><span class="aside" id="reset"></span></div>
+        <div class="tracks" id="tracks"></div>
+      </section>
+      <section class="sec wrap" id="rooms" aria-labelledby="rooms-h">
+        <div class="sec-head"><h2 id="rooms-h">Open rooms<small id="r-count"></small></h2>
+          <div class="sec-act"><a class="more" href="/online.html" id="r-all">All rooms</a><button type="button" class="btn primary sm" id="r-create" disabled>Create room</button></div></div>
+        <div id="r-list" aria-live="polite"></div>
+      </section>
+      <section class="sec wrap" id="garage" aria-labelledby="garage-h">
+        <div class="sec-head"><h2 id="garage-h">Garage</h2><div class="sec-act" id="g-act"></div></div>
+        <div id="g-body"></div>
+      </section>
+      <footer class="foot wrap" id="foot"></footer>
+    </main>
+    <script type="module" src="/src/home/main.ts"></script>
   </body>
 </html>

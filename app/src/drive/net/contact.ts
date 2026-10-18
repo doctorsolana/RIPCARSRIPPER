@@ -27,7 +27,8 @@ import { CAR } from '../vehicles/arcade.ts';
 // ten settles without jitter. No contact through a split's island (cars in different lanes), with a car that was just
 // put back on the track (CAR.ghost s) or one falling off it, or with a car that has finished the race (the caller's
 // skip list). The step's sum of it per car goes to the vehicle's carHit: the stun / spin-out rules and the events the
-// effects read.
+// effects read. touchedLast(i) says whether car i's box met another's in the last solve at all (read only: the server's
+// leaderboard counts only laps without any car-to-car contact).
 
 const DEG = Math.PI / 180;
 const ITER = 3; // passes over the touching pairs per step
@@ -175,6 +176,8 @@ export class ContactSolver {
   readonly stats: ContactStats = newContactStats();
   private hits: CarHit[] = [];
   private touched = new Uint8Array(0);
+  private met = new Uint8Array(0); // car i's box met another's in the last solve (any pass; impulse or not)
+  private metN = 0;
   private cand = new Int32Array(0);
   private bodies: ContactBody[] = [];
   readonly track: Track;
@@ -185,12 +188,16 @@ export class ContactSolver {
   /** After every car's step: contact between the `n` first `cars` (in the race's fixed order); skip[i] = 1: car i
    *  passes through the others (finished). Returns how many pairs touched (any pass). */
   solve(cars: readonly Vehicle[], n: number, skip: ArrayLike<number> | null, h: number): number {
+    this.metN = 0;
     if (n < 2) return 0;
     if (this.touched.length < n) {
       this.touched = new Uint8Array(n);
+      this.met = new Uint8Array(n);
       this.cand = new Int32Array(n * n);
       while (this.hits.length < n) this.hits.push({ vn: 0, unq: 0, th: 0, xc: 0, slide: 0, dw: 0, dwr: 0, px: 0, py: 0, pz: 0, nx: 0, ny: 0, nz: 0, dvx: 0, dvy: 0, dvz: 0 });
     }
+    this.met.fill(0, 0, n);
+    this.metN = n;
     const L = this.track.length, st = this.stats, touched = this.touched, hits = this.hits, bodies = this.bodies;
     bodies.length = n;
     for (let i = 0; i < n; i++) bodies[i] = cars[i].body!();
@@ -223,6 +230,7 @@ export class ContactSolver {
         const i = (this.cand[c] / n) | 0, j = this.cand[c] - i * n;
         const A = cars[i].body!(), B = cars[j].body!();
         if (!collide(A, B, h)) continue;
+        this.met[i] = this.met[j] = 1;
         any = true;
         st.touches++;
         if (man.depth > st.maxDepth) st.maxDepth = man.depth;
@@ -312,5 +320,10 @@ export class ContactSolver {
       cars[i].carHit!(hh);
     }
     return touching;
+  }
+
+  /** Car i (the last solve's order) met another car in that solve: their boxes touched, however lightly. */
+  touchedLast(i: number) {
+    return i < this.metN && this.met[i] === 1;
   }
 }

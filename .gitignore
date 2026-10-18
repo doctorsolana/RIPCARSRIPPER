@@ -19,5 +19,6 @@ asset-generation/qa/
 asset-generation/assets/cars/*/snapshots/
 asset-generation/assets/cars/*/tripo/*/views/
 
-# the drive server's race logs (npm run server)
+# the drive server's race logs and its store (npm run server; DATA_DIR)
 app/server/logs/
+app/server/data/

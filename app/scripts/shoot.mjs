@@ -1,4 +1,4 @@
-// Screenshot the reveal or a review page in headless Chrome (the dev server must be running).
+// Screenshot the reveal (rip.html) or a review page in headless Chrome (the dev server must be running).
 // usage: node scripts/shoot.mjs <outDir> <W>x<H> name:target [name:target ...]
 //   target is a reveal query, or a review page with its query (captured full-page):
 //     "spin:car=skyline-hck01&t=5"   "land:car=skyline-hck01&mode=final&card=0.6"
@@ -19,7 +19,7 @@ page.on('console', (m) => m.type() === 'error' && !m.text().includes('404') && c
 for (const shot of shots) {
   const [name, target] = shot.split(/:(.*)/s);
   const review = /^[\w-]+\.html/.test(target);
-  await page.goto(base + (review ? target : `?${target}`));
+  await page.goto(base + (review ? target : `rip.html?${target}`));
   await page.waitForFunction(() => window.__ready === true, null, { timeout: 90000 });
   await page.waitForTimeout(review ? 1500 : 250); // review pages: let every model's textures decode
   await page.screenshot({ path: `${outDir}/${name}.png`, fullPage: review });

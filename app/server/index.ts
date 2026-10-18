@@ -1,21 +1,31 @@
 import { createServer } from 'node:http';
 import { PerformanceObserver } from 'node:perf_hooks';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { H, MAX_PLAYERS, PORT, type C2S, type RoomListing, type S2C } from '../src/drive/net/protocol.ts';
+import { isAddress, shortWallet } from '../src/auth/address.ts';
+import { H, MAX_PLAYERS, PORT, type C2S, type Leaderboard, type RoomListing, type S2C } from '../src/drive/net/protocol.ts';
 import { COURSES, courseOf, isCourse } from '../src/drive/tracks/index.ts';
-import { newPlayerId, Room, validCar, type Player } from './room.ts';
-import { trackOf } from './sim.ts';
+import { handleAuth, ipOf, originOk, verifySession } from './auth.ts';
+import { garageOf } from './garage.ts';
+import { mayDrive, newPlayerId, Room, type Player } from './room.ts';
+import { carName, trackOf } from './sim.ts';
+import { board, DB_PATH } from './store.ts';
 
 // RIPCARS drive: the local multiplayer demo's server. `npm run server` -> ws://localhost:8790 (PORT to change it).
 // Server-authoritative: it runs the drive page's own sim (vehicles/arcade.ts, tracks/, car-to-car contact in
 // net/contact.ts) for every car at 120 Hz from the players' inputs, and sends 60 Hz binary snapshots back (room.ts;
 // the protocol in src/drive/net/protocol.ts and codec.ts). Rooms are made by name on the first join. Every race's
 // applied inputs go to server/logs/<room>/*.jsonl (replay.ts re-runs one).
+// Players are wallets: a join carries the session token of a wallet sign-in (auth.ts: POST /auth/challenge, /auth/verify)
+// and is refused without a valid one; the player's name is the wallet's short form, set here. One connection per wallet
+// on the whole server: a new join from a wallet closes its older connection (that car leaves, as on a disconnect), so a
+// wallet never drives two cars. A browser's WebSocket from an origin not on ALLOWED_ORIGINS is refused.
 // The clock: each step is due at its own moment of real time (hrtime), the timer set for the next one; a late wake
 // runs the steps it owes at once (never drifting), and more than half a second behind drops the backlog.
 // GET http://localhost:8790/stats: rooms, players, step time, how late the steps ran, GC pauses and bandwidth as JSON
 // (/reset-stats zeroes them). Logs a line per room every 5 s. GET /rooms: the open rooms and the courses, for the lobby
-// browser (online.html; RoomListing).
+// browser (online.html; RoomListing) - a time trial (a solo room) isn't listed. GET /leaderboard[?wallet=]: this week's
+// best clean laps per track (store.ts; Leaderboard). GET /garage?wallet=: the wallet's Rip Cars (garage.ts). Public
+// GETs, open to any site (CORS *), like /rooms.
 
 const port = Number(process.env.PORT) || PORT;
 const rooms = new Map<string, Room>();
@@ -69,16 +79,69 @@ new PerformanceObserver((list) => {
   for (const e of list.getEntries()) stats.gc.add(e.duration * 1000);
 }).observe({ entryTypes: ['gc'] });
 
-const cleanName = (s: unknown) => String(s ?? '').replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 20).trim();
+/** A public GET's JSON answer (any site may read it: CORS *). */
+function sendJson(res: import('node:http').ServerResponse, status: number, body: unknown, cache = 'no-store') {
+  res.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': cache });
+  res.end(JSON.stringify(body));
+}
+/** GET /garage's per-IP limit (each miss costs requests to RIPCARS): a burst of 20, then 20 a minute. */
+const garageBuckets = new Map<string, { tokens: number; at: number }>();
+function garageAllowed(ip: string) {
+  const now = Date.now() / 1000, b = garageBuckets.get(ip) ?? { tokens: 20, at: now };
+  b.tokens = Math.min(20, b.tokens + (now - b.at) * (20 / 60));
+  b.at = now;
+  garageBuckets.set(ip, b);
+  if (garageBuckets.size > 10_000) garageBuckets.delete(garageBuckets.keys().next().value!);
+  if (b.tokens < 1) return false;
+  b.tokens--;
+  return true;
+}
+/** GET /leaderboard[?wallet=]: this week's board for every course (the top 10 by each wallet's best clean lap), and the
+ *  wallet's own best and rank on each. */
+function leaderboard(wallet: string | null): Leaderboard {
+  const now = Date.now();
+  let week = { weekStart: 0, weekEnd: 0 };
+  const tracks = COURSES.map((c) => {
+    const len = Math.round(trackOf(c.id).length);
+    const b = board(c.id, len, wallet, now);
+    week = { weekStart: b.weekStart, weekEnd: b.weekEnd };
+    const out = (r: (typeof b.top)[number]) => ({ rank: r.rank, wallet: r.wallet, name: shortWallet(r.wallet), car: r.car, carName: carName(r.car), steps: r.steps, time: r.steps * H, at: r.at });
+    return { id: c.id, name: c.name, color: c.color, length: len, drivers: b.drivers, top: b.top.map(out), you: b.you ? out(b.you) : null };
+  });
+  return { ...week, now, tracks };
+}
 
-const http = createServer((req, res) => {
+const http = createServer(async (req, res) => {
+  if (await handleAuth(req, res)) return;
+  const url = new URL(req.url ?? '/', 'http://localhost');
+  if (url.pathname === '/leaderboard' && req.method === 'GET') {
+    const w = url.searchParams.get('wallet');
+    if (w !== null && w !== '' && !isAddress(w)) return sendJson(res, 400, { error: 'Not a wallet address' });
+    try {
+      return sendJson(res, 200, leaderboard(w || null));
+    } catch (e) {
+      console.error('leaderboard:', e);
+      return sendJson(res, 500, { error: 'Server error' });
+    }
+  }
+  if (url.pathname === '/garage' && req.method === 'GET') {
+    const w = url.searchParams.get('wallet') ?? '';
+    if (!isAddress(w)) return sendJson(res, 400, { error: 'Not a wallet address' });
+    if (!garageAllowed(ipOf(req))) return sendJson(res, 429, { error: 'Too many requests. Try again in a minute.' });
+    try {
+      return sendJson(res, 200, await garageOf(w));
+    } catch (e) {
+      console.warn(`garage ${w}: ${(e as Error).message}`);
+      return sendJson(res, 502, { error: "Can't reach RIPCARS right now" });
+    }
+  }
   if (req.url?.startsWith('/rooms')) {
     const body: RoomListing = {
-      rooms: [...rooms.values()].map((r) => {
+      rooms: [...rooms.values()].filter((r) => !r.solo).map((r) => {
         const c = courseOf(isCourse(r.course) ? r.course : 'meadow');
         return {
           name: r.name, track: r.course, trackName: c.name, color: c.color, laps: r.laps, phase: r.phase, max: MAX_PLAYERS,
-          players: r.info().map((p) => ({ name: p.name, car: p.car, carName: p.carName, bot: p.bot, ready: p.ready, host: p.id === r.host })),
+          players: r.info().map((p) => ({ name: p.name, wallet: p.wallet, car: p.car, carName: p.carName, bot: p.bot, ready: p.ready, host: p.id === r.host })),
         };
       }),
       courses: COURSES.map((c) => ({ id: c.id, name: c.name, color: c.color, blurb: c.blurb })),
@@ -94,10 +157,10 @@ const http = createServer((req, res) => {
       tick, uptime: up, behind: stats.behind, stepUs: stats.step.json(), lateUs: stats.late.json(), gcUs: stats.gc.json(),
       heapMB: process.memoryUsage().heapUsed / 2 ** 20,
       rooms: [...rooms.values()].map((r) => ({
-        name: r.name, course: r.course, laps: r.laps, phase: r.phase, race: r.race, log: r.logPath,
+        name: r.name, course: r.course, laps: r.laps, phase: r.phase, race: r.race, log: r.logPath, solo: r.solo,
         stepUs: r.stepTime.n ? { avg: r.stepTime.sum / r.stepTime.n, max: r.stepTime.max, n: r.stepTime.n, simAvg: r.simUs / r.stepTime.n, sendAvg: r.sendUs / r.stepTime.n } : null,
         contact: r.sim.contact,
-        players: r.players.map((p) => ({ id: p.id, name: p.name, car: p.car, bot: !p.send, slot: p.slot, ping: p.ping, viol: p.viol, bytesOut: p.bytesOut, bytesIn: p.bytesIn, snaps: p.snaps, fulls: p.fulls })),
+        players: r.players.map((p) => ({ id: p.id, name: p.name, wallet: p.wallet, car: p.car, bot: !p.send, slot: p.slot, ping: p.ping, viol: p.viol, bytesOut: p.bytesOut, bytesIn: p.bytesIn, snaps: p.snaps, fulls: p.fulls })),
       })),
     }));
     return;
@@ -112,10 +175,33 @@ const http = createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/plain' });
   res.end('RIPCARS drive server: connect a WebSocket (drive.html?online=1)\n');
 });
-const wss = new WebSocketServer({ server: http, maxPayload: 16 * 1024 });
+// a browser's WebSocket only from the allowed origins (a client that isn't a browser sends none: it still needs a token)
+const wss = new WebSocketServer({
+  server: http, maxPayload: 16 * 1024,
+  verifyClient: (info: { origin?: string }, cb: (ok: boolean, code?: number, msg?: string) => void) => (originOk(info.origin || undefined) ? cb(true) : cb(false, 403, 'Origin not allowed')),
+});
+
+/** The connection each wallet races on: a newer join from the wallet replaces it (one car per wallet). */
+const byWallet = new Map<string, { replace: () => void }>();
+
+/** A room with no human left closes (bots don't keep it). */
+function closeIfEmpty(r: Room) {
+  if (r.humans.length || rooms.get(r.name) !== r) return;
+  r.close(tick);
+  rooms.delete(r.name);
+  console.log(`[room ${r.name}] closed`);
+}
+/** A player out of their room (a disconnect, a replaced connection). */
+function leaveRoom(r: Room, p: Player) {
+  if (!r.players.includes(p)) return;
+  console.log(`[room ${r.name}] - ${p.name} (#${p.id})`);
+  r.leave(p, tick);
+  closeIfEmpty(r);
+}
 
 wss.on('connection', (ws: WebSocket) => {
-  let room: Room | null = null, me: Player | null = null, joining = false;
+  let room: Room | null = null, me: Player | null = null, joining = false, wallet: string | null = null, gone = false;
+  let entering: Room | null = null; // the room this connection's player is being added to (its car loading)
   const send = (m: S2C) => {
     if (ws.readyState !== ws.OPEN) return;
     const s = JSON.stringify(m);
@@ -126,6 +212,22 @@ wss.on('connection', (ws: WebSocket) => {
     if (ws.readyState !== ws.OPEN) return;
     if (me) me.bytesOut += b.length;
     ws.send(Buffer.from(b), { binary: true }); // (a copy: the encoder's buffer is reused for the next one)
+  };
+  /** The car leaves (as on a disconnect). */
+  const drop = () => {
+    if (room && me) leaveRoom(room, me);
+    room = me = null;
+  };
+  const conn = {
+    /** The same wallet joined on another connection: this one's car leaves now, and it closes. */
+    replace() {
+      gone = true;
+      send({ t: 'error', code: 'replaced', msg: 'You joined from another tab or device' });
+      drop();
+      const q = entering?.players.find((x) => x.send === send); // (still joining: its player goes too, now)
+      if (entering && q) leaveRoom(entering, q);
+      ws.close(4001, 'replaced');
+    },
   };
   ws.on('message', async (data, isBinary) => {
     const buf = data as Buffer;
@@ -147,56 +249,74 @@ wss.on('connection', (ws: WebSocket) => {
       return send({ t: 'P', c: m.c, k: tick });
     }
     if (m.t === 'join') {
-      if (me || joining) return;
+      if (me || joining || gone) return;
+      // who: the wallet of a valid sign-in, or no join (the page asks to sign in again, then joins on this connection)
+      const auth = verifySession(m.token);
+      if (!auth) return send({ t: 'error', code: 'auth', msg: 'Sign in with your wallet to race' });
       joining = true;
-      const name = cleanName(m.name) || 'Driver';
       const rn = String(m.room ?? '').replace(/[^a-z0-9_-]/gi, '').slice(0, 32) || 'demo';
-      const car = validCar(String(m.car)) ? String(m.car) : 'skyline-hck01';
+      const car = mayDrive(auth.wallet, String(m.car)) ? String(m.car) : 'skyline-hck01';
+      const laps = Math.min(9, Math.max(1, Math.round(Number(m.laps)) || 3));
+      const solo = m.solo === true; // a time trial: this wallet alone
+      const elsewhere = (r: Room) => r.course !== m.track || r.laps !== Math.round(Number(m.laps) || 3);
+      const refuse = (r: Room, why: 'track' | 'full' | 'solo') => {
+        joining = false;
+        closeIfEmpty(r); // (one made just now for a track it can't race)
+        if (why === 'track') return send({ t: 'track', track: r.course, laps: r.laps });
+        return send({ t: 'error', code: 'full', msg: why === 'solo' ? (r.solo ? "That's someone's time trial" : 'That room name is taken') : 'The room is full' });
+      };
+      // an open room this join can't go into: say so before touching the wallet's car elsewhere
       let r = rooms.get(rn);
+      if (r && r.solo !== solo) return refuse(r, 'solo'); // (a time trial is its own room, and only one)
+      if (r && r.solo && !r.players.some((q) => q.wallet === auth.wallet)) return refuse(r, 'solo');
+      if (r && elsewhere(r)) return refuse(r, 'track'); // the room races another course: reload on it
+      if (r && r.players.length >= r.max && !r.players.some((q) => q.wallet === auth.wallet)) return refuse(r, 'full');
+      // one car per wallet: this connection takes over from the wallet's older one, whose car leaves first (if it was
+      // its room's last human, that room closes - the room is looked up again below)
+      wallet = auth.wallet;
+      const prev = byWallet.get(wallet);
+      byWallet.set(wallet, conn);
+      if (prev && prev !== conn) prev.replace();
+      r = rooms.get(rn);
       if (!r) {
-        const laps = Math.min(9, Math.max(1, Math.round(Number(m.laps)) || 3));
         r = new Room(rn, String(m.track), laps);
-        r.min = Math.min(10, Math.max(1, Math.round(Number(m.min)) || 1));
+        r.solo = solo;
+        r.min = solo ? 1 : Math.min(10, Math.max(1, Math.round(Number(m.min)) || 1));
         rooms.set(rn, r);
-        console.log(`[room ${rn}] created: ${r.course}, ${laps} laps, waits for ${r.min}`);
-        const bots = Math.min(9, Math.max(0, Math.round(Number(m.bots)) || 0));
+        console.log(`[room ${rn}] created: ${r.course}, ${laps} laps, ${solo ? 'time trial' : `waits for ${r.min}`}`);
+        const bots = solo ? 0 : Math.min(9, Math.max(0, Math.round(Number(m.bots)) || 0));
         if (bots) await r.addBots(bots, tick);
-      } else if (m.min) r.min = Math.max(r.min, Math.min(10, Math.round(Number(m.min)) || 1));
-      if (r.course !== m.track || r.laps !== Math.round(Number(m.laps) || 3)) {
-        joining = false;
-        return send({ t: 'track', track: r.course, laps: r.laps }); // the room races another course: reload on it
-      }
-      const p = await r.join({ id: newPlayerId(), name, car, send, sendBin, ready: false, ping: 0 }, tick);
+      } else if (m.min && !r.solo) r.min = Math.max(r.min, Math.min(10, Math.round(Number(m.min)) || 1));
+      if (gone) return closeIfEmpty(r); // (closed, or replaced, while the room was made)
+      if (elsewhere(r)) return refuse(r, 'track');
+      entering = r;
+      const p = await r.join({ id: newPlayerId(), wallet, name: shortWallet(wallet), car, send, sendBin, ready: false, ping: 0, auto: m.auto === true }, tick);
+      entering = null;
       if (!p) {
-        joining = false;
-        return send({ t: 'error', msg: 'The room is full' });
+        if (byWallet.get(wallet) === conn) byWallet.delete(wallet);
+        wallet = null;
+        return refuse(r, 'full');
       }
+      if (gone) return leaveRoom(r, p); // (closed or replaced while its car loaded)
       room = r;
       me = p;
-      console.log(`[room ${rn}] + ${name} (#${p.id}, ${car}) slot ${p.slot}; ${r.players.length} in the room`);
+      console.log(`[room ${rn}] + ${p.name} (${wallet}, #${p.id}, ${car}) slot ${p.slot}; ${r.players.length} in the room`);
       send({ t: 'welcome', you: p.id, room: rn, track: r.course, laps: r.laps, tick });
       r.broadcastRoom();
       return;
     }
     if (!room || !me) return;
     if (m.t === 'ready') room.setReady(me, !!m.on);
-    else if (m.t === 'name') {
-      const name = cleanName(m.name);
-      if (name && name !== me.name) room.setName(me, name);
-    } else if (m.t === 'car') {
-      if (validCar(String(m.car))) room.setCar(me, String(m.car));
-    }
-    else if (m.t === 'leave') ws.close();
+    else if (m.t === 'car') {
+      if (mayDrive(me.wallet, String(m.car))) room.setCar(me, String(m.car));
+    } else if (m.t === 'leave') ws.close();
   });
   ws.on('close', () => {
-    if (!room || !me) return;
-    console.log(`[room ${room.name}] - ${me.name} (#${me.id})`);
-    room.leave(me, tick);
-    if (!room.humans.length) {
-      room.close(tick);
-      rooms.delete(room.name);
-      console.log(`[room ${room.name}] closed`);
-    }
+    gone = true;
+    if (wallet && byWallet.get(wallet) === conn) byWallet.delete(wallet);
+    drop();
+    const q = entering?.players.find((x) => x.send === send);
+    if (entering && q) leaveRoom(entering, q);
   });
 });
 
@@ -240,4 +360,4 @@ setInterval(() => {
   if (stats.behind) console.log(`server: fell behind by ${stats.behind} steps (dropped)`), (stats.behind = 0);
 }, 5000);
 
-http.listen(port, () => console.log(`RIPCARS drive server on ws://localhost:${port} (stats: http://localhost:${port}/stats)`));
+http.listen(port, () => console.log(`RIPCARS drive server on ws://localhost:${port} (stats: http://localhost:${port}/stats; store ${DB_PATH})`));

@@ -145,7 +145,7 @@ async function loadFrames() {
     if (tab === pane && f.dataset.src !== src) f.src = f.dataset.src = src; // load lazily, once per car
   };
   frame('pviews', `/views.html?car=${current}`);
-  frame('preveal', `/index.html?car=${current}`);
+  frame('preveal', `/rip.html?car=${current}`);
   const car = current;
   const entry = cars.find((c) => c.id === car);
   // every version of this car side by side: the current model, then the snapshots this checkout has

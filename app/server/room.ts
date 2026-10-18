@@ -8,12 +8,16 @@ import {
 } from '../src/drive/net/protocol.ts';
 import { CORE_LENGTH, SNAP_LENGTH } from '../src/drive/vehicles/arcade.ts';
 import { RaceSim, carName, loadSpec, type SimCar } from './sim.ts';
+import { recordLap } from './store.ts';
 
-// A room (by name): its players, the race flow - lobby (join with a car and a name, take a grid slot, Ready) ->
+// A room (by name): its players, the race flow - lobby (join with a car, take a grid slot, Ready) ->
 // countdown (everyone ready: the gate drops for all at the same step) -> race (laps, finish order) -> results ->
 // lobby - the input buffers and their plausibility checks, the 60 Hz binary snapshots (net/codec.ts: every other car's
 // net state as the change since the last one, your own car's full state only when your prediction's hash missed),
-// and the race's input log. Nothing allocated per step beyond the messages themselves.
+// and the race's input log. Nothing allocated per step beyond the messages themselves. Every lap a signed-in player
+// completes in a race goes to the store (store.ts: the weekly leaderboard), with whether the car touched another car
+// during it or in the 3 s before it (sim.ts) - the log's lap lines carry the same flags, so a replay checks them. A
+// solo room is a time trial: one wallet, no bots, not listed (index.ts).
 
 const RING = 1024; // steps of inputs kept per player
 const FULL_EVERY = Number(process.env.FULL_EVERY ?? 3) * SNAP_EVERY; // steps: a client mispredicting all the time (in a pack) is corrected 20 times a s
@@ -27,8 +31,13 @@ const BOT_CARS = ['chevy-impala-jkb99', 'roxy-porsche-hrv96', 'porsche-964-gdf88
 
 export interface Player {
   id: number;
-  name: string;
+  /** The wallet the player signed in with (server/auth.ts; null: a bot). One car per wallet on the whole server
+   *  (index.ts). Whether the wallet may race `car` is mayDrive's to say, at the join and at every car change. */
+  wallet: string | null;
+  name: string; // shown to everyone: the wallet's short form (shortWallet), or "Bot n" - set here, never by a client
   car: string;
+  /** The page said its autopilot drives (?auto=1): its laps are stored but never make the leaderboard. */
+  auto: boolean;
   send: ((m: S2C) => void) | null; // JSON; null: a bot
   sendBin: ((b: Uint8Array) => void) | null; // binary (a snapshot)
   ready: boolean;
@@ -81,6 +90,8 @@ export class Room {
   private byId = new Map<number, Player>();
   phase: Phase = 'lobby';
   min = 1;
+  /** A time trial: its first wallet alone (no bots, no one else joins), not in the room list. */
+  solo = false;
   race = 0; // race number (the snapshots carry it: the client ignores a state from another race)
   private phaseAt = 0; // tick the phase began
   private firstFinish = -1;
@@ -108,8 +119,17 @@ export class Room {
   private onLap = (c: SimCar, what: 'lap' | 'finish') => {
     const k = this.curK, time = c.lap.lapTimes[c.lap.lapTimes.length - 1];
     this.broadcast({ t: 'lap', id: c.key, lap: c.lap.laps, time });
-    this.writeLog({ k, lap: this.sim.cars.indexOf(c), n: c.lap.laps, time, what });
+    // (c, pc: the car touched another during the lap / in the 3 s before it began - replay.ts checks them)
+    this.writeLog({ k, lap: this.sim.cars.indexOf(c), n: c.lap.laps, time, what, c: c.lapTouch ? 1 : 0, pc: c.preTouch ? 1 : 0 });
     if (what === 'finish' && this.firstFinish < 0) this.firstFinish = k;
+    // a signed-in player's lap, while the race (and its log) runs: to the store
+    const p = this.byId.get(c.key);
+    if (p?.wallet && p.send && this.phase === 'race' && this.log) {
+      recordLap({
+        wallet: p.wallet, car: c.car, track: this.course, len: Math.round(this.sim.track.length), steps: time, lap: c.lap.laps, room: this.name,
+        race: this.race, log: this.logPath, at: Date.now(), cars: this.sim.cars.length, contact: c.lapTouch, pre: c.preTouch, auto: p.auto,
+      });
+    }
   };
 
   constructor(name: string, course: string, laps: number) {
@@ -126,10 +146,13 @@ export class Room {
     return this.players.filter((p) => p.send);
   }
 
-  async join(p: Pick<Player, 'id' | 'name' | 'car' | 'send' | 'sendBin' | 'ready' | 'ping'>, tick: number): Promise<Player | null> {
-    if (this.players.length >= MAX_PLAYERS) return null;
+  get max() {
+    return this.solo ? 1 : MAX_PLAYERS;
+  }
+  async join(p: Pick<Player, 'id' | 'wallet' | 'name' | 'car' | 'send' | 'sendBin' | 'ready' | 'ping'> & { auto?: boolean }, tick: number): Promise<Player | null> {
+    if (this.players.length >= this.max) return null;
     const pl: Player = {
-      ...p, slot: -1, viol: noViolations(), ring: new Int32Array(RING * 4), ringK: new Float64Array(RING).fill(-1), newest: -1, seen: -1,
+      ...p, auto: !!p.auto, slot: -1, viol: noViolations(), ring: new Int32Array(RING * 4), ringK: new Float64Array(RING).fill(-1), newest: -1, seen: -1,
       tokens: BURST, tokenAt: tick, hashes: new Map(), sim: null, bytesOut: 0, bytesIn: 0, has: new WeakMap(), lastR: [-1, -1, -2], lastRace: -1,
       snaps: 0, fulls: 0, fullK: -1e9, fullRef: new Float64Array(CORE_LENGTH),
     };
@@ -140,9 +163,9 @@ export class Room {
     return pl;
   }
   async addBots(n: number, tick: number) {
-    for (let i = 0; i < n && this.players.length < MAX_PLAYERS; i++) {
+    for (let i = 0; i < n && this.players.length < this.max && !this.solo; i++) {
       const bots = this.players.filter((p) => !p.send).length;
-      await this.join({ id: newPlayerId(), name: `Bot ${bots + 1}`, car: BOT_CARS[bots % BOT_CARS.length], send: null, sendBin: null, ready: true, ping: 0 }, tick);
+      await this.join({ id: newPlayerId(), wallet: null, name: `Bot ${bots + 1}`, car: BOT_CARS[bots % BOT_CARS.length], send: null, sendBin: null, ready: true, ping: 0 }, tick);
     }
   }
   /** The lowest free grid slot, and a car on it. */
@@ -152,6 +175,7 @@ export class Room {
     while (taken.has(s)) s++;
     p.slot = s;
     p.sim = await this.sim.addCar(p.id, p.car, s, !p.send);
+    if (!this.players.includes(p)) (this.sim.remove(p.id)), (p.sim = null); // left during the load
   }
   leave(p: Player, tick: number) {
     const i = this.players.indexOf(p);
@@ -169,10 +193,6 @@ export class Room {
   }
   setReady(p: Player, on: boolean) {
     p.ready = on;
-    this.broadcastRoom();
-  }
-  setName(p: Player, name: string) {
-    p.name = name;
     this.broadcastRoom();
   }
   /** Another car: in the lobby its car on the grid is swapped at once (and the player isn't ready any more, so no
@@ -434,7 +454,7 @@ export class Room {
   info(): PlayerInfo[] {
     return this.players.map((p) => {
       const v = p.viol;
-      return { id: p.id, name: p.name, car: p.car, carName: carName(p.car), ready: p.ready, bot: !p.send, slot: p.slot, ping: p.ping, viol: v.format + v.range + v.slew + v.future + v.rate };
+      return { id: p.id, name: p.name, wallet: p.wallet, car: p.car, carName: carName(p.car), ready: p.ready, bot: !p.send, slot: p.slot, ping: p.ping, viol: v.format + v.range + v.slew + v.future + v.rate };
     });
   }
   broadcastRoom() {
@@ -448,9 +468,9 @@ export class Room {
     for (const p of this.players) p.send?.(m);
   }
 
-  // ---- the race's input log: a header (course, laps, the start step, the cars on their slots), each step's changed
-  // inputs, laps, leaves, and the end (results, contact counts and a hash of every car's state) - replay.ts
-  // re-simulates it exactly, every collision included.
+  // ---- the race's input log: a header (course, laps, the start step, the cars on their slots with their players'
+  // wallets), each step's changed inputs, laps, leaves, and the end (results, contact counts and a hash of every car's
+  // state) - replay.ts re-simulates it exactly, every collision included.
   private openLog(k: number) {
     this.endLog(k, 'restart');
     const dir = `${LOG_DIR}${this.name.replace(/[^a-z0-9_-]/gi, '_').slice(0, 32) || 'room'}/`;
@@ -463,7 +483,7 @@ export class Room {
       t: 'head', v: LOG_VERSION, room: this.name, course: this.course, laps: this.laps, go: this.sim.go, at: k,
       cars: this.sim.cars.map((c) => {
         const p = this.players.find((q) => q.id === c.key);
-        return { id: c.key, name: p?.name ?? '', car: c.car, slot: c.slot, bot: !!c.bot, carName: carName(c.car) };
+        return { id: c.key, name: p?.name ?? '', wallet: p?.wallet ?? null, car: c.car, slot: c.slot, bot: !!c.bot, carName: carName(c.car) };
       }),
     });
   }
@@ -479,7 +499,7 @@ export class Room {
   private endLog(k: number, why: string, rows?: ResultRow[]) {
     if (!this.log) return;
     const viol: Record<string, Violations> = {};
-    for (const p of this.players) if (p.send) viol[p.name] = p.viol;
+    for (const p of this.players) if (p.send) viol[p.wallet ?? p.name] = p.viol;
     this.writeLog({ t: 'end', k, why, results: rows ?? this.results(), hash: this.sim.hash(), viol, contact: this.raceContacts() });
     this.log.end();
     this.log = null;
@@ -490,4 +510,8 @@ export class Room {
 }
 
 export const validCar = (id: string) => !!loadSpec(id);
+/** Whether a wallet may race this car: any car the game has, for now. Later the car must be one of the wallet's Rip
+ *  Cars (an asset of the collection it holds, its 'Toy #' the car's product code): that check goes here - the join and
+ *  every car change ask it. */
+export const mayDrive = (_wallet: string | null, car: string) => validCar(car);
 export { JITTER_STEPS };

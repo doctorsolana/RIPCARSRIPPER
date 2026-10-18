@@ -36,6 +36,9 @@ import type { Track, TrackFrame, VehicleState } from './types';
 //   spin  a spin-out (events.spinOut, or the nose > 60 deg off the travel at speed) kicks the roll the way
 //         the car spins and pulls the camera back a touch; the yaw keeps to the travel at speed whatever
 //         the car's facing, so the car spins in frame instead of the world spinning round it
+//   back  look back (E held): the chase camera mirrored to the car's front, looking back over it down the road. A cut
+//         each way, not a swing (half a turn in a blend reads as the world spinning); the chase springs run on under it,
+//         so letting go cuts straight back to where the chase camera is. It wins over the ad shot while held
 //   ad    the big jump's "Hot Wheels ad" shot (presentation only: it frames whatever flight the car makes off the lip -
 //         a clean one or a miss). Off the 'bigjump' lip with a long flight ahead, the camera swings out round the car to
 //         a low side view that dollies along beside the arc (portrait: a rear quarter, so the car crosses the narrow
@@ -57,6 +60,8 @@ export interface ChaseCamera {
   update(state: VehicleState, dt: number, track: Track, pose?: Pose): void;
   addTrauma(amount: number): void;
   resize(w: number, h: number): void;
+  /** Held (input's lookBack): the view from the car's front, looking back over it at the road behind. */
+  lookBack: boolean;
 }
 
 /** Live-tunable camera numbers (u, deg, s). */
@@ -337,6 +342,7 @@ export function createChaseCamera(): ChaseCamera {
     pop.v += 90; // the FOV pops out with the roar
   }
 
+  let lookBack = false;
   function update(state: VehicleState, dtIn: number, track: Track, pose?: Pose) {
     const dt = clamp(dtIn, 0, 0.1);
     time += dt;
@@ -611,6 +617,25 @@ export function createChaseCamera(): ChaseCamera {
       }
     }
 
+    // Look back: the chase position mirrored to the car's front (kept on the driving side of the track ahead, as the
+    // chase one is behind), aimed back past the car; the chase's lens without the ad shot's
+    if (lookBack && !resetting) {
+      pos.copy(anchor)
+        .addScaledVector(up, height + dip.x + sh * C.shake * noise(time, 7))
+        .addScaledVector(fwd, dist.x)
+        .addScaledVector(right, sh * C.shake * noise(time, 1));
+      const fa = track.frameAt(state.trackS + dist.x * 0.9, fr2);
+      const pa = tmp.copy(pos).sub(fa.p).dot(fa.up);
+      if (pa < CLEARANCE && hAbove > -0.75 && Math.abs(tmp.dot(fa.right)) < fa.width * 0.5 + fa.shoulder + 1 && track.tagAt(fa.s) !== 'gap') {
+        pos.addScaledVector(fa.up, CLEARANCE - pa);
+      }
+      look.copy(P).addScaledVector(up, C.lookRaise).addScaledVector(fwd, -C.lookMax);
+      camUp.copy(WORLD_UP).lerp(up, upW);
+      if (camUp.lengthSq() < 1e-6) camUp.copy(up);
+      camUp.normalize();
+      fov = clamp(fovBase + fovKick.x + pop.x + C.portraitFov * portrait, 30, 110);
+    }
+
     camera.position.copy(pos);
     camera.up.copy(camUp);
     camera.lookAt(look);
@@ -665,6 +690,12 @@ export function createChaseCamera(): ChaseCamera {
     update,
     addTrauma(amount: number) {
       trauma = clamp(trauma + amount, 0, 1);
+    },
+    get lookBack() {
+      return lookBack;
+    },
+    set lookBack(on: boolean) {
+      lookBack = on;
     },
     resize(w: number, h: number) {
       camera.aspect = w / Math.max(1, h);

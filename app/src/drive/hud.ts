@@ -33,8 +33,9 @@ export interface Hud {
   toast(text: string, color?: string, kind?: 'max'): void;
   /** The WRONG WAY sign (shown while on; only touches the DOM when it changes). */
   wrongWay(on: boolean): void;
-  /** `other`: a link to try another track (a full-width button under Again / Rip a pack, in the track's colour). */
-  results(r: RaceResult, onAgain: () => void, onRip: () => void, other?: { name: string; href: string; color?: string }): void;
+  /** `rip`: Rip a pack's link (ripcars.io, a new tab); `other`: a link to try another track (a full-width button under
+   *  Again / Rip a pack, in the track's colour). */
+  results(r: RaceResult, onAgain: () => void, rip: string, other?: { name: string; href: string; color?: string }): void;
   hideResults(): void;
   /** A quick dip to black (respawn). */
   flash(): void;
@@ -237,7 +238,7 @@ export function createHud(root: HTMLElement): Hud {
         set($('.gate b'), touch ? 'Tap to drop' : 'Press any key');
         $('.gate p').innerHTML = touch
           ? 'Drag to steer · it drives itself<br>Hold full lock or add a finger to drift'
-          : 'W / ↑ gas · A D / ← → steer · Space drift<br>Drift to charge a boost · R restart';
+          : 'W / ↑ gas · A D / ← → steer · Space drift<br>Drift to charge a boost · E look back · R restart';
       }
     },
     setLap(lap, laps) {
@@ -288,7 +289,7 @@ export function createHud(root: HTMLElement): Hud {
       wrongOn = on;
       wrongEl.classList.toggle('on', on);
     },
-    results(r, onAgain, onRip, other) {
+    results(r, onAgain, rip, other) {
       const best = r.laps.indexOf(r.bestLap);
       card.style.setProperty('--m', r.medal ? MEDAL_COLOR[r.medal] : '#9fb3c8');
       card.innerHTML = `
@@ -298,7 +299,7 @@ export function createHud(root: HTMLElement): Hud {
         <ol>${r.laps.map((t, i) => `<li class="${i === best ? 'best' : ''}"><span>Lap ${i + 1}</span><b>${fmtTime(t)}</b></li>`).join('')}
         ${r.air != null ? `<li class="${r.newAir ? 'best' : ''}"><span>${r.newAir ? 'Air record!' : 'Longest air'}</span><b>${r.air.toFixed(2)} s${
           !r.newAir && r.airRecord != null && r.airRecord > r.air ? ` <small>record ${r.airRecord.toFixed(2)}</small>` : ''}</b></li>` : ''}</ol>
-        <div class="btns"><button type="button">Again</button><a href="#">Rip a pack</a></div>
+        <div class="btns"><button type="button">Again</button><a target="_blank" rel="noopener">Rip a pack</a></div>
         ${other ? `<a class="try">Try ${other.name}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>` : ''}
         <div class="hint">R or Enter to go again</div>`;
@@ -306,15 +307,12 @@ export function createHud(root: HTMLElement): Hud {
         card.querySelector<HTMLAnchorElement>('.try')!.href = other.href; // a plain link: the other track reloads the page
         card.style.setProperty('--try', other.color ?? '#ff6b00');
       }
-      const again = card.querySelector('button')!, rip = card.querySelector<HTMLAnchorElement>('.btns a')!;
+      const again = card.querySelector('button')!;
+      card.querySelector<HTMLAnchorElement>('.btns a')!.href = rip;
       again.addEventListener('click', (e) => {
         e.stopPropagation();
         again.blur();
         onAgain();
-      });
-      rip.addEventListener('click', (e) => {
-        e.preventDefault();
-        onRip();
       });
       card.classList.add('on');
       document.body.classList.add('results-on');

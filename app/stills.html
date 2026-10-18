@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Dev tool (not built): one car on the landing's turntable at its first frame, for scripts/render-home.mjs.
+     ?car=<id> - the page sizes its canvas to the window; window.__still(q) returns the frame as webp. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:," />
+    <title>RACECARS · stills</title>
+    <style>html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; } #c { width: 100vw; height: 100vh; display: block; }</style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script type="module">
+      import { createTurntable } from '/src/home/turntable.ts';
+      const car = new URLSearchParams(location.search).get('car') ?? 'skyline-hck01';
+      const tt = createTurntable(document.getElementById('c'));
+      tt.spin = false;
+      await tt.show(car);
+      // a smaller copy, scaled down from this frame (better than rendering small)
+      window.__still = (q = 0.86, w = 0) => {
+        const big = tt.still(q);
+        if (!w) return Promise.resolve(big);
+        return new Promise((res) => {
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = w;
+            c.height = Math.round((w * img.height) / img.width);
+            const g = c.getContext('2d');
+            g.imageSmoothingQuality = 'high';
+            g.drawImage(img, 0, 0, c.width, c.height);
+            res(c.toDataURL('image/webp', q));
+          };
+          img.src = big;
+        });
+      };
+      window.__ready = true;
+    </script>
+  </body>
+</html>

@@ -6,8 +6,9 @@ import type { DriveInput } from '../types';
 // contact in net/contact.ts) for every car at 120 Hz, from the players' INPUTS only. The hot messages are binary
 // (net/codec.ts): 60 Hz snapshots down, inputs up; the rest is JSON (below).
 //
-//   client -> server   join, ready, name, car, leave, pings (JSON); inputs (binary: each tagged with its sim step, the
-//                      unacknowledged ones re-sent, and the hashes of the client's predicted states)
+//   client -> server   join (with the wallet sign-in's session token: server/auth.ts), ready, car, leave, pings (JSON);
+//                      inputs (binary: each tagged with its sim step, the unacknowledged ones re-sent, and the hashes of
+//                      the client's predicted states)
 //   server -> client   welcome, the room (players, phase, the start step), laps, results, pongs (JSON); snapshots
 //                      (binary: every other car's state for the client to predict it, your car's when it mispredicted)
 //
@@ -89,7 +90,10 @@ export type Phase = 'lobby' | 'countdown' | 'race' | 'results';
 
 export interface PlayerInfo {
   id: number;
+  /** The player's wallet as players see it (shortWallet: 7xKX…9fQ2), set by the server - nobody picks a name; a bot's
+   *  is "Bot n". */
   name: string;
+  wallet: string | null; // the wallet address (null: a bot)
   car: string;
   carName: string; // make and model, for the lobby
   ready: boolean;
@@ -116,16 +120,39 @@ export const MAX_PLAYERS = 10;
 export interface RoomListing {
   rooms: {
     name: string; track: string; trackName: string; color: string; laps: number; phase: Phase; max: number;
-    players: { name: string; car: string; carName: string; bot: boolean; ready: boolean; host: boolean }[];
+    players: { name: string; wallet: string | null; car: string; carName: string; bot: boolean; ready: boolean; host: boolean }[];
   }[];
   courses: { id: string; name: string; color: string; blurb: string }[];
 }
 
+/** A row of the weekly leaderboard: a wallet's best clean lap on a track this week (steps: the race's own count). */
+export interface BoardRow { rank: number; wallet: string; name: string; car: string; carName: string; steps: number; time: number; at: number }
+/** GET http://<server>/leaderboard[?wallet=]: this ISO week's board (Monday 00:00 UTC to the next, ms) per course - the
+ *  top 10 wallets by their best lap without car-to-car contact, how many wallets set one, and `wallet`'s own. */
+export interface Leaderboard {
+  weekStart: number; weekEnd: number; now: number;
+  tracks: { id: string; name: string; color: string; length: number; drivers: number; top: BoardRow[]; you: BoardRow | null }[];
+}
+/** GET http://<server>/garage?wallet=: the wallet's Rip Cars (from RIPCARS), each with its toy number and, when the game
+ *  has that car, its id (`model`: drivable). `partial`: some toy numbers were still being looked up - ask again. */
+export interface GarageListing {
+  wallet: string; partial: boolean; stale?: boolean; at: number;
+  cars: {
+    mint: string; name: string; rarity: string | null; image: string | null; fmv: number | null; mintedAt: string | null;
+    collectorRarity: string | null; assortment: string | null; toy: string | null; model: string | null; modelName: string | null;
+  }[];
+}
+
 /** Client -> server. */
 export type C2S =
-  | { t: 'join'; room: string; name: string; car: string; track: string; laps: number; min?: number; bots?: number }
+  /** token: the wallet sign-in's session (server/auth.ts); without a valid one the server refuses the join (error 'auth').
+   *  Your name is your wallet's, set by the server. */
+  | {
+      t: 'join'; room: string; token: string; car: string; track: string; laps: number; min?: number; bots?: number;
+      solo?: boolean; // a time trial: a room of your own (no bots, no one else, not listed)
+      auto?: boolean; // the page's autopilot drives (?auto=1): its laps never make the leaderboard
+    }
   | { t: 'ready'; on: boolean }
-  | { t: 'name'; name: string } // rename (any time)
   | { t: 'car'; car: string } // another car (in the lobby; between races it takes effect back in the lobby)
   | { t: 'p'; c: number; rtt?: number } // ping (c: the client's clock), with its last measured round trip
   | { t: 'leave' };
@@ -134,7 +161,9 @@ export type C2S =
 export type S2C =
   | { t: 'welcome'; you: number; room: string; track: string; laps: number; tick: number }
   | { t: 'track'; track: string; laps: number } // the room races another track: reload on it
-  | { t: 'error'; msg: string }
+  /** code: 'full' the room is full; 'auth' no valid sign-in (sign in again, then join); 'replaced' your wallet joined
+   *  from another tab or device - one car per wallet: this connection's car has left and it closes. */
+  | { t: 'error'; msg: string; code?: 'full' | 'auth' | 'replaced' }
   | {
       t: 'room'; phase: Phase; players: PlayerInfo[]; go: number; laps: number; track: string; min: number;
       host: number; // the host's id: the room's first human (it passes on in join order when they leave)

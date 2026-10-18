@@ -3,8 +3,9 @@ import type { DriveInput, Surface, Track, TrackFrame, TrafficView, VehicleState 
 import type { Profile } from './vehicles/arcade';
 
 // Keyboard, gamepad and touch merged into one DriveInput, plus an autopilot for ?auto=1 and tests.
-//   keys   A/D or arrows steer, W/up throttle, S/down brake (reverse), Space/Shift drift, R restart
-//   pad    left stick (deadzone 0.12, |x|^1.6) or d-pad, RT throttle, LT brake, A/RB drift, Start/Y restart
+//   keys   A/D or arrows steer, W/up throttle, S/down brake (reverse), Space/Shift drift, R restart, E (held) look back
+//   pad    left stick (deadzone 0.12, |x|^1.6) or d-pad, RT throttle, LT brake, A/RB drift, Start/Y restart, R3 (held)
+//          look back
 //   touch  one thumb: drag anywhere to steer (6 px deadzone, full lock at 70 px; past that the anchor
 //          follows the finger, so steering back never needs a long swipe). The car accelerates by itself.
 //          Drift: a second finger, or hold full lock for 150 ms - a tap either way: the drift runs by itself until the
@@ -23,6 +24,9 @@ export interface InputSource {
   readonly touch: boolean;
   /** Haptics: gamepad rumble, or a short buzz on Android touch. strength 0..1. */
   rumble(strength: number, ms: number): void;
+  /** Held: the camera looks back (E, or the pad's right stick click). The camera's only: never part of DriveInput, so
+   *  it changes nothing in the sim or online. */
+  readonly lookBack: boolean;
 }
 
 export const STEER_IN = 6, STEER_OUT = 12; // per s (online play checks a client's steering against STEER_OUT: net/protocol.ts)
@@ -117,7 +121,7 @@ export function createInput(target: HTMLElement): InputSource {
   target.addEventListener('pointercancel', lift);
 
   // ---- gamepad (polled only once one has been seen)
-  let padSeen = false, padRestartPrev = false, padAt = -1e9;
+  let padSeen = false, padRestartPrev = false, padAt = -1e9, padLook = false;
   const pad: DriveInput = { steer: 0, throttle: 0, brake: 0, drift: false };
   addEventListener('gamepadconnected', () => (padSeen = true));
 
@@ -126,6 +130,9 @@ export function createInput(target: HTMLElement): InputSource {
   return {
     get touch() {
       return touchMode;
+    },
+    get lookBack() {
+      return keys.has('KeyE') || (padSeen && padLook);
     },
     firstInput,
     onRestart(cb: () => void) {
@@ -154,7 +161,7 @@ export function createInput(target: HTMLElement): InputSource {
         padAt = now; // poll at most once per frame-ish, not every 1/120 s step
         pad.steer = pad.throttle = pad.brake = 0;
         pad.drift = false;
-        let restartNow = false;
+        let restartNow = false, lookNow = false;
         for (const p of navigator.getGamepads()) {
           if (!p || !p.connected) continue;
           const b = (i: number) => p.buttons[i]?.value ?? 0;
@@ -167,6 +174,7 @@ export function createInput(target: HTMLElement): InputSource {
           pad.brake = Math.max(pad.brake, b(6));
           if (b(0) > 0.5 || b(5) > 0.5) pad.drift = true;
           if (b(9) > 0.5 || b(3) > 0.5) restartNow = true;
+          if (b(11) > 0.5) lookNow = true;
           let any = ax > 0.5;
           for (let i = 0; i < p.buttons.length && !any; i++) any = p.buttons[i].pressed;
           if (any) {
@@ -176,6 +184,7 @@ export function createInput(target: HTMLElement): InputSource {
         }
         if (restartNow && !padRestartPrev) restart();
         padRestartPrev = restartNow;
+        padLook = lookNow;
       }
       if (padSeen) {
         if (Math.abs(pad.steer) > Math.abs(steerT)) steerT = pad.steer;

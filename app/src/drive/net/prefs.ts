@@ -1,9 +1,10 @@
 import { PORT } from './protocol';
 
-// What the online pages share: the player's name and car (remembered in localStorage), where the game server is, and
-// the link into a room (the drive page with ?online=1 - what the lobby browser's Join / Create and the invite link open).
+// What the online pages share: the player's car (remembered in localStorage), where the game server is, and the link
+// into a room (the drive page with ?online=1 - what the lobby browser's Join / Create and the invite link open). Who you
+// are is your wallet's sign-in (auth/session.ts), not a setting.
 
-const NAME_KEY = 'ripcars.drive.name', CAR_KEY = 'ripcars.online.car';
+const CAR_KEY = 'ripcars.online.car';
 export const DEFAULT_CAR = 'skyline-hck01';
 
 function get(key: string) {
@@ -20,27 +21,24 @@ function put(key: string, v: string) {
     // no storage
   }
 }
-export const savedName = () => get(NAME_KEY);
-export const saveName = (n: string) => put(NAME_KEY, n);
 export const savedCar = () => get(CAR_KEY);
 export const saveCar = (id: string) => put(CAR_KEY, id);
-export const randomName = () => `Driver ${100 + Math.floor(Math.random() * 900)}`;
-/** As the server keeps them: letters, digits, space, _ . - and 20 long. */
-export const cleanName = (s: string) => s.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 20).trim();
 /** A room's name as the server keeps it: a-z 0-9 _ - and 32 long. */
 export const cleanRoom = (s: string) => s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 32);
 
-/** The game server's WebSocket (?server=ws://host:port, else this host on PORT) and its HTTP side (GET /rooms). */
+/** The game server's WebSocket: ?server=ws://host:port, else the build's VITE_GAME_SERVER (the hosted site:
+ *  wss://play.racecars.fun, say), else this host on PORT (the local demo). Its HTTP side serves GET /rooms and /auth. */
 export function serverUrl(q = new URLSearchParams(location.search)) {
-  return q.get('server') ?? `ws://${location.hostname || 'localhost'}:${PORT}`;
+  return q.get('server') ?? (import.meta.env.VITE_GAME_SERVER as string | undefined) ?? `ws://${location.hostname || 'localhost'}:${PORT}`;
 }
 export const serverHttp = (ws: string) => ws.replace(/^ws/, 'http');
 
-/** The drive page in a room. `invite`: the link to share (no name or car: the friend brings their own). */
-export function roomHref(room: string, track: string, laps: number, o: { name?: string; car?: string; bots?: number; server?: string | null; absolute?: boolean } = {}) {
+/** The drive page in a room (the invite link is the same, `absolute`: the friend brings their own wallet and car).
+ *  `solo`: a time trial - a room of your own (no bots, no one else). */
+export function roomHref(room: string, track: string, laps: number, o: { car?: string; bots?: number; server?: string | null; absolute?: boolean; solo?: boolean } = {}) {
   const p = new URLSearchParams({ online: '1', room, track, laps: String(laps) });
+  if (o.solo) p.set('solo', '1');
   if (o.car) p.set('car', o.car);
-  if (o.name) p.set('name', o.name);
   if (o.bots) p.set('bots', String(o.bots));
   if (o.server) p.set('server', o.server);
   return `${o.absolute ? location.origin : ''}/drive.html?${p}`;

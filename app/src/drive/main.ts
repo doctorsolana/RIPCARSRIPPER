@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import '../style.css';
-import { mountNav } from '../nav';
+import { mountNav, RIPCARS_URL } from '../nav';
 import { tierOf } from '../rarity';
 import { createAudio } from './audio';
 import { CAMERA, createChaseCamera } from './camera';
@@ -23,7 +23,7 @@ import { buildWorld } from './world-outdoor';
 // restarts any time. WRONG WAY when you drive against the lap (the car puts itself back after a few seconds of it).
 // Game time never slows or stops (no slow-mo, no hit-stop: the sim stays fixed-step, deterministic and input-driven,
 // ready for lockstep multiplayer); a hard hit's drama is the camera's kick and shake, the sound, sparks and haptics.
-// URL knobs: ?track=meadow|sky  ?model=arcade  ?online=1&room=<name>&name=<you> (multiplayer: net/online.ts)
+// URL knobs: ?track=meadow|sky  ?model=arcade  ?online=1&room=<name> (multiplayer, as your wallet: net/online.ts)
 //            ?auto=1 autopilot  ?tune=1 driving sliders (?tune=camera: camera)  ?fps=1
 //            ?laps=<1-9>  ?fast=<2-16> runs the sim N x real time (tests)
 // For scripts: window.__ready after 3 frames; window.__drive = { state, lap (completed), laps, model, car, course,
@@ -112,7 +112,7 @@ async function main() {
     create = m.create;
   } catch (err) {
     console.error(err);
-    hud.error(`No drivable 3D model for <b>${CAR}</b> yet.<br><a href="/">Rip a pack</a> and take a modelled car for a spin.`);
+    hud.error(`No drivable 3D model for <b>${CAR}</b> yet.<br><a href="/">Pick another car</a>`);
     document.getElementById('boot')?.remove();
     Object.assign(window as any, { __ready: true });
     return;
@@ -124,7 +124,7 @@ async function main() {
   const tier = tierOf(String(meta.rarity ?? 'common'));
   const carName = [meta.make, meta.model].filter(Boolean).join(' ') || CAR;
   hud.setCar(carName, tier.color);
-  document.title = `Drive · ${carName} · ${COURSE_DEF.name} · RIPCARS`;
+  document.title = `Drive · ${carName} · ${COURSE_DEF.name} · RACECARS`;
 
   const cam = createChaseCamera();
   scene.add(cam.camera); // anything parented to the camera renders too
@@ -264,7 +264,7 @@ async function main() {
     };
     const next = COURSES[(COURSES.findIndex((c) => c.id === COURSE) + 1) % COURSES.length]; // the other course
     const other = next.id === COURSE ? undefined : { name: next.name, href: courseHref(next.id), color: next.color };
-    hud.results(result, () => reset(true), () => (location.href = `/?car=${encodeURIComponent(CAR)}`), other);
+    hud.results(result, () => reset(true), RIPCARS_URL, other);
     fx.confetti(st.position, 160);
   }
 
@@ -356,6 +356,7 @@ async function main() {
       sync(alpha);
       rig.update(rs, dt);
       world.update(rs, dt);
+      cam.lookBack = input.lookBack;
       cam.update(rs, dt, track, rig.root);
       fx.update(rs, dt, rig.root);
       audio.update(rs, input0, dt);

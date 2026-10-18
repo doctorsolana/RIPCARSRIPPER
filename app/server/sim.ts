@@ -16,9 +16,15 @@ import { create, SNAP_LENGTH } from '../src/drive/vehicles/arcade.ts';
 // cars' boxes - mass, spin, stuns), then laps. Nothing allocated per step.
 // It is a pure function of (course, laps, cars and their slots, the start step, each car's applied input per step):
 // that's what a race log stores, so a race can be re-simulated exactly - every collision included.
+// Each car also keeps whether it touched another car during its lap, or in the CARRY s before the lap began (a push
+// over the line carries its speed into the next lap): the leaderboard counts only laps with neither (server/store.ts).
+// Read only - it changes nothing in the race.
 
 const H = 1 / 120;
-const CARS_DIR = new URL('../../asset-generation/assets/cars/', import.meta.url).pathname;
+export const CARS_DIR = new URL('../../asset-generation/assets/cars/', import.meta.url).pathname;
+/** s: car-to-car contact this long before a lap began still marks the lap (its speed came from the push). */
+export const CARRY = 3;
+const CARRY_STEPS = Math.round(CARRY / H);
 
 const specCache = new Map<string, ReturnType<typeof carSpecOf>>();
 /** A car's spec from its model.json / meta.json (as the page's rig builds it); null if the car isn't there. */
@@ -66,6 +72,11 @@ export interface SimCar {
   out: boolean; // left mid-race (stays where it is, no longer stepped)
   /** The car as the bots see it (filled at the start of each step). */
   tc: TrafficCar;
+  /** Car-to-car contact, for the leaderboard: the last step this car's box met another's, whether it has since the
+   *  current lap began, and whether it had in the CARRY s before that (both read by onLap, then set for the next lap). */
+  touchK: number;
+  lapTouch: boolean;
+  preTouch: boolean;
 }
 
 /** Car i passes through the others at step k: it has finished (from the step after its finish on). The page's
@@ -110,7 +121,7 @@ export class RaceSim {
     const veh = await create(this.track, spec);
     const c: SimCar = {
       key, car: spec.id, slot, veh, lap: newLap(0), last: [0, 0, 0, 0], inp: { steer: 0, throttle: 0, brake: 0, drift: false }, out: false,
-      tc: { s: 0, d: 0, vs: 0, vd: 0, hl: 0, hw: 0, lane: 0, gone: true },
+      tc: { s: 0, d: 0, vs: 0, vd: 0, hl: 0, hw: 0, lane: 0, gone: true }, touchK: -1e9, lapTouch: false, preTouch: false,
     };
     if (bot) {
       // (the autopilot in traffic: it sees every car of the race as it stands at the step's start)
@@ -148,6 +159,8 @@ export class RaceSim {
     c.veh.reset(g.s, g.d);
     c.lap = newLap(this.go);
     c.last[0] = c.last[1] = c.last[2] = c.last[3] = 0;
+    c.touchK = -1e9;
+    c.lapTouch = c.preTouch = false;
     for (const k of Object.keys(c.veh.state.events)) (c.veh.state.events as Record<string, unknown>)[k] = undefined;
   }
   /** Line everyone up for a race starting at step `go`. */
@@ -158,7 +171,7 @@ export class RaceSim {
 
   /** Step k (k >= go): every car's input for k (`inputOf` writes the player's into `out` and says so, or leaves it: the
    *  last one repeats; a bot's from the autopilot, every car where it stands now), then every car on its input,
-   *  car-to-car contact, laps. Calls back on a lap or a finish. */
+   *  car-to-car contact, laps. Calls back on a lap or a finish (the car's lapTouch / preTouch are that lap's). */
   step(k: number, inputOf: (c: SimCar, out: QInput) => boolean, onLap?: (c: SimCar, what: 'lap' | 'finish') => void) {
     const live = this.live, vehs = this.vehs;
     let n = 0, bots = false;
@@ -187,8 +200,14 @@ export class RaceSim {
     this.solver.solve(vehs, n, this.skip, H);
     for (let i = 0; i < n; i++) {
       const c = live[i];
+      if (this.solver.touchedLast(i)) (c.touchK = k), (c.lapTouch = true);
       const what = c.lap.finish < 0 ? lapStep(c.lap, c.veh.state, this.track, k, this.laps) : (lapStep(c.lap, c.veh.state, this.track, k, Infinity), null);
       if (what && onLap) onLap(c, what);
+      if (c.lap.lapStart === k + 1) {
+        // a lap just began (at tick k + 1): clean so far, unless the car touched another in the last CARRY s
+        c.preTouch = k + 1 - c.touchK <= CARRY_STEPS;
+        c.lapTouch = false;
+      }
       const e = c.veh.state.events as Record<string, unknown>;
       for (const x in e) e[x] = undefined;
     }

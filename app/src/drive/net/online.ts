@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { shortWallet } from '../../auth/address';
+import { clearSession, loadSession, onSession, type Session } from '../../auth/session';
 import { mountNav } from '../../nav';
 import { tierOf } from '../../rarity';
 import { createAudio } from '../audio';
@@ -14,13 +16,17 @@ import { create } from '../vehicles/arcade';
 import { buildWorld } from '../world-outdoor';
 import { NetClient } from './client';
 import { MSG_SNAP } from './codec';
-import { cleanName, DEFAULT_CAR, randomName, roomHref, saveCar, savedCar, savedName, saveName, serverUrl } from './prefs';
-import { H, MAX_PLAYERS, type C2S, type PlayerInfo, type ResultRow, type S2C } from './protocol';
+import { DEFAULT_CAR, roomHref, saveCar, savedCar, serverHttp, serverUrl } from './prefs';
+import { H, MAX_PLAYERS, type C2S, type Leaderboard, type PlayerInfo, type ResultRow, type S2C } from './protocol';
 import { carSpecOf, progressOf } from './race';
 import type { WorldCar } from './world';
 
-// /drive.html?online=1&room=<name>&name=<you>&car=<id>&track=<id>: the drive page online (the local multiplayer demo;
-// the server is app/server/, `npm run server`). The server is the authority and simulates every car; this page
+// /drive.html?online=1&room=<name>&car=<id>&track=<id>: the drive page online (the multiplayer demo; the server is
+// app/server/, `npm run server`). You race as your wallet: the join carries the wallet sign-in's session token
+// (auth/session.ts) and your name is the wallet's short address, set by the server. Opened without a sign-in (an
+// invite link), the card asks you to connect a wallet first (auth/wallets.ts), then joins; a sign-in the server turns
+// down is dropped and asked for again; your wallet joining from another tab or device takes the car there (one car per
+// wallet) and this page says so. The server is the authority and simulates every car; this page
 //  - sends its inputs (quantized, tagged with their step: protocol.ts, codec.ts) and drives its own car on them at
 //    once, a little ahead of the server - its clock steers so its inputs arrive JITTER_STEPS early;
 //  - draws EVERY car in its own timeline: the others are simulated forward from their last snapshot on the input their
@@ -30,10 +36,12 @@ import type { WorldCar } from './world';
 //    correction snaps;
 //  - plays a crash like a wall hit: sparks at the contact point, the impact and scrape sounds by severity, the camera's
 //    kick and shake, rumble - for your car, and sparks and a distant knock for the others';
-//  - shows the room: its lobby card (who's in with their cars and Ready, the host, your name and car - changed in place,
-//    the invite link, Ready, Leave), the countdown, the standings and ping, and the results (Race again / Leave).
+//  - shows the room: its lobby card (who's in with their cars and Ready, the host, your wallet and car - the car changed
+//    in place, the invite link, Ready, Leave), the countdown, the standings and ping, and the results (Race again / Leave).
 // The way in is the lobby browser (/online.html: Join / Create room) or an invite link (this page with the room's
-// online, room, track and laps); Leave goes back to the browser.
+// online, room, track and laps); Leave goes back to the browser. &solo=1 is a time trial (the landing's): a room of your
+// own on the track - no bots, no one else, not listed - whose clean laps make the week's board; its card shows your best
+// this week, Start, and your laps after each run (Leave goes home).
 // Knobs on top of the page's usual ones: &auto=1 (the autopilot drives your car), &lag=<ms> &jitter=<ms> &loss=<%>
 // (a bad network, simulated here: lag is the round trip added, jitter up to that much more each way, loss drops
 // snapshots and input packets), &min=<n> (the room waits for n players), &bots=<n> (a new room adds n server bots),
@@ -97,7 +105,11 @@ const CSS = `
 #hud .card.net li .dot.on { background: #3ddc84; box-shadow: 0 0 8px #3ddc84; }
 #hud .card.net .nl-you { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; margin-top: 14px; }
 #hud .card.net .nl-you label { display: grid; gap: 6px; min-width: 0; }
-#hud .card.net .nl-you label span { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+#hud .card.net .nl-you label span, #hud .card.net .nl-me span { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+#hud .card.net .nl-me { display: grid; gap: 6px; min-width: 0; }
+#hud .card.net .nl-me b { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 10px; border-radius: 10px; font: 600 14px/1.1 Inter, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums; white-space: nowrap; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); }
+#hud .card.net .nl-me img { width: 16px; height: 16px; border-radius: 4px; flex: none; }
 #hud .card.net input, #hud .card.net select { width: 100%; min-width: 0; font: 600 14px/1.1 Inter, system-ui, sans-serif; color: #fff;
   background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; padding: 10px; user-select: text; -webkit-user-select: text; }
 #hud .card.net select { cursor: pointer; text-overflow: ellipsis; }
@@ -119,12 +131,21 @@ const CSS = `
   #hud .card.net .nl-invite { justify-content: center; padding: 11px 12px; }
   #hud .card.net .nl-big { font-size: 38px; }
 }
+#hud .card.net .nl-week { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05); font-variant-numeric: tabular-nums; }
+#hud .card.net .nl-week span { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+#hud .card.net .nl-week b { font: 600 15px/1 Inter, system-ui, sans-serif; letter-spacing: 0.02em; text-transform: none; }
+#hud .card.net .nl-week b i { font-style: normal; color: #ffc531; margin-right: 8px; }
+#hud .card.net .nl-week em { font: 800 9px/1 Inter, system-ui, sans-serif; font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; margin-left: 8px;
+  padding: 3px 5px; border-radius: 4px; background: #3ddc84; color: #0b0b0d; vertical-align: 2px; }
+#hud .card.net.solo .nl-count, #hud .card.net.solo .nl-list.pl { display: none; }
+#hud .net-board.solo .pos, #hud .net-board.solo ol { display: none; }
 /* with the card up the race HUD (lap, times, standings) has nothing to say: it comes back for the race */
 body.net-card #hud .net-board, body.net-card #hud .tl { visibility: hidden; }
-#hud .net-tag { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); white-space: nowrap; pointer-events: none;
-  font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: 0.06em; padding: 4px 8px; border-radius: 999px;
-  background: rgba(10, 11, 15, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); text-shadow: none; }
-#hud .net-tag small { font-weight: 600; opacity: 0.6; margin-left: 5px; }
+/* name tags: just the name, small, no plate; they fade out with distance (drawRemotes) */
+#hud .net-tag { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); transform-origin: 50% 100%; white-space: nowrap;
+  pointer-events: none; font: 600 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.03em; color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.3); }
 `;
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -141,8 +162,9 @@ export async function runOnline() {
   let autoDrive = false; // tests: __online.autoDrive(true) - the autopilot drives, but Ready stays the player's
   const RAW = q.get('raw') === '1'; // tests: skip the steering's slew (the server's checks count it)
   const ROOM = (q.get('room') ?? 'demo').replace(/[^a-z0-9_-]/gi, '').slice(0, 32) || 'demo';
-  let NAME = cleanName(q.get('name') ?? '') || savedName() || randomName();
-  saveName(NAME);
+  const SOLO = q.get('solo') === '1'; // a time trial (a room of your own)
+  let session: Session | null = loadSession(); // who you race as (none: the card asks you to connect a wallet first)
+  let signinWhy: 'none' | 'expired' = 'none';
   const LAG = Math.max(0, Number(q.get('lag')) || 0), JIT = Math.max(0, Number(q.get('jitter')) || 0);
   const LOSS = Math.min(50, Math.max(0, Number(q.get('loss')) || 0)) / 100;
   const SERVER = serverUrl(q);
@@ -191,7 +213,7 @@ export async function runOnline() {
     tier = tierOf(String(meta.rarity ?? 'common'));
     carName = [meta.make, meta.model].filter(Boolean).join(' ') || CAR;
     hud.setCar(carName, tier.color);
-    document.title = `Online · ${ROOM} · ${carName} · RIPCARS`;
+    document.title = `${SOLO ? 'Time trial' : `Online · ${ROOM}`} · ${carName} · RACECARS`;
   };
   carLook();
   const cam = createChaseCamera();
@@ -217,6 +239,8 @@ export async function runOnline() {
   const tags = document.createElement('div');
   hudRoot.append(tags, board, count, card);
   const pingEl = board.querySelector<HTMLElement>('.net-ping')!;
+  board.classList.toggle('solo', SOLO); // (a time trial: no standings, just you)
+  card.classList.toggle('solo', SOLO);
 
   // ---- the link, with an optional bad network (lag: round trip added, half each way; jitter: up to that much more
   // each way, order kept as TCP keeps it; loss: snapshots and input packets dropped - a lost snapshot is still read,
@@ -225,11 +249,10 @@ export async function runOnline() {
   const sim = LAG > 0 || JIT > 0 || LOSS > 0;
   const outQ: { at: number; d: string | Uint8Array }[] = [], inQ: { at: number; d: string | ArrayBuffer; lost: boolean }[] = [];
   let lastOut = 0, lastIn = 0;
-  const ws = new WebSocket(SERVER);
-  ws.binaryType = 'arraybuffer';
+  let ws: WebSocket | null = null; // (opened once you're signed in: connect())
   const sendRaw = (d: string | Uint8Array, droppable: boolean) => {
     stats.bytesUp += d.length;
-    if (!sim) return void (ws.readyState === 1 && ws.send(d as string | Uint8Array<ArrayBuffer>));
+    if (!sim) return void (ws?.readyState === 1 && ws.send(d as string | Uint8Array<ArrayBuffer>));
     if (droppable && Math.random() < LOSS) return;
     lastOut = Math.max(lastOut, performance.now() + LAG / 2 + Math.random() * JIT);
     outQ.push({ at: lastOut, d });
@@ -241,7 +264,7 @@ export async function runOnline() {
     return carSpecOf(id, info, meta);
   };
   const net = new NetClient({ track, specOf, vehicle, car: CAR, send: sendRaw, raw: RAW });
-  ws.onmessage = (e) => {
+  const onMessage = (e: MessageEvent) => {
     const d = e.data as string | ArrayBuffer;
     stats.bytesDown += typeof d === 'string' ? d.length : d.byteLength;
     if (!sim) return receive(d, false);
@@ -253,7 +276,7 @@ export async function runOnline() {
     const now = performance.now();
     while (outQ.length && outQ[0].at <= now) {
       const d = outQ.shift()!.d;
-      if (ws.readyState === 1) ws.send(d as string | Uint8Array<ArrayBuffer>);
+      if (ws?.readyState === 1) ws.send(d as string | Uint8Array<ArrayBuffer>);
     }
     while (inQ.length && inQ[0].at <= now) {
       const m = inQ.shift()!;
@@ -266,33 +289,80 @@ export async function runOnline() {
     const b = new Uint8Array(d);
     if (b[0] === MSG_SNAP) onSnap(b, !lost);
   }
-  ws.onopen = () => {
-    send({ t: 'join', room: ROOM, name: NAME, car: CAR, track: COURSE, laps: LAPS, min: MIN || undefined, bots: BOTS || undefined });
-    ping();
-  };
-  ws.onclose = () => {
-    if (notice) return; // (the server said why first: a full room)
-    notice = me >= 0
-      ? { title: 'Disconnected', text: 'Lost the connection to the game server.', reload: true }
-      : { title: 'No game server', text: `Can't reach it at ${esc(SERVER)}. Running it locally? Start it with <b>npm run server</b> in the app folder, then try again.`, reload: true };
+  /** Into the room as your wallet (the session token is all the server needs). */
+  const join = () => session && send({
+    t: 'join', room: ROOM, token: session.token, car: CAR, track: COURSE, laps: LAPS, min: MIN || undefined, bots: BOTS || undefined,
+    solo: SOLO || undefined, auto: AUTO || undefined,
+  });
+  function connect() {
+    ws = new WebSocket(SERVER);
+    ws.binaryType = 'arraybuffer';
+    ws.onmessage = onMessage;
+    ws.onopen = () => {
+      join();
+      ping();
+    };
+    ws.onclose = () => {
+      if (notice) return; // (the server said why first: a full room, your wallet racing elsewhere)
+      notice = me >= 0
+        ? { title: 'Disconnected', text: 'Lost the connection to the game server.', reload: true }
+        : { title: 'No game server', text: `Can't reach it at ${esc(SERVER)}. Running it locally? Start it with <b>npm run server</b> in the app folder, then try again.`, reload: true };
+      renderCard();
+    };
+  }
+  /** Signed in (the card's Connect wallet, or another tab): join on the open connection, or open one. */
+  function signedIn(s: Session) {
+    session = s;
     renderCard();
-  };
+    if (ws?.readyState === 1) join();
+    else if (!ws) connect();
+  }
+  async function askToConnect() {
+    const now = loadSession(); // (signed in meanwhile, in another tab: no need to sign again)
+    if (now) return signedIn(now);
+    const { connectWallet } = await import('../../auth/wallets');
+    const s = await connectWallet();
+    if (s) signedIn(s);
+  }
+  // signed out (the top bar's Disconnect, here or in another tab) while in the room: start over - the page asks you to
+  // connect. (A sign-in in another tab doesn't join from here: a wallet races one car, so that would bump the other tab.)
+  onSession((s) => {
+    if (!s && session && me >= 0) location.reload();
+  });
   const ping = () => send({ t: 'p', c: performance.now(), rtt: Math.round(net.rtt) });
-  setInterval(ping, 1000);
+  setInterval(() => ws?.readyState === 1 && ping(), 1000);
+  if (session) connect(); // (signed out: the card's Connect wallet comes first)
   /** Back to the lobby browser (with this car, and the server if it was given). */
   function roomsHref() {
+    if (SOLO) return q.get('server') ? `/?server=${encodeURIComponent(q.get('server')!)}` : '/'; // (a time trial came from the landing)
     const p = new URLSearchParams({ car: CAR });
     if (q.get('server')) p.set('server', q.get('server')!);
     return `/online.html?${p}`;
   }
-  /** The link a friend opens to land in this room (their own name and car). */
+  /** The link a friend opens to land in this room (with their own wallet and car). */
   const invite = () => roomHref(ROOM, COURSE, LAPS, { server: q.get('server'), absolute: true });
 
   // ---- the room as the server tells it (net keeps the race's own: phase, players, the start, your slot and lap)
   let me = -1, phase = net.phase, players: PlayerInfo[] = [];
   let inRace = false, ready = false, results: ResultRow[] | null = null, roomMin = 1, host = -1;
-  let notice: { title: string; text: string; reload: boolean } | null = null; // the card instead of the room: no server, a full room
+  // the card instead of the room: no server, a full room, your wallet racing elsewhere (`again`: the reload button's words)
+  let notice: { title: string; text: string; reload: boolean; again?: string } | null = null;
   let done = false, far = false, lapsSeen = 0;
+  // a time trial: this visit's best lap (steps), and your best and rank on this week's board (GET /leaderboard)
+  let bestRun: number | null = null, week: { rank: number; steps: number } | null | undefined;
+  async function loadWeek() {
+    if (!SOLO || !session) return;
+    try {
+      const r = await fetch(`${serverHttp(SERVER)}/leaderboard?wallet=${session.wallet}`, { cache: 'no-store' });
+      const lb = (await r.json()) as Leaderboard;
+      const t = lb.tracks.find((x) => x.id === COURSE);
+      week = t?.you ? { rank: t.you.rank, steps: t.you.steps } : null;
+    } catch {
+      week = undefined;
+    }
+    if (cardView === 'lobby') updateLobby();
+    if (cardView === 'results') build('results');
+  }
 
   // ---- drawing: your car as main.ts draws it (the pose between the last two steps), plus the visual error each
   // correction leaves (WorldCar.off / qOff), which decays
@@ -350,6 +420,7 @@ export async function runOnline() {
     if (m.t === 'welcome') {
       net.onWelcome(m);
       me = m.you;
+      void loadWeek();
       renderCard();
       syncRemotes();
       return;
@@ -362,13 +433,24 @@ export async function runOnline() {
       return;
     }
     if (m.t === 'error') {
-      notice = { title: "Can't join", text: `${esc(m.msg)}. Pick another room, or make your own.`, reload: false };
+      if (m.code === 'auth') {
+        // the server doesn't take this sign-in (expired, or it restarted with a new secret): sign in again, then join
+        const stale = session;
+        session = null;
+        if (stale && loadSession()?.token === stale.token) clearSession(); // (not a newer one from another tab)
+        signinWhy = 'expired';
+        return void renderCard();
+      }
+      notice = m.code === 'replaced'
+        ? { title: 'Racing elsewhere', text: `${esc(m.msg)}. A wallet races one car at a time, so your car left this room.`, reload: true, again: 'Race here' }
+        : { title: "Can't join", text: `${esc(m.msg)}. Pick another room, or make your own.`, reload: false };
       return void renderCard();
     }
     if (m.t === 'room') return onRoom(m);
     if (m.t === 'lap') {
       if (m.id === me) {
         const n = m.lap;
+        if (SOLO && (bestRun == null || m.time < bestRun)) bestRun = m.time;
         if (n < LAPS) hud.toast(n === LAPS - 1 ? 'Final lap' : `Lap ${n + 1}`, tier.color);
       }
       return;
@@ -377,6 +459,7 @@ export async function runOnline() {
       results = m.rows;
       showResults = true;
       renderCard();
+      if (SOLO) setTimeout(() => void loadWeek(), 400); // (the run's laps are on the board by now)
     }
   }
 
@@ -407,7 +490,7 @@ export async function runOnline() {
     if (net.lap[2] >= 0 && !done && net.racing()) {
       done = true;
       const pos = standings().findIndex((r) => r.id === me) + 1;
-      hud.toast(pos === 1 ? 'You win!' : `P${pos}`, tier.color);
+      hud.toast(SOLO ? 'Finish' : pos === 1 ? 'You win!' : `P${pos}`, tier.color);
       fx.confetti(st.position, 160);
     }
   }
@@ -432,7 +515,7 @@ export async function runOnline() {
       if (p.id === me || remotes.has(p.id)) continue;
       const tag = document.createElement('div');
       tag.className = 'net-tag';
-      tag.innerHTML = `${esc(p.name)}<small></small>`;
+      tag.textContent = p.name;
       tags.append(tag);
       const r: Remote = {
         id: p.id, name: p.name, car: p.car, rig: null, tag, last: new THREE.Vector3(), has: false,
@@ -446,8 +529,6 @@ export async function runOnline() {
         if (remotes.get(p.id) !== r) return g.dispose();
         r.rig = g;
         scene.add(g.root);
-        const mm = g.spec.meta as { make?: string; model?: string };
-        tag.querySelector('small')!.textContent = [mm.make, mm.model].filter(Boolean).join(' ') || p.car;
       }).catch((e) => console.warn('no rig for', p.car, e));
     }
     for (const [id, r] of remotes) {
@@ -508,11 +589,18 @@ export async function runOnline() {
       }
       for (const k in ev) (ev as Record<string, unknown>)[k] = undefined;
       // name tag over the car
-      proj.copy(s.position).addScaledVector(cam.camera.up, 2.1).project(cam.camera);
+      // (just over the roof, along the car's own up: on a bank or the wall ride it stays on its car)
+      proj.set(0, 1, 0).applyQuaternion(s.quaternion).multiplyScalar(r.rig.spec.height + 0.3).add(s.position).project(cam.camera);
+      // (full from 8 to 35 u away, gone by 110 - and right by the camera, where it would stick to the screen's edge; a
+      // little smaller far off)
       const far = cam.camera.position.distanceTo(s.position);
-      const on = proj.z < 1 && far < 260 && Math.abs(proj.x) < 1.2 && Math.abs(proj.y) < 1.2;
+      const fade = (1 - THREE.MathUtils.smoothstep(far, 35, 110)) * THREE.MathUtils.smoothstep(far, 4, 8);
+      const on = proj.z < 1 && fade > 0.02 && Math.abs(proj.x) < 1.2 && Math.abs(proj.y) < 1.2;
       r.tag.style.display = on ? '' : 'none';
-      if (on) r.tag.style.transform = `translate(${((proj.x + 1) / 2) * w}px, ${((1 - proj.y) / 2) * h}px) translate(-50%, -100%)`;
+      if (on) {
+        r.tag.style.opacity = (0.72 * fade).toFixed(2);
+        r.tag.style.transform = `translate(${((proj.x + 1) / 2) * w}px, ${((1 - proj.y) / 2) * h}px) translate(-50%, -100%) scale(${(1 - 0.2 * THREE.MathUtils.smoothstep(far, 8, 80)).toFixed(3)})`;
+      }
     }
   }
 
@@ -548,10 +636,11 @@ export async function runOnline() {
     if (ol.innerHTML !== html) ol.innerHTML = html;
   }
 
-  // ---- the card: the room's lobby, the results, waiting for a race to end, or a notice (no server, room full). A view
-  // is built once and then only its changing parts are updated, so the name being typed is never re-rendered away.
+  // ---- the card: connect your wallet (signed out), the room's lobby, the results, waiting for a race to end, or a notice
+  // (no server, room full, your wallet racing elsewhere). A view is built once and then only its changing parts are
+  // updated, so an open car menu is never re-rendered away.
   // The results stay up until Race again (back to this room's lobby) or the next countdown.
-  type View = 'lobby' | 'results' | 'wait' | 'notice' | 'none';
+  type View = 'signin' | 'lobby' | 'results' | 'wait' | 'notice' | 'none';
   let cardView: View = 'none', showResults = false;
   const ordinal = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
   const lapsText = `${LAPS} ${LAPS === 1 ? 'lap' : 'laps'}`;
@@ -560,6 +649,7 @@ export async function runOnline() {
 
   function viewOf(): View {
     if (notice) return 'notice';
+    if (!session) return 'signin';
     if (showResults && results) return 'results';
     if (phase === 'lobby' || phase === 'results') return 'lobby';
     if (!inRace) return 'wait';
@@ -579,15 +669,39 @@ export async function runOnline() {
       cardView = v;
       return;
     }
-    if (v !== cardView || v === 'results' || v === 'wait' || v === 'notice') build(v);
+    if (v !== cardView || v === 'results' || v === 'wait' || v === 'notice' || v === 'signin') build(v);
     cardView = v;
     if (v === 'lobby') updateLobby();
   }
   function build(v: View) {
     if (v === 'notice' && notice) {
       showCard(`<div class="medal">Online</div><div class="total nl-big">${esc(notice.title)}</div><p class="nl-text">${notice.text}</p>
-        <div class="btns">${notice.reload ? '<button type="button" class="reload">Try again</button>' : ''}<a href="${esc(roomsHref())}">Back to rooms</a></div>`);
+        <div class="btns">${notice.reload ? `<button type="button" class="reload">${esc(notice.again ?? 'Try again')}</button>` : ''}<a href="${esc(roomsHref())}">Back to rooms</a></div>`);
       card.querySelector('.reload')?.addEventListener('click', () => location.reload());
+    } else if (v === 'signin') {
+      const expired = signinWhy === 'expired';
+      showCard(`<div class="medal">${courseTag}</div><div class="total nl-big">${expired ? 'Sign in again' : 'Connect your wallet'}</div>
+        <p class="nl-text">${expired ? 'Your sign-in has expired. ' : ''}${SOLO ? 'A time trial: your laps count for this week\'s board.' : `You're joining room <b>${esc(ROOM)}</b>.`} Your wallet address is your name in the race: connecting is <b>free, no transaction</b>.</p>
+        <button type="button" class="connect nl-ready">Connect wallet</button><a href="${esc(roomsHref())}" class="nl-leave">Back to rooms</a>`);
+      card.querySelector('.connect')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        void askToConnect();
+      });
+    } else if (v === 'results' && results && SOLO) {
+      // a time trial's run: its laps (the best lit), the total, and where you stand this week
+      const mine = results.find((r) => r.id === me);
+      const laps = mine?.laps ?? [], best = laps.length ? Math.min(...laps) : null;
+      const rows = laps.map((t, i) => `<li class="${t === best ? 'me' : ''}"><span class="nm">Lap ${i + 1}</span><b>${lapTime(t)}</b></li>`).join('')
+        + (mine?.total != null ? `<li><span class="nm">Total</span><b>${fmtTime(mine.total * H)}</b></li>` : '');
+      showCard(`<div class="medal">Time trial · ${courseTag}</div><div class="total nl-big">${best != null ? lapTime(best) : 'Run over'}</div>
+        <ol class="nl-list">${rows}</ol>${weekLine(best)}
+        <div class="btns"><button type="button" class="again">Again</button><a href="${esc(roomsHref())}" class="leave">Leave</a></div>`);
+      card.querySelector('.again')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showResults = false;
+        send({ t: 'ready', on: true }); // (straight into the next run)
+        renderCard();
+      });
     } else if (v === 'results' && results) {
       const mine = results.find((r) => r.id === me);
       const title = !mine ? 'Race over' : mine.total == null ? 'Did not finish' : mine.pos === 1 ? 'You win!' : `${ordinal(mine.pos)} place`;
@@ -609,18 +723,16 @@ export async function runOnline() {
         <p class="nl-text">Room <b>${esc(ROOM)}</b> is mid-race. You're in the next one: it starts once this race ends and everyone presses Ready.</p><ol class="nl-list">${rows}</ol>
         <div class="btns"><a href="${esc(roomsHref())}" class="leave">Leave room</a></div>`);
     } else if (v === 'lobby') {
-      showCard(`<div class="nl-head"><div><div class="medal">${courseTag}</div><div class="nl-room">${esc(ROOM)}</div></div>
-          <button type="button" class="nl-invite" title="Copy a link that brings a friend straight into this room">${LINK}<span>Copy invite link</span></button></div>
+      showCard(`<div class="nl-head"><div><div class="medal">${courseTag}</div><div class="nl-room">${SOLO ? 'Time trial' : esc(ROOM)}</div></div>
+          ${SOLO ? '' : `<button type="button" class="nl-invite" title="Copy a link that brings a friend straight into this room">${LINK}<span>Copy invite link</span></button>`}</div>
         <div class="nl-count"></div>
-        <ol class="nl-list"></ol>
-        <div class="nl-you"><label><span>Your name</span><input class="fn" maxlength="20" autocomplete="nickname" value="${esc(NAME)}"></label>
+        <ol class="nl-list pl"></ol>${SOLO ? '<div class="nl-wk"></div>' : ''}
+        <div class="nl-you"><div class="nl-me"><span>Racing as</span><b title="${esc(session?.wallet ?? '')}">${session?.icon ? `<img src="${session.icon}" alt="">` : ''}${esc(myName())}</b></div>
           <label><span>Your car</span><select class="fc"><option value="${esc(CAR)}">${esc(carName)}</option></select></label></div>
         <button type="button" class="ready nl-ready"></button>
         <div class="nl-status"></div>
-        <a href="${esc(roomsHref())}" class="nl-leave">Leave room</a>`);
-      const fn = card.querySelector<HTMLInputElement>('.fn')!, fc = card.querySelector<HTMLSelectElement>('.fc')!;
-      fn.addEventListener('keydown', (e) => e.key === 'Enter' && fn.blur());
-      fn.addEventListener('change', () => rename(fn.value));
+        <a href="${esc(roomsHref())}" class="nl-leave">${SOLO ? 'Leave' : 'Leave room'}</a>`);
+      const fc = card.querySelector<HTMLSelectElement>('.fc')!;
       carList.then((cars) => {
         if (!cars.length || !fc.isConnected) return;
         fc.innerHTML = cars.map((c) => `<option value="${c.id}">${esc(`${c.make} ${c.model}`)}</option>`).join('');
@@ -631,8 +743,19 @@ export async function runOnline() {
         e.stopPropagation();
         send({ t: 'ready', on: !ready });
       });
-      card.querySelector('.nl-invite')!.addEventListener('click', copyInvite);
+      card.querySelector('.nl-invite')?.addEventListener('click', copyInvite);
     }
+  }
+  /** A lap in steps, as the board shows it (m:ss.sss). */
+  function lapTime(steps: number) {
+    const t = steps * H, m = Math.floor(t / 60), s = t - m * 60;
+    return `${m}:${s < 10 ? '0' : ''}${s.toFixed(3)}`;
+  }
+  /** Your place on this week's board on this track (a time trial's lobby and results); `run`: this run's best lap. */
+  function weekLine(run: number | null = null) {
+    if (week === undefined) return '';
+    const fresh = run != null && week && week.steps === run;
+    return `<div class="nl-week"><span>This week</span><b>${week ? `<i>#${week.rank}</i>${lapTime(week.steps)}${fresh ? '<em>New best</em>' : ''}` : '-'}</b></div>`;
   }
   function updateLobby() {
     const humans = players.filter((p) => !p.bot);
@@ -640,17 +763,18 @@ export async function runOnline() {
       const tags = `${p.id === me ? '<em>You</em>' : ''}${p.id === host ? '<em class="h">Host</em>' : ''}${p.bot ? '<em>Bot</em>' : ''}`;
       const state = p.bot ? '' : p.ready ? 'Ready' : 'Not ready';
       const sub = `${esc(p.carName || p.car)}${p.slot < 0 ? ' · next race' : ''}${p.viol ? ` · ${p.viol} flagged` : ''}`;
-      return `<li class="${p.id === me ? 'me' : ''}"><i class="dot ${p.ready ? 'on' : ''}"></i><span class="nm">${esc(p.name)}${tags}<small>${sub}</small></span>
+      return `<li class="${p.id === me ? 'me' : ''}"><i class="dot ${p.ready ? 'on' : ''}"></i><span class="nm"${p.wallet ? ` title="${esc(p.wallet)}"` : ''}>${esc(p.name)}${tags}<small>${sub}</small></span>
         <span class="st ${p.ready ? 'on' : ''}">${state}${p.bot ? '' : `<small>${p.ping} ms</small>`}</span></li>`;
     }).join('');
     const list = card.querySelector('.nl-list')!;
     if (list.innerHTML !== rows) list.innerHTML = rows;
     card.querySelector('.nl-count')!.textContent = `Players ${players.length}/${MAX_PLAYERS}`;
     const btn = card.querySelector<HTMLButtonElement>('.nl-ready')!;
-    btn.textContent = ready ? 'Ready ✓' : 'Ready';
+    btn.textContent = SOLO ? (ready ? 'Starting…' : 'Start') : ready ? 'Ready ✓' : 'Ready';
     btn.classList.toggle('on', ready);
-    const fn = card.querySelector<HTMLInputElement>('.fn')!, fc = card.querySelector<HTMLSelectElement>('.fc')!;
-    if (document.activeElement !== fn && fn.value !== NAME) fn.value = NAME;
+    const wk = card.querySelector('.nl-wk');
+    if (wk && wk.innerHTML !== weekLine()) wk.innerHTML = weekLine();
+    const fc = card.querySelector<HTMLSelectElement>('.fc')!;
     if (fc.value !== CAR && [...fc.options].some((o) => o.value === CAR)) fc.value = CAR;
     fc.disabled = phase !== 'lobby' || swapping;
     fc.title = phase !== 'lobby' ? 'You can change cars once everyone is back in the lobby' : 'Your car for the next race';
@@ -658,7 +782,8 @@ export async function runOnline() {
     const waiting = humans.filter((p) => !p.ready && p.id !== me);
     const names = (ps: PlayerInfo[]) => ps.length <= 2 ? ps.map((p) => p.name).join(' and ') : `${ps[0].name}, ${ps[1].name} and ${ps.length - 2} more`;
     let status: string;
-    if (phase === 'results') status = ready ? 'Waiting for the others to finish with the results' : 'Press Ready for the next race';
+    if (SOLO) status = '';
+    else if (phase === 'results') status = ready ? 'Waiting for the others to finish with the results' : 'Press Ready for the next race';
     else if (humans.length < roomMin) status = `Waiting for ${roomMin - humans.length} more ${roomMin - humans.length === 1 ? 'player' : 'players'} to join`;
     else if (!ready && humans.length === 1) status = 'Just you so far. Send the invite link, or press Ready to race now';
     else if (!ready) status = waiting.length ? 'Press Ready when you are set' : 'Everyone else is ready. Press Ready to start';
@@ -700,16 +825,8 @@ export async function runOnline() {
       if (cardView === 'lobby') updateLobby();
     }, 2500);
   }
-  function rename(v: string) {
-    const n = cleanName(v);
-    if (!n || n === NAME) return void updateLobby();
-    NAME = n;
-    saveName(n);
-    const p = new URLSearchParams(location.search);
-    p.set('name', n);
-    history.replaceState(null, '', `${location.pathname}?${p}`);
-    send({ t: 'name', name: n });
-  }
+  /** Your name in the room: your wallet's (as the server shows it). */
+  const myName = () => players.find((p) => p.id === me)?.name ?? (session ? shortWallet(session.wallet) : '');
   /** Another car, in place: its rig, a fresh vehicle on my grid slot, the effects and engine for it; the server swaps
    *  its car too (and un-readies me). Only in the lobby - mid-race the car is the race's. */
   let swapping = false;
@@ -785,7 +902,8 @@ export async function runOnline() {
     get results() { return results; }, get lap() { return net.lap; }, get go() { return net.go; }, get race() { return net.raceNo; },
     standings: () => standings().map((r) => ({ id: r.id, name: nameOf(r.id), laps: r.laps, fin: r.fin, prog: r.prog })),
     ready: (on = true) => send({ t: 'ready', on }),
-    get view() { return cardView; }, get car() { return CAR; }, get name() { return NAME; }, get host() { return host; },
+    get view() { return cardView; }, get car() { return CAR; }, get name() { return myName(); }, get wallet() { return session?.wallet ?? null; },
+    get host() { return host; },
     invite: () => invite(),
     autoDrive: (on = true) => void (autoDrive = on),
     /** Tests: the steering the autopilot gets on top (shove the car into another: crash tests) and its throttle's
@@ -858,6 +976,7 @@ export async function runOnline() {
       }
       rig.update(rs, dt);
       world.update(rs, dt);
+      cam.lookBack = input.lookBack;
       cam.update(rs, dt, track, rig.root);
       fx.update(rs, dt, rig.root);
       audio.update(rs, net.input, dt);
@@ -903,7 +1022,7 @@ export async function runOnline() {
       if (racing && cs !== null) {
         const fin = lap[2] >= 0;
         hud.setLap(Math.min(LAPS, lap[0] + 1), LAPS);
-        hud.setTimes(((fin ? lap[2] : cs) - (fin ? lap[2] : lap[1])) * H, ((fin ? lap[2] : cs) - go) * H, null, fin);
+        hud.setTimes(((fin ? lap[2] : cs) - (fin ? lap[2] : lap[1])) * H, ((fin ? lap[2] : cs) - go) * H, SOLO && bestRun != null ? bestRun * H : null, fin);
       } else {
         hud.setLap(1, LAPS);
         hud.setTimes(0, 0, null);

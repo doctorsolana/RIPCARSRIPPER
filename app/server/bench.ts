@@ -17,7 +17,7 @@ room.assumeMatch = true; // (the players here don't predict: count their predict
 let results: unknown = null, bytes = 0;
 for (let i = 0; i < n; i++) {
   await room.join({
-    id: newPlayerId(), name: `P${i + 1}`, car: ['skyline-hck01', 'chevy-impala-jkb99', 'roxy-porsche-hrv96', 'civic-type-r-hcy12', 'beach-bomb-too-k3370',
+    id: newPlayerId(), wallet: null, name: `P${i + 1}`, car: ['skyline-hck01', 'chevy-impala-jkb99', 'roxy-porsche-hrv96', 'civic-type-r-hcy12', 'beach-bomb-too-k3370',
       'porsche-964-gdf88', 'pontiac-firebird-htf40', 'mustang-cobra-r-hgk61', 'porsche-911-gt3-rs', 'skyline-fyg14'][i % 10],
     send: (m) => void (m.t === 'results' && (results = m.rows)), sendBin: (b) => void (bytes += b.length), ready: true, ping: 0,
   }, 0);
