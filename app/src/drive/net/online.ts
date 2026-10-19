@@ -63,7 +63,7 @@ const CSS = `
 #hud .net-board .pos i { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.3em; font-style: normal; opacity: 0.7; margin-right: 8px; vertical-align: 8px; }
 #hud .net-board ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; font-size: 12px; }
 #hud .net-board li { opacity: 0.75; }
-#hud .net-board li.me { opacity: 1; color: var(--car); }
+#hud .net-board li.me { opacity: 1; color: #3dff8b; }
 #hud .net-board li b { display: inline-block; min-width: 1.4em; margin-right: 6px; opacity: 0.6; }
 #hud .net-ping { margin-top: 8px; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.6; }
 #hud .net-ping.bad { color: #ff8a5a; opacity: 0.9; }
@@ -85,7 +85,7 @@ const CSS = `
   text-transform: none; font: 600 12px/1 Inter, system-ui, sans-serif; color: #fff; background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.18); }
 #hud .card.net .nl-invite:hover { background: rgba(255, 255, 255, 0.14); }
-#hud .card.net .nl-invite.done { color: #3ddc84; border-color: rgba(61, 220, 132, 0.6); }
+#hud .card.net .nl-invite.done { color: #3dff8b; border-color: rgba(61, 255, 139, 0.6); }
 #hud .card.net .nl-invite svg { width: 14px; height: 14px; flex: none; }
 #hud .card.net .nl-count { margin-top: 16px; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
 #hud .card.net ol.nl-list { margin-top: 6px; gap: 0; }
@@ -97,13 +97,13 @@ const CSS = `
 #hud .card.net li span.nm em { font: 700 9px/1 Inter, system-ui, sans-serif; font-style: normal; letter-spacing: 0.16em; text-transform: uppercase;
   margin-left: 7px; padding: 3px 5px; border-radius: 4px; vertical-align: 2px; background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.85); }
 #hud .card.net li span.nm em.h { background: rgba(255, 176, 32, 0.2); color: #ffc04d; }
-#hud .card.net li.me span.nm { color: var(--car); }
+#hud .card.net li.me span.nm { color: #3dff8b; }
 #hud .card.net li .st { opacity: 1; text-align: right; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-#hud .card.net li .st.on { color: #3ddc84; }
+#hud .card.net li .st.on { color: #3dff8b; }
 #hud .card.net li .st small { display: block; margin: 3px 0 0; font-size: 10px; letter-spacing: 0.04em; text-transform: none; opacity: 0.8; color: rgba(255, 255, 255, 0.5); }
 #hud .card.net li b.ps { min-width: 1.2em; opacity: 0.6; }
 #hud .card.net li .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); flex: none; }
-#hud .card.net li .dot.on { background: #3ddc84; box-shadow: 0 0 8px #3ddc84; }
+#hud .card.net li .dot.on { background: #3dff8b; box-shadow: 0 0 8px rgba(61, 255, 139, 0.7); }
 #hud .card.net .nl-you { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; margin-top: 14px; }
 #hud .card.net .nl-you label { display: grid; gap: 6px; min-width: 0; }
 #hud .card.net .nl-you label span, #hud .card.net .nl-me span { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
@@ -116,9 +116,9 @@ const CSS = `
 #hud .card.net select { cursor: pointer; text-overflow: ellipsis; }
 #hud .card.net select:disabled { opacity: 0.5; cursor: default; }
 #hud .card.net select option { color: #111; }
-#hud .card.net input:focus, #hud .card.net select:focus { outline: none; border-color: var(--car); }
+#hud .card.net input:focus, #hud .card.net select:focus { outline: none; border-color: #3dff8b; }
 #hud .card.net .nl-ready { display: block; width: 100%; margin-top: 16px; padding: 16px 10px; font-size: 14px; letter-spacing: 0.24em; }
-#hud .card.net .nl-ready.on { background: #3ddc84; }
+#hud .card.net .nl-ready.on { color: #0b0c10; background: #3dff8b; box-shadow: 0 6px 24px rgba(61, 255, 139, 0.2); }
 #hud .card.net .nl-status { margin-top: 10px; min-height: 1.4em; text-align: center; font: 500 13px/1.4 Inter, system-ui, sans-serif; color: rgba(255, 255, 255, 0.65); }
 #hud .card.net .nl-status .sel { user-select: all; -webkit-user-select: all; color: #fff; word-break: break-all; }
 #hud .card.net .nl-leave { display: block; margin: 12px auto 0; padding: 8px; background: none; border: 0; text-align: center;
@@ -138,7 +138,7 @@ const CSS = `
 #hud .card.net .nl-week b { font: 600 15px/1 Inter, system-ui, sans-serif; letter-spacing: 0.02em; text-transform: none; }
 #hud .card.net .nl-week b i { font-style: normal; color: #ffc531; margin-right: 8px; }
 #hud .card.net .nl-week em { font: 800 9px/1 Inter, system-ui, sans-serif; font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; margin-left: 8px;
-  padding: 3px 5px; border-radius: 4px; background: #3ddc84; color: #0b0b0d; vertical-align: 2px; }
+  padding: 3px 5px; border-radius: 4px; background: #3dff8b; color: #0b0c10; vertical-align: 2px; }
 #hud .card.net.solo .nl-count, #hud .card.net.solo .nl-list.pl { display: none; }
 #hud .net-board.solo .pos, #hud .net-board.solo ol { display: none; }
 /* with the card up the race HUD (lap, times, standings) has nothing to say: it comes back for the race */
@@ -214,7 +214,7 @@ export async function runOnline() {
     tier = tierOf(String(meta.rarity ?? 'common'));
     carName = [meta.make, meta.model].filter(Boolean).join(' ') || CAR;
     hud.setCar(carName, tier.color);
-    document.title = `${SOLO ? 'Time trial' : `Online · ${ROOM}`} · ${carName} · RACECARS`;
+    document.title = `${SOLO ? 'Time trial' : `Online · ${ROOM}`} · ${carName} · racecars`;
   };
   carLook();
   const cam = createChaseCamera();
@@ -995,7 +995,7 @@ export async function runOnline() {
       else if (ev.carHit && ev.carHit > 4) input.rumble(Math.min(0.6, ev.carHit / 30), 60);
       else if (ev.carScrape && ev.carScrape > 4) input.rumble(Math.min(0.35, ev.carScrape / 60), 40);
       else if (ev.wallHit && ev.wallHit > 25) input.rumble(0.8, 90);
-      if (ev.perfectLanding) hud.toast('Perfect!', '#3ddc84');
+      if (ev.perfectLanding) hud.toast('Perfect!', '#3dff8b');
       else if (ev.tierUp === 4) hud.toast('Max drift!', '#fff', 'max');
       else if (ev.boostStart && lastTier > 0) {
         const c = lastTier === 4 ? '#fff' : lastTier === 3 ? tier.color : lastTier === 2 ? '#a35cff' : '#3d8bff';

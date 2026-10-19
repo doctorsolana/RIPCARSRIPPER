@@ -47,7 +47,7 @@ export interface Hud {
 
 const CSS = `
 #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; color: #fff; user-select: none; -webkit-user-select: none;
-  font: 600 14px/1.2 Inter, system-ui, sans-serif; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 10px rgba(0, 0, 0, 0.45); --car: #ff3d6e; }
+  font: 600 14px/1.2 Inter, system-ui, sans-serif; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 10px rgba(0, 0, 0, 0.45); --car: #3dff8b; }
 #hud .tl { position: absolute; left: max(16px, env(safe-area-inset-left)); top: calc(max(16px, env(safe-area-inset-top)) + 4px); }
 body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .lap { font: 400 36px/1 Anton, Impact, sans-serif; letter-spacing: 0.03em; }
@@ -93,7 +93,7 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .split { position: absolute; left: 0; right: 0; top: calc(24% + clamp(44px, 9vw, 84px)); text-align: center;
   font: 700 22px/1 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 0.2s; }
 #hud .split.on { opacity: 1; }
-#hud .split.ahead { color: #3ddc84; }
+#hud .split.ahead { color: #3dff8b; }
 #hud .split.behind { color: #ff5a5a; }
 #hud .wrong { position: absolute; left: 0; right: 0; top: 34%; display: flex; justify-content: center; padding: 0 16px; opacity: 0;
   visibility: hidden; transform: translateY(-50%) scale(0.8); transition: opacity 0.18s, visibility 0.18s, transform 0.3s cubic-bezier(0.2, 1.7, 0.4, 1); }

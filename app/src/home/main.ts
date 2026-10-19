@@ -1,5 +1,6 @@
 import { isAddress, shortWallet } from '../auth/address';
 import { checkSession, loadSession, onSession, type Session } from '../auth/session';
+import { WORDMARK } from '../brand';
 import { openCreateRoom } from '../create-room';
 import { isDev, onDev } from '../dev';
 import type { GarageListing, Leaderboard, RoomListing } from '../drive/net/protocol';
@@ -329,7 +330,7 @@ $('garage').addEventListener('click', (e) => {
 
 // ---- the foot
 function renderFoot() {
-  $('foot').innerHTML = `<span class="mark">RACECARS</span><nav><a href="${RIPCARS_URL}" target="_blank" rel="noopener">Rip a pack${EXT}</a>${isDev() ? '<a class="dev" href="/rip.html">Reveal</a><a class="dev" href="/inspect.html">Inspect</a>' : ''}</nav>`;
+  $('foot').innerHTML = `<span class="mark" role="img" aria-label="racecars">${WORDMARK}</span><nav><a href="${RIPCARS_URL}" target="_blank" rel="noopener">Rip a pack${EXT}</a>${isDev() ? '<a class="dev" href="/rip.html">Reveal</a><a class="dev" href="/inspect.html">Inspect</a>' : ''}</nav>`;
 }
 
 // ---- go

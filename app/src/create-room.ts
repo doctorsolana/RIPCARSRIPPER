@@ -29,7 +29,7 @@ dialog.mkroom::backdrop { background: rgba(5, 6, 8, 0.7); backdrop-filter: blur(
 .mkroom .f > span { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.24em; text-transform: uppercase; color: #8b90a0; }
 .mkroom input { width: 100%; min-width: 0; font: 600 15px/1 Inter, system-ui, sans-serif; color: #eef0f3; background: #1d1f27;
   border: 1px solid #2a2c35; border-radius: 10px; padding: 11px 12px; }
-.mkroom input:focus { outline: none; border-color: #ff3d6e; }
+.mkroom input:focus { outline: none; border-color: #3dff8b; }
 .mkroom .hint { min-height: 1em; font: 500 12px/1.4 Inter, system-ui, sans-serif; color: #ffb020; }
 .mkroom .hint:empty { display: none; }
 .mkroom .hint a { color: #eef0f3; }
@@ -49,8 +49,9 @@ dialog.mkroom::backdrop { background: rgba(5, 6, 8, 0.7); backdrop-filter: blur(
   font: 700 12px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; }
 .mkroom .actions .no { color: #eef0f3; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); }
 .mkroom .actions .no:hover { background: rgba(255, 255, 255, 0.1); }
-.mkroom .actions .go { color: #fff; background: #e0245a; box-shadow: 0 6px 24px rgba(255, 61, 110, 0.3); }
-.mkroom .actions .go:hover { background: #ea3366; }
+.mkroom .actions .go { color: #0b0c10; background: #3dff8b; box-shadow: 0 6px 24px rgba(61, 255, 139, 0.2); }
+.mkroom .actions .go:hover { background: #24e676; }
+.mkroom .actions .go:active { background: #1cc965; }
 .mkroom .actions .go:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 @media (max-width: 560px) { .mkroom form { padding: 18px; gap: 16px; } .mkroom .row2 { grid-template-columns: 1fr; } }
 `;

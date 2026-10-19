@@ -50,9 +50,9 @@ export function createTurntable(canvas: HTMLCanvasElement, o: { interactive?: bo
   scene.environmentIntensity = 1.05;
   const key = new THREE.DirectionalLight('#ffffff', 2.8);
   key.position.set(3, 7, 6);
-  const rim = new THREE.DirectionalLight('#ff3d6e', 6); // the brand's pink, from behind: it outlines the car on the dark
+  const rim = new THREE.DirectionalLight('#3dff8b', 1.7); // the brand's green, from behind: a thin outline of the car on the dark
   rim.position.set(-5, 3, -6);
-  const rim2 = new THREE.DirectionalLight('#ff6f93', 3);
+  const rim2 = new THREE.DirectionalLight('#dfe6ff', 3);
   rim2.position.set(6, 2, -5);
   const fill = new THREE.HemisphereLight('#d6deee', '#1a1416', 0.9);
   scene.add(key, rim, rim2, fill);

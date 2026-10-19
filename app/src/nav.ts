@@ -1,8 +1,9 @@
 import { shortWallet } from './auth/address';
 import { clearSession, loadSession, onSession, type Session } from './auth/session';
+import { WORDMARK } from './brand';
 import { isDev, onDev, setDev } from './dev';
 
-// The top bar shared by every page: RACECARS (home: the landing), Drive, Race online (the way into multiplayer:
+// The top bar shared by every page: the wordmark (home: the landing), Drive, Race online (the way into multiplayer:
 // online.html, the room browser), Rip a pack (ripcars.io, where the Rip Cars come from: a new tab), and in dev mode
 // (dev.ts) the tools - Reveal (the pack-rip prototype, rip.html) and Inspect - with a DEV badge by the logo. On the
 // reveal and the drive page a car picker plus "random" (the drive page adds its track switch; in an online room the
@@ -35,30 +36,30 @@ const CSS = `
   padding: 0 max(16px, env(safe-area-inset-left)); background: rgba(10, 11, 15, 0.72); backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   font: 500 13px/1 Inter, system-ui, sans-serif; color: #eef0f3; }
-#nav .brand { display: inline-flex; align-items: center; gap: 8px; font: 400 22px/1 Anton, Impact, sans-serif; letter-spacing: 0.04em; color: #fff;
-  text-decoration: none; white-space: nowrap; }
+#nav .brand { --wm: 13px; display: inline-flex; flex: none; align-items: center; gap: 10px; align-self: stretch; color: #fff; text-decoration: none; white-space: nowrap; }
+#nav .brand .rc-wm { --lamp-off: rgba(255, 255, 255, 0.2); display: block; height: var(--wm); width: calc(var(--wm) * 8.81); flex: none; }
 #nav .brand .dv { display: none; padding: 3px 5px 2px; border-radius: 4px; font: 800 9px/1 Inter, system-ui, sans-serif; letter-spacing: 0.14em;
   color: #0b0b0d; background: #ffb020; }
 #nav.dev .brand .dv { display: inline-block; }
 #nav .links { display: flex; flex: none; gap: 4px; }
 #nav .links a { display: inline-flex; align-items: center; color: rgba(238, 240, 243, 0.7); text-decoration: none; padding: 8px 10px; border-radius: 8px; white-space: nowrap; }
 #nav .links a:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
-#nav .links a.on { color: #fff; box-shadow: inset 0 -2px 0 #ff3d6e; border-radius: 0; }
+#nav .links a.on { color: #fff; box-shadow: inset 0 -2px 0 #3dff8b; border-radius: 0; }
 #nav .links a.race { gap: 7px; color: #fff; }
-#nav .links a.race::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #ff3d6e; box-shadow: 0 0 8px #ff3d6e; }
+#nav .links a.race::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #3dff8b; box-shadow: 0 0 8px rgba(61, 255, 139, 0.7); }
 #nav .links a.ext svg { width: 9px; height: 9px; margin-left: 5px; opacity: 0.55; flex: none; }
 #nav .links a.dev { display: none; color: rgba(255, 192, 77, 0.8); }
 #nav .links a.dev:hover { color: #ffc04d; }
 #nav .links a.dev.on { color: #ffc04d; box-shadow: inset 0 -2px 0 #ffb020; }
 #nav.dev .links a.dev { display: inline-flex; }
 #nav .spacer { flex: 1; }
-#nav a:focus-visible, #nav button:focus-visible, #nav select:focus-visible { outline: 2px solid #ff3d6e; outline-offset: 2px; }
+#nav a:focus-visible, #nav button:focus-visible, #nav select:focus-visible { outline: 2px solid #3dff8b; outline-offset: 2px; }
 #nav .narrow { display: none; }
 #nav select, #nav button { font: inherit; color: #eef0f3; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px; padding: 7px 10px; cursor: pointer; max-width: 46vw; min-width: 0; }
 #nav button { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 #nav select option { color: #111; }
-#nav button:hover, #nav select:hover { border-color: #ff3d6e; }
+#nav button:hover, #nav select:hover { border-color: rgba(61, 255, 139, 0.6); }
 #nav .seg { display: flex; flex: none; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.12); }
 #nav .seg a { display: flex; align-items: center; gap: 7px; padding: 8px 11px; border-radius: 6px; color: rgba(238, 240, 243, 0.7);
@@ -76,9 +77,9 @@ const CSS = `
 /* the wallet chip and its menu */
 #nav .wal { position: relative; flex: none; }
 #nav .wal .w-chip { position: relative; max-width: none; font-variant-numeric: tabular-nums; }
-#nav .wal:not(.in) .w-chip { border-color: rgba(255, 61, 110, 0.5); }
+#nav .wal:not(.in) .w-chip { border-color: rgba(61, 255, 139, 0.45); }
 #nav .w-chip img, #nav .w-chip svg { width: 16px; height: 16px; border-radius: 4px; flex: none; }
-#nav .w-chip .w-dot { display: none; position: absolute; right: 3px; top: 3px; width: 7px; height: 7px; border-radius: 50%; background: #3ddc84;
+#nav .w-chip .w-dot { display: none; position: absolute; right: 3px; top: 3px; width: 7px; height: 7px; border-radius: 50%; background: #3dff8b;
   box-shadow: 0 0 0 2px #14151b; }
 #nav .w-menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 250px; display: grid; gap: 2px; padding: 6px; border-radius: 14px;
   background: #14151b; border: 1px solid #33353f; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
@@ -111,7 +112,7 @@ const CSS = `
 }
 @media (max-width: 640px) {
   #nav { gap: 6px; }
-  #nav .brand { font-size: 18px; gap: 6px; }
+  #nav .brand { --wm: 11px; gap: 7px; }
   #nav .links { gap: 0; }
   #nav .links a { padding: 8px 6px; }
   #nav .links a.race { gap: 5px; }
@@ -128,7 +129,7 @@ const CSS = `
 @media (max-width: 900px) { #nav.dev .links a.ext { display: none; } }
 @media (max-width: 640px) { #nav.dev .links a.dev { display: none; } }
 @media (max-width: 374px) { #nav.picker .brand .dv { display: none; } }
-@media (max-width: 359px) { #nav select { max-width: 19vw; } #nav .brand { font-size: 16px; } }
+@media (max-width: 359px) { #nav select { max-width: 19vw; } #nav .brand { --wm: 10px; } #nav.picker { gap: 4px; } #nav.picker .brand { --wm: 8.5px; gap: 5px; } }
 `;
 /** A wallet glyph (16 x 16, currentColor): the chip signed out, and the lobby's Connect wallet. */
 export const WALLET = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M13 5.5V4a1.5 1.5 0 0 0-1.5-1.5h-8A1.5 1.5 0 0 0 2 4v8a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 14 12V7a1.5 1.5 0 0 0-1.5-1.5H2.5"/><circle cx="11" cy="9.5" r="1" fill="currentColor" stroke="none"/></svg>';
@@ -226,7 +227,7 @@ export async function mountNav(page: 'home' | 'rip' | 'inspect' | 'drive' | 'onl
   const el = document.createElement('header');
   el.id = 'nav';
   el.innerHTML = `
-    <a class="brand" href="/" aria-label="RACECARS home">RACECARS<b class="dv" title="Dev mode is on">DEV</b></a>
+    <a class="brand" href="/" aria-label="racecars">${WORDMARK}<b class="dv" title="Dev mode is on">DEV</b></a>
     <nav class="links">
       <a href="/drive.html" data-page="drive">Drive</a>
       <a href="/online.html" data-page="online" class="race"><span class="wide">Race online</span><span class="narrow">Online</span></a>

@@ -120,24 +120,24 @@ const CSS = `
 .wpick .wp-list { display: grid; gap: 8px; }
 .wpick .wp-w { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 12px 14px; border-radius: 14px; cursor: pointer;
   border: 1px solid #2a2c35; background: #1d1f27; color: #eef0f3; text-align: left; text-decoration: none; font: 600 15px/1.2 Inter, system-ui, sans-serif; }
-.wpick .wp-w:hover:not(:disabled) { border-color: #ff3d6e; background: #22242d; }
-.wpick .wp-w:focus-visible { outline: 2px solid #ff3d6e; outline-offset: 2px; }
+.wpick .wp-w:hover:not(:disabled) { border-color: rgba(61, 255, 139, 0.6); background: #22242d; }
+.wpick .wp-w:focus-visible { outline: 2px solid #3dff8b; outline-offset: 2px; }
 .wpick .wp-w:disabled { cursor: default; opacity: 0.45; }
-.wpick .wp-w.busy { opacity: 1; border-color: #ff3d6e; }
+.wpick .wp-w.busy { opacity: 1; border-color: #3dff8b; }
 .wpick .wp-w img, .wpick .wp-mono { width: 34px; height: 34px; border-radius: 9px; flex: none; object-fit: contain; }
 .wpick .wp-mono { display: grid; place-items: center; background: var(--c); color: var(--ink); font: 400 19px/1 Anton, Impact, sans-serif; }
 .wpick .wp-w span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wpick .wp-w small { flex: none; display: inline-flex; align-items: center; gap: 7px; font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.18em;
   text-transform: uppercase; color: #8b90a0; }
-.wpick .wp-w small.ok { color: #3ddc84; }
+.wpick .wp-w small.ok { color: #3dff8b; }
 .wpick .wp-w small svg { width: 12px; height: 12px; }
 .wpick .wp-w.busy small::before { content: ''; width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #ff3d6e; animation: wp-spin 0.8s linear infinite; }
+  border-top-color: #3dff8b; animation: wp-spin 0.8s linear infinite; }
 @keyframes wp-spin { to { transform: rotate(360deg); } }
 .wpick .wp-status { min-height: 1.45em; font-size: 13px; color: #a3a8b6; }
 .wpick .wp-status:empty { display: none; }
 .wpick .wp-status.err { color: #ffb020; }
-.wpick .wp-status.ok { color: #3ddc84; }
+.wpick .wp-status.ok { color: #3dff8b; }
 .wpick .wp-foot { padding-top: 12px; border-top: 1px solid #2a2c35; font-size: 12.5px; color: #8b90a0; }
 .wpick .wp-foot a, .wpick .wp-foot button { color: #eef0f3; font: inherit; text-decoration: underline; text-underline-offset: 3px; background: none; border: 0;
   padding: 0; cursor: pointer; }

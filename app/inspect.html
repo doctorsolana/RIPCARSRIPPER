@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="theme-color" content="#0d0e12" />
+    <meta name="theme-color" content="#0b0c10" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -10,12 +10,12 @@
     <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <title>RACECARS · Inspect cars</title>
+    <title>racecars · Inspect cars</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700&display=swap" rel="stylesheet" />
     <style>
-      :root { --bg: #0d0e12; --panel: #16171d; --panel2: #1d1f27; --text: #eef0f3; --muted: #8b90a0; --line: #2a2c35; --accent: #ff3d6e; --ok: #3ddc84; --warn: #ffb020; }
+      :root { --bg: #0d0e12; --panel: #16171d; --panel2: #1d1f27; --text: #eef0f3; --muted: #8b90a0; --line: #2a2c35; --accent: #3dff8b; --ok: #3dff8b; --warn: #ffb020; }
       * { box-sizing: border-box; }
       html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 Inter, system-ui, sans-serif; }
       #app { display: grid; grid-template-columns: 260px 1fr; height: 100%; padding-top: 48px; /* the top bar */ }
@@ -33,7 +33,7 @@
       #head h2 { font-size: 16px; margin: 0; margin-right: auto; }
       .tabs { display: flex; gap: 6px; }
       .tabs button, .tools button { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; font: inherit; }
-      .tabs button.on, .tools button.on { border-color: var(--accent); background: #2a1520; }
+      .tabs button.on, .tools button.on { border-color: var(--accent); background: #142a1d; }
       #body { position: relative; min-height: 0; }
       .pane { position: absolute; inset: 0; display: none; }
       .pane.on { display: block; }

@@ -180,7 +180,7 @@ for (const c of cars) {
   b.dataset.id = c.id;
   const tier = tierOf(c.rarity);
   const status = c.passed === null ? 'no model' : c.passed ? 'checks pass' : 'needs review';
-  const colour = c.passed === null ? '#8b90a0' : c.passed ? '#3ddc84' : '#ffb020';
+  const colour = c.passed === null ? '#8b90a0' : c.passed ? '#3dff8b' : '#ffb020';
   b.innerHTML = `<b>${c.make} ${c.model}</b><small><span class="dot" style="background:${colour}"></span>${status} · <span style="color:${tier.color}">${tier.label}</span></small>`;
   b.addEventListener('click', () => select(c.id));
   $('list').append(b);

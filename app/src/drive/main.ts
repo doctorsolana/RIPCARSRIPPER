@@ -124,7 +124,7 @@ async function main() {
   const tier = tierOf(String(meta.rarity ?? 'common'));
   const carName = [meta.make, meta.model].filter(Boolean).join(' ') || CAR;
   hud.setCar(carName, tier.color);
-  document.title = `Drive · ${carName} · ${COURSE_DEF.name} · RACECARS`;
+  document.title = `Drive · ${carName} · ${COURSE_DEF.name} · racecars`;
 
   const cam = createChaseCamera();
   scene.add(cam.camera); // anything parented to the camera renders too
@@ -385,7 +385,7 @@ async function main() {
       if (recordAir > 0) {
         hud.toast(`${ev.perfectLanding ? 'Perfect!' : 'Big air'} ${recordAir.toFixed(1)} s, record!`, '#ffd23d');
         recordAir = 0;
-      } else if (ev.perfectLanding) hud.toast(`Perfect!${big}`, '#3ddc84');
+      } else if (ev.perfectLanding) hud.toast(`Perfect!${big}`, '#3dff8b');
       else if (big) hud.toast(`Big air${big}`);
       else if (ev.tierUp === 4) hud.toast('Max drift!', '#fff', 'max'); // the hidden tier: a surprise
       else if (ev.boostStart && lastTier > 0) {

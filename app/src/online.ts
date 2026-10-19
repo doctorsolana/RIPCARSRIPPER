@@ -18,8 +18,8 @@ import { DEFAULT_CAR, roomHref, saveCar, savedCar, serverHttp, serverUrl } from 
 interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean }
 
 const CSS = `
-:root { --bg: #0d0e12; --panel: #16171d; --panel2: #1d1f27; --text: #eef0f3; --muted: #8b90a0; --line: #2a2c35; --accent: #ff3d6e;
-  --ok: #3ddc84; --warn: #ffb020; }
+:root { --bg: #0d0e12; --panel: #16171d; --panel2: #1d1f27; --text: #eef0f3; --muted: #8b90a0; --line: #2a2c35; --accent: #3dff8b;
+  --ok: #3dff8b; --warn: #ffb020; }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 500 14px/1.45 Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased; }
@@ -35,8 +35,8 @@ label > span, .me > span { font: 700 10px/1 Inter, system-ui, sans-serif; letter
 .me-v img, .me-v svg { width: 22px; height: 22px; border-radius: 6px; flex: none; }
 .me-v b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .me-v small { margin-left: auto; padding-left: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-button.me-v { width: 100%; cursor: pointer; color: #fff; background: rgba(255, 61, 110, 0.14); border-color: rgba(255, 61, 110, 0.55); }
-button.me-v:hover { background: rgba(255, 61, 110, 0.24); }
+button.me-v { width: 100%; cursor: pointer; color: #fff; background: rgba(61, 255, 139, 0.08); border-color: rgba(61, 255, 139, 0.45); }
+button.me-v:hover { background: rgba(61, 255, 139, 0.15); }
 button.me-v svg { width: 18px; height: 18px; border-radius: 0; }
 input, select { width: 100%; min-width: 0; font: 600 15px/1 Inter, system-ui, sans-serif; color: var(--text); background: var(--panel2);
   border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
@@ -58,8 +58,9 @@ button { font: inherit; cursor: pointer; }
   font: 700 12px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #0b0b0d; background: #fff;
   text-decoration: none; white-space: nowrap; }
 .btn:hover { background: #e4e6ea; }
-.btn.primary { color: #fff; background: #e0245a; box-shadow: 0 6px 24px rgba(255, 61, 110, 0.3); }
-.btn.primary:hover { background: #ea3366; }
+.btn.primary { color: #0b0c10; background: var(--accent); box-shadow: 0 6px 24px rgba(61, 255, 139, 0.2); }
+.btn.primary:hover { background: #24e676; }
+.btn.primary:active { background: #1cc965; }
 .btn.ghost { color: var(--text); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); }
 .btn.ghost:hover { background: rgba(255, 255, 255, 0.1); }
 .btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
@@ -95,6 +96,8 @@ code { font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: v
   h1 { font-size: 44px; }
   .you { grid-template-columns: 1fr; margin-top: 20px; }
   .head { margin-top: 28px; flex-wrap: wrap; }
+  .head > div { flex-wrap: wrap; row-gap: 10px; }
+  .filter { max-width: 100%; overflow-x: auto; }
   .head .btn { padding: 12px 16px; }
   .room { grid-template-columns: 1fr auto; gap: 12px; padding: 14px; }
   .r-who { grid-column: 1 / -1; grid-row: 2; }
