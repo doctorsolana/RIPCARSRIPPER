@@ -204,6 +204,25 @@ def proportions(cal, meshes: list) -> dict:
     return {"length": round(sw / qw, 3), "width": round(th / rh, 3), "height": round(sh / qh, 3)}
 
 
+def _push_specs(push: list | None, cal) -> list:
+    """hints.json model.push -> prisms in model units for blender_clean.py. Each entry:
+    {"view": "top", "poly": [[x, y], ...] sheet px (the top drawing, nose right), "height": [lo, hi] (fraction of
+    the sheet's car height, 0 = ground), "dir": [dx, dy] (sheet px direction, e.g. [-1, 0] = towards the tail)}.
+    Vertices inside the polygon and height range slide along dir until they leave the polygon: a part the
+    generator made too long (it never saw the top) is cut back to the drawn outline, the mesh staying closed."""
+    out = []
+    for e in push or []:
+        if e.get("view", "top") != "top":
+            raise ValueError(f"model.push: only the top view is supported, not {e.get('view')}")
+        v = cal.views["top"]
+        P = np.asarray(e["poly"], float) - v.panel.origin
+        poly = np.c_[(P[:, 0] - v.uc) * v.su, (P[:, 1] - v.vg) * v.sv]  # top: u -> x, v -> z (views.View._px)
+        dx, dz = e["dir"][0] * v.su, e["dir"][1] * v.sv
+        n = max(np.hypot(dx, dz), 1e-12)
+        out.append({"poly": poly.round(5).tolist(), "y": [h * cal.H for h in e.get("height", [0, 1])], "dir": [dx / n, dz / n]})
+    return out
+
+
 def promote_model(car: str, src: str | None = None) -> dict:
     """Make a repainted generated mesh (default snapshots/tripo-multiview-guided.glb) the car's
     model.glb, with a model.json in the scripts' format (dimensions, silhouette IoU per view, checks),
@@ -407,8 +426,15 @@ def main(argv=None):
                 adjust = json.loads((d / "hints.json").read_text()).get("model", {}).get("fit") if (d / "hints.json").is_file() else None
                 _, fitted = rebake.fit(np.asarray(first.vertices, float), np.asarray(first.faces), views.calibrate(panels), adjust)
                 f = fitted["scale_xyz"] + fitted["offset_xy"]
+                push = d / "tripo" / args.mode / "push.json"
+                specs = _push_specs(json.loads((d / "hints.json").read_text()).get("model", {}).get("push"),
+                                    views.calibrate(panels)) if (d / "hints.json").is_file() else []
+                if specs:
+                    push.write_text(json.dumps(specs))
+                else:
+                    push.unlink(missing_ok=True)
                 subprocess.run([blender, "-b", "--python", script, "--", str(src), str(dst), str(rep), "1024", "0", "0",
-                                ",".join(str(v) for v in f)], check=True, capture_output=True)
+                                ",".join(str(v) for v in f)] + ([str(push)] if specs else []), check=True, capture_output=True)
                 r = json.loads(rep.read_text())
                 print(f"{car}: {r['before']['triangles']} -> {r['after']['triangles']} triangles, "
                       f"{src.stat().st_size / 1e6:.2f} MB FBX -> {dst.stat().st_size / 1e6:.2f} MB GLB, "
@@ -416,6 +442,8 @@ def main(argv=None):
                 cleaned = trimesh.load(dst, force="mesh", process=False)
                 cleaned.merge_vertices()
                 size = proportions(views.calibrate(panels), [cleaned])
+                if r.get("pushed_verts"):
+                    print(f"{car}: model.push moved {r['pushed_verts']} vertices")
                 print(f"{car}: size vs sheet {size}")
                 for k, ratio in size.items():
                     if abs(ratio - 1) > 0.05:

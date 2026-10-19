@@ -276,7 +276,7 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
                 agree_sigma: float = 55.0, hand_glass: bool = False, report: dict | None = None,
                 unseen: frozenset = frozenset({"top"}), traced: dict | None = None, tinted: dict | str | None = None,
                 flat: dict | None = None, trust: dict | None = None, skip: dict | None = None,
-                rasters: dict | None = None):
+                rasters: dict | None = None, material: list | None = None):
     """unseen: views the generator never got - not aligned, and not trusted to say where the glass is
     (their window outlines don't line up with the generated greenhouse). tinted: "all" (every window super
     tinted) or {view: (mask, aligned)} marking the super-tinted panels (model.rebake.tinted, as for the glass)."""
@@ -389,6 +389,14 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
     # the app treats roughness < 0.2 as glass: keep paint well above it, so texels blended across a
     # window edge (texture filtering, JPEG) fall on the paint side instead of eating into the pillars
     mr[..., 1] = np.maximum(mr[..., 1], 0.4 * 255)
+    for e in material or ():  # model.rebake.material: metal/roughness by hand, in order (later entries win)
+        sel = _material_texels(e, cal, P) & ~is_glass
+        if "metallic" in e:
+            mr[ys[sel], xs[sel], 2] = float(e["metallic"]) * 255
+        if "roughness" in e:  # never down into the app's glass range (< 0.2)
+            mr[ys[sel], xs[sel], 1] = max(float(e["roughness"]), 0.25) * 255
+        if report is not None:
+            report.setdefault("material_share", []).append(round(float(sel.mean()), 4))
     mr[ys[is_glass], xs[is_glass], 1] = 0.06 * 255
     mr[ys[is_glass], xs[is_glass], 2] = 0
     mr[ys[dark], xs[dark], 1] = TINT_ROUGH * 255
@@ -407,6 +415,25 @@ def guided_bake(mesh: Textured, cal, grid, flows: dict, renders: dict, size: int
         report["tinted_share"] = round(float(dark.mean()), 4)
         report["seen_through_glass"] = round(float(np.mean([(tv[n]["vis"] & ~tv_full[n]["vis"]).mean() for n in names])), 4)
     return bake._pad(img, known), bake._pad(mr, known), glass_uv
+
+
+def _material_texels(e: dict, cal, P: np.ndarray) -> np.ndarray:
+    """hints.json model.rebake.material entry -> texels it covers: {"view": "top", "polys": [[[x, y], ...], ...] sheet px,
+    "height": [lo, hi] (fraction of the sheet's car height), "metallic": m, "roughness": r}. Polygons are projected
+    straight through the view's camera and through the whole car (a prism, like model.push), so the sides of a part
+    count too; no polygons means every texel in the height range (e.g. the generator's metal on all the paint)."""
+    sel = np.ones(len(P), bool)
+    if e.get("polys"):
+        v = cal.views[e.get("view", "top")]
+        m = np.zeros(v.panel.mask.shape, np.uint8)
+        for poly in e["polys"]:
+            cv2.fillPoly(m, [np.round(np.array(poly, float) - v.panel.origin).astype(np.int32)], 1)
+        u, vv = v.to_px(P)
+        sel &= render.sample(m.astype(np.float32), u - 0.5, vv - 0.5, cv2.BORDER_CONSTANT)[:, 0] > 0.5
+    if "height" in e:
+        lo, hi = e["height"]
+        sel &= (P[:, 1] >= lo * cal.H) & (P[:, 1] <= hi * cal.H)
+    return sel
 
 
 def _glass_at(vs: dict, second: float = 0.35, exclude: frozenset = frozenset()) -> np.ndarray:
@@ -466,6 +493,12 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
             # featureless generated paint: project the drawing straight through the camera instead
             flows[name] = None
             report["alignment"][name]["note"] = "not aligned (hints: noalign): the drawing is projected as it is"
+        pins = tune.get("rebake", {}).get("pins", {}).get(name)
+        if pins:
+            # (hints: model.rebake.pins) the automatic alignment can't follow a drawing whose camera differs a lot
+            # from the mesh's (an elevated rear drawing: its bumper face stretched taller): pinned by hand instead
+            flows[name] = _pinned_flow(v, pins, r.cover.shape)
+            report["alignment"][name]["note"] = f"pinned by hand (hints: pins, {len(pins)} pins); automatic flow not used"
         if name in unseen:
             report["alignment"][name]["note"] = "generator never saw this view: aligned for paint only, not trusted for glass"
         _debug(qadir / f"align-{name}.jpg", v, renders[name], flows[name])
@@ -503,7 +536,8 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
                               if traced else "sheet masks, aligned")
     tex, mr, glass_uv = guided_bake(mesh, cal, grid, flows, renders, size=texture, hand_glass="replace" in tune.get("glass", {}),
                           report=report, unseen=unseen, power=rb.get("power", 4.0), agree_sigma=rb.get("agree", 55.0),
-                          traced=traced, tinted=tinted, flat=flat, trust=trust, skip=skip, rasters=rasters)
+                          traced=traced, tinted=tinted, flat=flat, trust=trust, skip=skip, rasters=rasters,
+                          material=rb.get("material"))
     name = src_path.stem.replace("-clean", "") + "-guided"
     dst = out / "snapshots" / f"{name}.glb"
     wheels, report["wheels_note"] = parts.find_wheels(mesh.V, mesh.F) if rb.get("wheels", True) else ([], "off (hints)")
@@ -519,6 +553,19 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
 def _write(path, rgb: np.ndarray) -> None:
     params = [cv2.IMWRITE_JPEG_QUALITY, 88] if str(path).endswith(".jpg") else []
     cv2.imwrite(str(path), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), params)
+
+
+def _pinned_flow(view, pins: list, shape: tuple) -> np.ndarray:
+    """hints.json model.rebake.pins: {view: [[render_x, render_y, sheet_x, sheet_y], ...]} in sheet px - a point on
+    the generated model's render (qa tripo-sheet.png / align-<view>.jpg, first column) and where the drawing shows
+    the same thing. A smooth (thin-plate) flow through them replaces the automatic alignment for that view."""
+    from scipy.interpolate import RBFInterpolator
+
+    P = np.asarray(pins, float) - np.r_[view.panel.origin, view.panel.origin]
+    rbf = RBFInterpolator(P[:, :2], P[:, 2:] - P[:, :2], kernel="thin_plate_spline", smoothing=1.0)
+    h, w = shape
+    gy, gx = np.mgrid[0:h, 0:w]
+    return rbf(np.stack([gx.ravel(), gy.ravel()], 1).astype(float)).reshape(h, w, 2).astype(np.float32)
 
 
 def _traced_masks(cal, polys: dict | None, mirror=()) -> dict:

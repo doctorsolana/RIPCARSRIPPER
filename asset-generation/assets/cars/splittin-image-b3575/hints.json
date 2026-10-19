@@ -26,9 +26,11 @@
     "model.fit width 0.938: clean's per-axis fit left the body 1.066x the top drawing's width (Tripo never sees the top); this brings it to the sheet",
     "model.glass replace all five views, no glass at all: the sheet's window finder took the white body/engine for glass and missed the canopies (qa glass.jpg). The canopies stay OPAQUE purple paint on purpose: on the toy they are purple-tinted clear plastic, but the app's glass (app/src/glass.ts) only draws a neutral dark-grey or near-black tint, so either glass mode would turn the car's signature magenta bubbles grey/black; Tripo's bubbles are also closed shells with no cockpit under them to see into",
     "model.rebake.noalign top: the top drawing's alignment was weak (match 0.19, ~20 px median shift; Tripo never saw the top) and the warped paint came out washed out and ghosted on the engine, roundel and flames; projected straight instead",
-    "model.rebake.skip top (two circles): the draft's top drawing puts the flame roundel on the centre plank (866,925), but its front drawing and Tripo's mesh have it embossed on the vehicle-left nose pod (840,825 in tripo-sheet px); the top projection left a faint ghost ring on the plank and painted the embossed roundel plain white. Top no longer paints either spot, so the front view / Tripo's own roundel paint wins there",
     "side_iou 0.896 / left_iou 0.893 gates (0.93 / 0.90) accepted: the misses are the same on both sides - the draft sheet's elevated side cameras show the engine deck and nose-pod tops above the true profile (Codex's review flags exactly this), so the drawn nose sits ~2% of length higher than Tripo's. The pack photo (real toy, level) agrees with Tripo's nose: landing IoU 0.91 with no doubled edges. Not a size problem, so no model.fit for it; an accepted level-camera sheet would settle it",
-    "model.glb 1.34 MB: it was 1.92 MB because rebake passed Tripo's normal map through untouched when a car has no glass to flatten (this one has none), and the export re-encoded it as a 644 KB PNG (not the metal/roughness map, which is 143 KB JPEG like the others). rebake now always writes the normal map as JPEG q92 (64 KB); mean change 1.2/255 per channel, no visible difference"
+    "model.glb 1.34 MB: it was 1.92 MB because rebake passed Tripo's normal map through untouched when a car has no glass to flatten (this one has none), and the export re-encoded it as a 644 KB PNG (not the metal/roughness map, which is 143 KB JPEG like the others). rebake now always writes the normal map as JPEG q92 (64 KB); mean change 1.2/255 per channel, no visible difference",
+    "model.push (2026-10-19, founder: 'doesn't match from above; the middle was too hard for Tripo, it had no knowledge of the top'): Tripo filled the gap between the nose pods with a flat centre plank running ~35 px (sheet top px) further forward than the drawing's notch (x 943 vs the drawn deck edge at x 904-915 between the pod tips at 981), and the engine's front pipes ran on to x 885 over the drawn deck where the roundel sits. Two top-view prisms slide those vertices back towards the tail (dir [-1, 0]): below 0.33 H the plank's front ends on the drawn notch curve; above 0.33 H the pipes end at x 838, just ahead of the drawn engine (front ~815), leaving the deck clear. Polygons span y 869-967 only, inside the pods' inner walls (862-866 / 971-977), so the pods, wheels and landing are untouched; the mesh stays closed (no holes). Top IoU 0.931 -> 0.942",
+    "model.rebake.material: the generator's metal map made the white body ~0.6 metallic and the canopies 1.0, so in the app the body read grey, the flames washed out and the canopies deep plum, while its engine was ~0.5 and read flat grey. Metallic 0 everywhere first; the engine (top prism around it, above 0.3 H) metallic 1 / roughness 0.25 so it reads as chrome like the drawing; the canopies metallic 0.6 / roughness 0.25 (0 came out pale pink on the compare page, 1 too dark: the painted texture is the drawing's magenta - only the lighting differed). Rectangles on the canopies from above are the room environment's light panels reflected, not paint",
+    "model.rebake.skip dropped, roundel follows the TOP drawing now (founder wants the car to match from above): the top drawing paints it on the centre deck between the pods (866,925), which model.push uncovered. The vehicle-left pod (840,825), where the front drawing and Tripo put it, is painted plain white by the top drawing; model.rebake.flat on that circle flattens Tripo's embossed normal-map relief there (a faint geometric ring stays). The canopies and flames needed no paint change: the bake already copies them crisply from the top drawing (noalign) - their faded look in the app was the metal map"
   ],
   "model": {
     "fit": {
@@ -47,58 +49,8 @@
       "noalign": [
         "top"
       ],
-      "skip": {
+      "flat": {
         "top": [
-          [
-            [
-              908,
-              925
-            ],
-            [
-              902,
-              946
-            ],
-            [
-              887,
-              961
-            ],
-            [
-              866,
-              967
-            ],
-            [
-              845,
-              961
-            ],
-            [
-              830,
-              946
-            ],
-            [
-              824,
-              925
-            ],
-            [
-              830,
-              904
-            ],
-            [
-              845,
-              889
-            ],
-            [
-              866,
-              883
-            ],
-            [
-              887,
-              889
-            ],
-            [
-              902,
-              904
-            ]
-          ],
           [
             [
               884,
@@ -150,7 +102,196 @@
             ]
           ]
         ]
+      },
+      "material": [
+        {
+          "metallic": 0.0
+        },
+        {
+          "view": "top",
+          "polys": [
+            [
+              [
+                560,
+                856
+              ],
+              [
+                760,
+                856
+              ],
+              [
+                760,
+                872
+              ],
+              [
+                840,
+                872
+              ],
+              [
+                840,
+                966
+              ],
+              [
+                760,
+                966
+              ],
+              [
+                760,
+                982
+              ],
+              [
+                560,
+                982
+              ]
+            ]
+          ],
+          "height": [
+            0.3,
+            1
+          ],
+          "metallic": 1.0,
+          "roughness": 0.25
+        },
+        {
+          "view": "top",
+          "polys": [
+            [
+              [
+                262,
+                786
+              ],
+              [
+                620,
+                786
+              ],
+              [
+                620,
+                910
+              ],
+              [
+                262,
+                910
+              ]
+            ],
+            [
+              [
+                262,
+                928
+              ],
+              [
+                620,
+                928
+              ],
+              [
+                620,
+                1052
+              ],
+              [
+                262,
+                1052
+              ]
+            ]
+          ],
+          "height": [
+            0.45,
+            1
+          ],
+          "metallic": 0.6,
+          "roughness": 0.25
+        }
+      ]
+    },
+    "push": [
+      {
+        "view": "top",
+        "poly": [
+          [
+            1000,
+            869
+          ],
+          [
+            907,
+            869
+          ],
+          [
+            905,
+            878
+          ],
+          [
+            909,
+            891
+          ],
+          [
+            913,
+            903
+          ],
+          [
+            915,
+            915
+          ],
+          [
+            915,
+            925
+          ],
+          [
+            913,
+            936
+          ],
+          [
+            909,
+            948
+          ],
+          [
+            905,
+            960
+          ],
+          [
+            907,
+            967
+          ],
+          [
+            1000,
+            967
+          ]
+        ],
+        "height": [
+          0,
+          0.33
+        ],
+        "dir": [
+          -1,
+          0
+        ]
+      },
+      {
+        "view": "top",
+        "poly": [
+          [
+            1000,
+            869
+          ],
+          [
+            838,
+            869
+          ],
+          [
+            838,
+            967
+          ],
+          [
+            1000,
+            967
+          ]
+        ],
+        "height": [
+          0.33,
+          1
+        ],
+        "dir": [
+          -1,
+          0
+        ]
       }
-    }
+    ]
   }
 }

@@ -20,8 +20,9 @@ import type { Track, TrackFrame, TrackLook, VehicleState } from './types';
 //            flight (or beside it, where a road takes the ground below) clear of everything on the ground - a hoop's
 //            masts out under the flight too; its water 2.4 u down, in rings shaded by depth, with sky fresnel, drifting
 //            ripples and sun glints
-//   boards   RIPCARS printed on boards (a canvas texture, unlit), one mesh: the banner on scaffold towers off to the
-//            side of the landing, facing the flight (printed both sides); track 2's sign and ad boards
+//   boards   the FUTARD TRADE ad printed on boards (a canvas texture, unlit), one mesh: the banner on scaffold towers off
+//            to the side of the landing, facing the flight, and two more like it on each course, past the ends of the
+//            long straights facing the cars coming down them (printed both sides); track 2's sign and ad boards
 //   hills    two low-poly rings (green hills, snow-capped mountains) that follow the car like a skybox
 //            layer, hazed by distance and less with height (the haze sits in the valleys)
 //   sky      inverted sphere: vertical gradient + sun glow, drawn last among the opaques on the far plane
@@ -567,9 +568,9 @@ function cloudAtlas(rnd: () => number) {
   return t;
 }
 
-/** The boards' print (4:1: the big jump's banner, track 2's tower sign and ad boards): the FUTARD TRADE logo (a 4 KB
- *  lossless webp) on its own charcoal, between chequered ends and thin hood-blue bands. The charcoal and chequers show
- *  at once; the logo is drawn in when its image has loaded. */
+/** The boards' print (4:1: the big jump's banner, the ad boards past the straights, track 2's tower sign and ad
+ *  boards): the FUTARD TRADE logo (a 4 KB lossless webp) on its own charcoal, between chequered ends and thin hood-blue
+ *  bands. The charcoal and chequers show at once; the logo is drawn in when its image has loaded. */
 function bannerTexture(aniso: number) {
   const c = canvas(1024, 256), g = c.getContext('2d')!;
   g.fillStyle = '#0f1114';
@@ -1195,6 +1196,90 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
           break place;
         }
       }
+    }
+  }
+  // Ad boards (both courses): two more of the banner's boards on scaffold towers, where the drivers look straight at them
+  // - past the end of a long straight, out beyond the bend it runs into, facing the cars coming down it. Measured on the
+  // lap: candidate spots ahead of every 4 u of it (and to either side), clear like the banner (of the course's footprint
+  // with the flights and the raised sections' margin, its structures, the pond, the sight lines across the bends and
+  // everything placed so far); each scores the u of lap from which the chase camera sees it ahead (within 18 deg of the
+  // heading, 25 to 190 u off, its face turned to the car), the near ones counting double, the view not cut by a deck.
+  // The best two, 150 u apart and from the banner. Each claims its ground like the banner, wider (no canopy reaches its
+  // board) and the view in front of it up to the road.
+  const ads: NonNullable<typeof banner>[] = [];
+  if (M > 40) {
+    const AW = 26, AH = 6.5, look = Math.cos(18 * DEG), faceCos = Math.cos(55 * DEG), aim = Math.round(60 / sds);
+    const at = (k: number) => ((k % M) + M) % M;
+    const spotsOf = (B: NonNullable<typeof banner>) => {
+      const nx = -B.uz, nz = B.ux, sp: number[] = [];
+      for (let e = -14; e <= 14; e += 3.5) sp.push(B.x + B.ux * e, B.z + B.uz * e);
+      for (const e of [-11, 11]) sp.push(B.x + B.ux * e - nx * 1.2, B.z + B.uz * e - nz * 1.2); // its towers
+      return sp;
+    };
+    const clearOf = (B: NonNullable<typeof banner>) => {
+      const sp = spotsOf(B);
+      for (let i = 0; i < sp.length; i += 2) {
+        const x = sp[i], z = sp[i + 1];
+        if (edgeDist(x, z, true) < KEEP + 4 || inPond(x, z, 4) || !isFree(x, z, 3) || struct(x, z, 4) || sightDist(x, z) < 4) return false;
+      }
+      return true;
+    };
+    /** Whether a deck (the course's footprint, raised over the sight line) cuts the view from (ax, ay, az) to (bx, by, bz),
+     *  leaving out the lap round sample j (the road the car is on). */
+    const cut = (j: number, ax: number, ay: number, az: number, bx: number, by: number, bz: number) => {
+      const L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / 4);
+      for (let i = 1; i < n; i++) {
+        const t = i / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, y = ay + (by - ay) * t;
+        const i0 = Math.floor(x / CELL), j0 = Math.floor(z / CELL);
+        for (let ci = i0 - 1; ci <= i0 + 1; ci++) {
+          for (let cj = j0 - 1; cj <= j0 + 1; cj++) {
+            for (const k of cgrid.get(cellKey(ci, cj)) ?? []) {
+              const dk = Math.abs(k - j);
+              if (Math.min(dk, M - dk) * sds < 12 || SY[k] < y - 0.3) continue;
+              if (Math.hypot(SX[k] - x, SZ[k] - z) < SE[k]) return true;
+            }
+          }
+        }
+      }
+      return false;
+    };
+    /** u of lap from which the board is seen ahead (near ones double); `occl`: leave out the views a deck cuts. */
+    const seen = (B: NonNullable<typeof banner>, k0: number, occl: boolean) => {
+      const fx = -B.uz, fz = B.ux, my = B.y0 + B.h / 2;
+      let sc = 0;
+      for (let q = 0; q * sds < 230; q += 4) {
+        const j = at(k0 - q), dx = B.x - SX[j], dz = B.z - SZ[j], d = Math.hypot(dx, dz);
+        if (d < 25 || d > 190) continue;
+        if ((STX[j] * dx + STZ[j] * dz) / d < look || -(fx * dx + fz * dz) / d < faceCos) continue;
+        if (occl && cut(j, SX[j], SY[j] + 3, SZ[j], B.x, my, B.z)) continue;
+        sc += 4 * sds * (d < 110 ? 2 : 1);
+      }
+      return sc;
+    };
+    const cands: { B: NonNullable<typeof banner>; k: number; sc: number }[] = [];
+    for (let k = 0; k < M; k += 4) {
+      for (const a of [26, 36, 48, 62]) {
+        for (const b of [0, -12, 12]) {
+          const x = SX[k] + STX[k] * a - STZ[k] * b, z = SZ[k] + STZ[k] * a + STX[k] * b;
+          if (edgeDist(x, z, true) < KEEP + 8) continue;
+          const j = at(k - aim), nl = Math.hypot(SX[j] - x, SZ[j] - z), nx = (SX[j] - x) / nl, nz = (SZ[j] - z) / nl; // faces the run-up
+          const y0 = groundY + Math.max(6.5, SY[k] - groundY + 3.5);
+          const B = { x, z, ux: nz, uz: -nx, w: AW, y0, h: AH };
+          const sc = seen(B, k, false);
+          if (sc > 60 && clearOf(B)) cands.push({ B, k, sc });
+        }
+      }
+    }
+    cands.sort((p, q) => q.sc - p.sc);
+    const top = cands.slice(0, 60).map((c) => ({ ...c, sc: seen(c.B, c.k, true) })).sort((p, q) => q.sc - p.sc);
+    for (const c of top) {
+      if (ads.length >= 2) break;
+      const B = c.B;
+      if ([...ads, ...(banner ? [banner] : [])].some((o) => Math.hypot(o.x - B.x, o.z - B.z) < 150) || !clearOf(B)) continue;
+      ads.push(B);
+      const sp = spotsOf(B), nx = -B.uz, nz = B.ux;
+      for (let i = 0; i < sp.length; i += 2) occupy(sp[i], sp[i + 1], 6);
+      for (let e = 10; e < 60 && edgeDist(B.x + nx * e, B.z + nz * e) > KEEP + 6; e += 8) occupy(B.x + nx * e, B.z + nz * e, 7); // its view
     }
   }
 
@@ -1893,7 +1978,7 @@ void main() {
     root.add(water);
   }
 
-  // ---- spectator dressing: pennants on poles, the banner's scaffold towers and board ------------------------------
+  // ---- spectator dressing: pennants on poles, the banner's and the ad boards' scaffold towers and boards ----------
   const enamel = col('#ecebe6'), pennant = ['#ff6b00', '#2f72f0', '#ffd23f', '#f4f4f2'].map(col);
   const windX = 0.8, windZ = 0.6; // the pennants stream downwind
   for (let i = 0; i < flags.length; i += 4) {
@@ -1902,9 +1987,9 @@ void main() {
     m.beam(x, groundY - 0.2, z, x, top + 0.3, z, 0.16, enamel);
     m.blade(x, top, z, x, top - 1.5, z, x + windX * 3.4, top - 0.85, z + windZ * 3.4, fc, fc, 1);
   }
-  // Printed boards, one mesh (the banner's texture, unlit): the banner's board (both faces), and track 2's - the sign on
-  // the tower's crown (four boards facing out) and the ad boards along the grandstands' fronts. Each reads left to right
-  // from in front.
+  // Printed boards, one mesh (the banner's texture, unlit): the banner's and the ad boards' (both faces), and track 2's -
+  // the sign on the tower's crown (four boards facing out) and the ad boards along the grandstands' fronts. Each reads
+  // left to right from in front.
   const bp: number[] = [], buv: number[] = [], bix: number[] = [];
   const board = (x: number, y0: number, z: number, ux: number, uz: number, hw: number, h: number, nx: number, nz: number, o: number) => {
     const b = bp.length / 3;
@@ -1914,8 +1999,8 @@ void main() {
     }
     bix.push(b, b + 1, b + 2, b, b + 2, b + 3);
   };
-  if (banner) {
-    const B = banner, nx = -B.uz, nz = B.ux, top = B.y0 + B.h, metal = col('#b4bac2');
+  for (const B of [...(banner ? [banner] : []), ...ads]) { // the big jump's banner, the ad boards
+    const nx = -B.uz, nz = B.ux, top = B.y0 + B.h, metal = col('#b4bac2');
     for (const e of [-1, 1]) { // a 2 u square scaffold tower under each end
       const tx = B.x + B.ux * e * (B.w / 2 - 2), tz = B.z + B.uz * e * (B.w / 2 - 2);
       const cs = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([p, q]) => [tx + B.ux * p - nx * (q + 1.2), tz + B.uz * p - nz * (q + 1.2)]);
@@ -2210,7 +2295,7 @@ void main() {
       pond: water ? tris(water.geometry) : 0,
     },
     pond: pond && { x: +pond.x.toFixed(1), z: +pond.z.toFixed(1), ux: +pond.ux.toFixed(3), uz: +pond.uz.toFixed(3), a: +pond.a.toFixed(1), b: +pond.b.toFixed(1), bend: +pond.bend.toFixed(2), clear: +pondClear.toFixed(1) },
-    flags: flags.length / 4, banner: !!banner,
+    flags: flags.length / 4, banner: !!banner, ads: ads.map((B) => ({ x: +B.x.toFixed(1), z: +B.z.toFixed(1), nx: +(-B.uz).toFixed(3), nz: +B.ux.toFixed(3), y0: +B.y0.toFixed(1) })),
     castTris, castMs,
   };
   if (ST.dressing) root.userData.dressing = { stands: stands.map((S) => ({ x: +S.x.toFixed(1), z: +S.z.toFixed(1), L: S.L })), sign, tower: tower && { x: +tower.x.toFixed(2), z: +tower.z.toFixed(2), top: +tower.top.toFixed(2) } };

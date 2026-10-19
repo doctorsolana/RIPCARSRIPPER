@@ -10,7 +10,11 @@ Run by `ripcars clean`. Steps:
      meshes have inside-out and doubled faces that make the test remove visible floor pieces
   4. orient into the RIPCARS frame: nose +x, up +z here (+y after glTF export), right side -y here,
      overall length 4, wheels on the ground, centred
-  5. shrink textures to texture_px (default 1024) and export GLB with JPEG textures
+  5. optional (argv[7], a JSON file): push - hints.json model.push, already in model units (see __main__ clean).
+     Vertices inside each prism (a polygon in the ground plane, a height range) slide along the given direction
+     until they leave it. The mesh stays closed and keeps its UVs: whatever stuck out is squashed onto the
+     prism's wall, so a part the generator made too long ends at the drawn outline (no holes to cap)
+  6. shrink textures to texture_px (default 1024) and export GLB with JPEG textures
 """
 import json
 import math
@@ -28,6 +32,7 @@ dissolve_deg = float(argv[4]) if len(argv) > 4 else 0.0  # merge near-flat faces
 drop_hidden = len(argv) > 5 and argv[5] == "1"  # off by default: on Tripo meshes it punched holes in the floor
 # final per-axis scale + offset in the app's (glTF, y-up) frame, from fitting to the sheet: "sx,sy,sz,tx,ty"
 fit = [float(v) for v in argv[6].split(",")] if len(argv) > 6 and argv[6] else None
+push = json.load(open(argv[7])) if len(argv) > 7 and argv[7] else []  # model.push prisms, model units (glTF frame)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 if src.lower().endswith(".fbx"):
@@ -161,15 +166,47 @@ if fit:  # glTF (x, y, z) = blender (x, z, -y)
         v.co.y = v.co.y * sz
         v.co.z = v.co.z * sy + ty
     obj.data.update()
+
+
+def _inside(poly, x, z):
+    """Even-odd point-in-polygon test, polygon [[x, z], ...] in the glTF ground plane."""
+    hit = False
+    j = len(poly) - 1
+    for i in range(len(poly)):
+        (xi, zi), (xj, zj) = poly[i], poly[j]
+        if (zi > z) != (zj > z) and x < (xj - xi) * (z - zi) / (zj - zi) + xi:
+            hit = not hit
+        j = i
+    return hit
+
+
+pushed = []
+for spec in push:  # --- 5. model.push: slide what sticks out back to the prism's wall ---------------------
+    poly, (ylo, yhi), (dx, dz) = spec["poly"], spec["y"], spec["dir"]
+    n = 0
+    for v in obj.data.vertices:
+        gx, gy, gz = v.co.x, v.co.z, -v.co.y  # glTF frame: y up, +z the car's right side
+        if not (ylo <= gy <= yhi and _inside(poly, gx, gz)):
+            continue
+        lo, hi = 0.0, 0.01
+        while _inside(poly, gx + dx * hi, gz + dz * hi) and hi < 8:
+            lo, hi = hi, hi * 2
+        for _ in range(30):  # bisect to the wall
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if _inside(poly, gx + dx * mid, gz + dz * mid) else (lo, mid)
+        v.co.x, v.co.y = gx + dx * hi, -(gz + dz * hi)
+        n += 1
+    pushed.append(n)
+obj.data.update()
 obj.name = obj.data.name = "generated"  # not "body": the app's glass split is for its own bakes only
 
-# --- 5. textures + export ---------------------------------------------------------------------------
+# --- 6. textures + export ---------------------------------------------------------------------------
 for img in bpy.data.images:
     if img.size[0] > tex_px:
         img.scale(tex_px, tex_px)
 after = stats(obj)
 bpy.ops.export_scene.gltf(filepath=dst, export_format="GLB", export_image_format="JPEG", export_jpeg_quality=86,
                           use_selection=False, export_apply=True, export_yup=True)
-json.dump({"before": before, "after": after, "hidden_faces_removed": removed_hidden, "sheet_fit": fit, "flat_faces_merged": dissolved,
+json.dump({"before": before, "after": after, "hidden_faces_removed": removed_hidden, "sheet_fit": fit, "flat_faces_merged": dissolved, "pushed_verts": pushed,
            "source_dimensions": [round(v, 4) for v in dims], "texture_px": tex_px}, open(report_path, "w"), indent=2)
 print("CLEAN", json.dumps({"before": before, "after": after, "hidden_faces_removed": removed_hidden}))

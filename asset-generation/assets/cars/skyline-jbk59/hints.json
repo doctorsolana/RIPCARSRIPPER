@@ -33,7 +33,9 @@
     "model.rebake.skip: top x150-222 - the top drawing's rear window sits ~60 px aft of the mesh's and painted cage/glass onto the rear deck; top x548-604 - the LBperformance sun strip is painted by the front view alone (both together doubled it); front + rear wing-top bands - both elevated drawings show the wing's LIBERTY WALK at a slant and read the wrong way; catalog-04 shows it reads upside-down from behind, as in the top drawing, so top paints it alone; front hood band (23 / script) - top paints the hood squarely",
     "checks: side_iou 0.918 < 0.93 on purpose - silhouette-side.png is a uniform red band along the whole roof/hood/deck line: the draft sheet's side view is elevated and over-tall, and model.fit height 0.965 (sibling-casting proportions) keeps the model below it. Front/rear/top/left all pass; size vs sheet 1.006 / 0.97 / 0.963",
     "known flaws: small side decals (LB Racing, LBWK/LIBERTY WALK under it, KW) are soft at the 1024 px texture; 'LB Racing' script under the hood 23 is a little smeared; a faint ghost of the wing lettering remains on the wing's leading edge from behind; the cabin seen through the rear window is Tripo's untextured grey with a stray mirrored LBWK; nose-top LBWK is partly cut where the nose curves down",
-    "wheels: rebake had taken each rim (r 0.22, its bottom 0.08 off the ground) for the tyre, so the drive page seated the car on the rims with the tyres 0.08 into the road and only the rims spun. parts.find_wheels now gives a wheel lifted off the ground the hub's height as r (0.295-0.312): the tyres join their wheels (qa wheels.jpg) and the car sits on them"
+    "wheels: rebake had taken each rim (r 0.22, its bottom 0.08 off the ground) for the tyre, so the drive page seated the car on the rims with the tyres 0.08 into the road and only the rims spun. parts.find_wheels now gives a wheel lifted off the ground the hub's height as r (0.295-0.312): the tyres join their wheels (qa wheels.jpg) and the car sits on them",
+    "model.rebake.pins rear: the rear drawing is elevated, so its bumper face reads ~25% taller than the mesh's (lights -> diffuser 134 px vs 106) and sits ~8 px right; the automatic flow (match 0.08 -> 0.24) sheared it - NISSAN PDC slanted, LB Racing and the plate pushed onto the bumper lip and diffuser, LBWK doubled. 24 hand pins [render x, y, sheet x, y] on matching features (yellow top edge, outer lights, yellow/white line, both LBWK, plate corners, diffuser gaps, window corners, wing pillar) replace it; checked in qa align-rear.jpg (last column)",
+    "model.rebake.flat rear (yellow panel): Tripo embossed a garbled script + 'ollaC' across the rear panel; with the drawn NISSAN PDC now in its place (pins) the leftover relief read as a doubled 'PDc'"
   ],
   "model": {
     "fit": {
@@ -435,6 +437,174 @@
               378,
               1002
             ]
+          ]
+        ],
+        "rear": [
+          [
+            [
+              630,
+              1270
+            ],
+            [
+              870,
+              1270
+            ],
+            [
+              870,
+              1345
+            ],
+            [
+              630,
+              1345
+            ]
+          ]
+        ]
+      },
+      "pins": {
+        "rear": [
+          [
+            747,
+            1152,
+            755,
+            1152
+          ],
+          [
+            747,
+            1197,
+            755,
+            1190
+          ],
+          [
+            623,
+            1197,
+            631,
+            1190
+          ],
+          [
+            871,
+            1197,
+            879,
+            1190
+          ],
+          [
+            609,
+            1244,
+            623,
+            1228
+          ],
+          [
+            747,
+            1244,
+            755,
+            1230
+          ],
+          [
+            886,
+            1244,
+            888,
+            1228
+          ],
+          [
+            747,
+            1259,
+            755,
+            1262
+          ],
+          [
+            537,
+            1282,
+            537,
+            1284
+          ],
+          [
+            961,
+            1282,
+            971,
+            1284
+          ],
+          [
+            594,
+            1296,
+            602,
+            1291
+          ],
+          [
+            900,
+            1296,
+            908,
+            1293
+          ],
+          [
+            747,
+            1346,
+            755,
+            1357
+          ],
+          [
+            613,
+            1364,
+            626,
+            1378
+          ],
+          [
+            881,
+            1364,
+            882,
+            1378
+          ],
+          [
+            694,
+            1349,
+            709,
+            1368
+          ],
+          [
+            800,
+            1349,
+            799,
+            1368
+          ],
+          [
+            694,
+            1384,
+            709,
+            1401
+          ],
+          [
+            800,
+            1384,
+            799,
+            1401
+          ],
+          [
+            649,
+            1402,
+            659,
+            1426
+          ],
+          [
+            849,
+            1402,
+            854,
+            1426
+          ],
+          [
+            747,
+            1402,
+            755,
+            1426
+          ],
+          [
+            747,
+            1442,
+            755,
+            1451
+          ],
+          [
+            747,
+            1473,
+            755,
+            1482
           ]
         ]
       }

@@ -4,15 +4,15 @@
   "made_from": "snapshots/tripo-multiview-clean.glb",
   "sheet_fit": {
     "scale_xyz": [
-      0.994,
-      0.9918,
-      0.9937
+      0.9954,
+      0.9935,
+      0.9986
     ],
     "offset_xy": [
-      -0.01,
-      0.0186
+      -0.0092,
+      0.0172
     ],
-    "side+top_iou": 1.847,
+    "side+top_iou": 1.8551,
     "by_hand": {
       "width": 0.938
     }
@@ -32,49 +32,49 @@
   "model": "model.glb",
   "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
   "dimensions": {
-    "length": 3.9758,
-    "height": 1.1811,
-    "width": 1.5503
+    "length": 3.9816,
+    "height": 1.1817,
+    "width": 1.5579
   },
   "wheels": [
     {
       "name": "wheel_front_right",
       "centre": [
-        1.0534,
-        0.3425,
-        0.6327
+        1.0557,
+        0.3416,
+        0.6358
       ],
-      "r": 0.3185,
+      "r": 0.319,
       "pieces": 1
     },
     {
       "name": "wheel_front_left",
       "centre": [
-        1.0524,
-        0.3444,
-        -0.6327
+        1.0548,
+        0.3436,
+        -0.6358
       ],
-      "r": 0.3195,
+      "r": 0.32,
       "pieces": 1
     },
     {
       "name": "wheel_rear_right",
       "centre": [
-        -1.4715,
-        0.383,
-        0.6383
+        -1.4729,
+        0.3822,
+        0.6414
       ],
-      "r": 0.3729,
+      "r": 0.3735,
       "pieces": 1
     },
     {
       "name": "wheel_rear_left",
       "centre": [
-        -1.4725,
-        0.383,
-        -0.6364
+        -1.4738,
+        0.3822,
+        -0.6396
       ],
-      "r": 0.3739,
+      "r": 0.3744,
       "pieces": 1
     }
   ],
@@ -88,19 +88,19 @@
     "top"
   ],
   "silhouette_iou": {
-    "side": 0.8963,
-    "top": 0.9308,
-    "left": 0.8933,
-    "front": 0.9121,
-    "rear": 0.9128
+    "side": 0.8972,
+    "top": 0.9424,
+    "left": 0.8943,
+    "front": 0.9142,
+    "rear": 0.9155
   },
   "proportions_vs_sheet": {
-    "length": 0.974,
-    "width": 1.0,
+    "length": 0.971,
+    "width": 1.006,
     "height": 1.0
   },
   "glb": {
-    "bytes": 1338340,
+    "bytes": 1312596,
     "triangles": 17148
   }
 }
