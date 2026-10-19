@@ -8,7 +8,7 @@ import {
 } from '../src/drive/net/protocol.ts';
 import { CORE_LENGTH, SNAP_LENGTH } from '../src/drive/vehicles/arcade.ts';
 import { RaceSim, carName, loadSpec, type SimCar } from './sim.ts';
-import { recordLap } from './store.ts';
+import { DATA_DIR, recordLap } from './store.ts';
 
 // A room (by name): its players, the race flow - lobby (join with a car, take a grid slot, Ready) ->
 // countdown (everyone ready: the gate drops for all at the same step) -> race (laps, finish order) -> results ->
@@ -25,7 +25,8 @@ const FINISH_WAIT = 30 / H; // steps: after the first car finishes, the rest hav
 const RESULTS_TIME = 8 / H; // steps the results stay up before the next lobby
 const RATE = 126; // new input steps per s a client may send (real time and a little: 5%) ...
 const BURST = 60; // ... in bursts of up to this many (a stalled tab catching up)
-const LOG_DIR = new URL('./logs/', import.meta.url).pathname;
+// the race logs: server/logs/, or DATA_DIR/logs/ when DATA_DIR is set (a host's volume: they survive deploys)
+const LOG_DIR = process.env.DATA_DIR ? `${DATA_DIR}/logs/` : new URL('./logs/', import.meta.url).pathname;
 const BOT_CARS = ['chevy-impala-jkb99', 'roxy-porsche-hrv96', 'porsche-964-gdf88', 'pontiac-firebird-htf40', 'civic-type-r-hcy12',
   'mustang-cobra-r-hgk61', 'porsche-911-gt3-rs', 'beach-bomb-too-k3370', 'skyline-fyg14'];
 
@@ -84,6 +85,8 @@ function encodeInto(cn: CarNet, base: Int32Array, which: 'delta' | 'whole') {
 }
 
 export class Room {
+  /** The server is shutting down (index.ts, SIGTERM): no new race counts down. */
+  static draining = false;
   readonly name: string;
   readonly sim: RaceSim;
   readonly players: Player[] = [];
@@ -277,7 +280,7 @@ export class Room {
     if (this.phase === 'lobby') {
       let n = 0, all = true;
       for (const p of this.players) if ((this.botsOnly || p.send) && p.slot >= 0) (n++), (all &&= p.ready);
-      if (n >= Math.max(1, this.min) && all) this.countdown(k);
+      if (n >= Math.max(1, this.min) && all && !Room.draining) this.countdown(k);
     } else if (this.phase === 'countdown' && k >= this.sim.go) {
       this.setPhase('race', k);
     }

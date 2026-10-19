@@ -3,6 +3,7 @@ import { checkSession, loadSession, onSession, type Session } from './auth/sessi
 import { openCreateRoom } from './create-room';
 import { isDev } from './dev';
 import { mountNav, WALLET } from './nav';
+import { BUILD_ID } from 'virtual:build-id';
 import type { RoomListing } from './drive/net/protocol';
 import { DEFAULT_CAR, roomHref, saveCar, savedCar, serverHttp, serverUrl } from './drive/net/prefs';
 
@@ -186,8 +187,14 @@ async function main() {
     render();
   }
   function render() {
-    createBtn.disabled = !data;
+    const stale = !!data?.version && data.version !== BUILD_ID; // (this page's sim isn't the server's: reload for the new one)
+    createBtn.disabled = !data || stale;
     renderFilter();
+    if (stale) {
+      count.textContent = '';
+      list.innerHTML = '<div class="panel down"><span>A new version is out</span><button type="button" class="btn ghost" data-reload>Reload</button></div>';
+      return;
+    }
     if (!data) {
       count.textContent = '';
       list.innerHTML = `<div class="panel down"><span>Game server offline</span>${isDev() ? '<code>npm run server</code>' : ''}</div>`;
@@ -214,6 +221,7 @@ async function main() {
     }).join('');
   }
   list.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('[data-reload]')) return location.reload();
     const j = (e.target as HTMLElement).closest<HTMLElement>('[data-join]');
     if (j) join(j.dataset.join!);
   });

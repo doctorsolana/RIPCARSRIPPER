@@ -28,7 +28,7 @@ import { isAddress } from '../src/auth/address.ts';
 // (behind a reverse proxy: the client's IP is the last X-Forwarded-For hop, for the rate limits), AUTH_CHALLENGE_TTL
 // (seconds a sign-in request lasts, default 600: tests).
 
-const ALLOWED = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5199,http://127.0.0.1:5199')
+export const ALLOWED = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5199,http://127.0.0.1:5199')
   .split(',').map((s) => s.trim().replace(/\/+$/, '').toLowerCase()).filter(Boolean);
 const SECRET = process.env.AUTH_SECRET ? Buffer.from(process.env.AUTH_SECRET, 'utf8') : randomBytes(32);
 const CHALLENGE_TTL = (Number(process.env.AUTH_CHALLENGE_TTL) || 600) * 1000; // ms

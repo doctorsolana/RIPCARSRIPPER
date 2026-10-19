@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import { buildId } from './server/build-id.ts';
 
 // The app serves stage 2's output directly: asset-generation/assets/cars/<id>/ -> /cars/<id>/
 // Pages: index.html the landing, rip.html the pack-rip reveal (dev mode), drive / online the game, inspect / compare /
@@ -33,9 +34,37 @@ function siteRoot(): Plugin {
   };
 }
 
+/** `import { BUILD_ID } from 'virtual:build-id'`: the sim build id (server/build-id.ts - the game server computes the same
+ *  from the same files and refuses a join with another). In dev it's recomputed whenever one of its files changes (the
+ *  pages reload), so the dev server always says what's on disk - a game server started before the change says it's
+ *  another version until it's restarted, as it really is. */
+function buildIdModule(): Plugin {
+  const ID = 'virtual:build-id', RID = '\0virtual:build-id';
+  let files = new Set<string>();
+  return {
+    name: 'build-id',
+    resolveId: (id) => (id === ID ? RID : undefined),
+    load(id) {
+      if (id !== RID) return;
+      const b = buildId();
+      files = new Set(b.files);
+      return `export const BUILD_ID = ${JSON.stringify(b.id)};\n`;
+    },
+    configureServer(server) {
+      const changed = (f: string) => {
+        const m = server.moduleGraph.getModuleById(RID);
+        if (!m || !(files.has(f) || /\/cars\/[^/]+\/(model|meta)\.json$/.test(f))) return;
+        server.moduleGraph.invalidateModule(m);
+        server.ws.send({ type: 'full-reload' });
+      };
+      server.watcher.on('change', changed).on('add', changed).on('unlink', changed);
+    },
+  };
+}
+
 export default defineConfig({
   publicDir: '../asset-generation/assets',
-  plugins: [siteRoot()],
+  plugins: [siteRoot(), buildIdModule()],
   build: {
     rollupOptions: {
       input: {

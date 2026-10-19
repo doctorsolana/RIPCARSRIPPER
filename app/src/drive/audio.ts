@@ -21,8 +21,8 @@ import type { CarSpec, DriveInput, Track, TrackFrame, VehicleState } from './typ
 //                     tyre's cavity resonance (230 Hz); it builds all the way to top speed (~11 dB under the engine at
 //                     35 u/s on the throttle)
 //            dirt     a low rumble bumping along (a loop of brown noise with irregular swells, lowpassed at 220 + 6 v Hz)
-//                     and sparse soft crunches: rounded 300-850 Hz grains at random moments, ~0.8 v a second (more
-//                     in a slide), each at its own pitch and weight
+//                     under a gravel bed - a dense, pitchless crackle of tiny stones scrolling past with speed (gravelLoop)
+//                     - and now and then a kick of pebbles, mostly in a slide (noise grains: no tuned knocks)
 //            verge    a low rumble wobbling over the bumps, and a soft swish of grass (a ~0.8 kHz band, in waves)
 //   joints   THE Hot Wheels sound, on the plastic only: a round plastic 'tock' (~1.4 kHz over a hollow ~0.56 kHz,
 //            three pitches, every hit a little different) per axle each time trackS crosses a multiple of 17 u where
@@ -69,7 +69,7 @@ const DEG = Math.PI / 180;
 const BLEND = 0.07; // s: time constant of a surface change (~0.2 s to settle)
 // The rolling beds' levels at 45 u/s (the asphalt's roar, the dirt's rumble and its crunches, the verge's swish), and the
 // joints' tock against the landing's tick.
-const ROAD = 0.23, DIRT = 0.15, CRUNCH = 0.36, SWISH = 0.25, TOCK = 0.31;
+const ROAD = 0.23, DIRT = 0.15, GRAVEL = 0.11, CRUNCH = 0.22, SWISH = 0.25, TOCK = 0.31;
 // What a wall is made of (as fx.ts), and the scrape's two resonances on each: [f1, Q1, f2, Q2, level].
 const RAIL = 0, TYRE = 1, HAY = 2, SOFT = 3, METAL = 4;
 // Levels even out the bands' widths (a narrow band passes less noise): all four ~0.065 RMS at the master.
@@ -190,6 +190,36 @@ function dirtLoop(ctx: BaseAudioContext, dur: number) {
   return toBuffer(ctx, d, 0.9, sr);
 }
 
+/** A seamless loop of gravel under a tyre (dur s at playback rate 1): a dense crackle of tiny stones - ~1400 short
+ *  noise grains a second (1.5-5.5 ms, a few loud), no pitch in any of them - band-limited to ~0.5-4 kHz, in uneven
+ *  patches (looser gravel here and there). Scrolled faster with speed, it blurs into the hiss of a car on gravel. */
+function gravelLoop(ctx: BaseAudioContext, dur: number) {
+  const sr = loopRate(ctx), n = Math.ceil(dur * sr);
+  let seed = 0x5e17;
+  const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) | 0) >>> 0) / 4294967296;
+  const raw = new Float32Array(n);
+  for (let k = Math.round(dur * 1400); k > 0; k--) {
+    const at = Math.floor(rnd() * n), len = Math.ceil((0.0015 + 0.004 * rnd()) * sr), a = 0.15 + rnd() ** 4;
+    const rise = Math.max(1, Math.round(0.0003 * sr));
+    for (let i = 0; i < len; i++) raw[(at + i) % n] += a * (rnd() * 2 - 1) * Math.min(1, i / rise) * Math.exp((-3 * i) / len);
+  }
+  // band-limit (two one-pole highpasses at ~500 Hz, a lowpass at ~4 kHz), run round the loop twice so it's seamless
+  const hp = Math.exp((-TAU * 500) / sr), lp = Math.exp((-TAU * 4000) / sr);
+  const d = new Float32Array(n);
+  let x1 = 0, y1 = 0, x2 = 0, y2 = 0, y3 = 0;
+  for (let pass = 0; pass < 2; pass++) for (let i = 0; i < n; i++) {
+    const x = raw[i];
+    y1 = hp * (y1 + x - x1), x1 = x;
+    y2 = hp * (y2 + y1 - x2), x2 = y1;
+    y3 = lp * y3 + (1 - lp) * y2;
+    if (pass) d[i] = y3;
+  }
+  const env = new Float32Array(n).fill(0.7);
+  swells(env, sr, rnd, Math.round(dur * 3), 0.15, 0.5, 0.5);
+  for (let i = 0; i < n; i++) d[i] *= env[i];
+  return toBuffer(ctx, d, 0.9, sr);
+}
+
 const e = (t: number, tau: number) => Math.exp(-t / tau);
 const sin = Math.sin;
 
@@ -207,15 +237,19 @@ const tockFn = (f: number) => {
       0.6 * lp * e(t, 0.0006);
   };
 };
-// A crunch of gravel under a tyre: a stone knocking (a damped low-mid tone and its overtone) in a puff of dark noise,
-// rounded at the front (a 1.5 ms rise) and gone in ~10 ms. The bank of six spans 300-850 Hz.
+// A kick of pebbles off a tyre (slides, landings): a short burst of several tiny stone grains, all noise - no pitch (a
+// tuned knock read as raindrops on plastic). Each of the six has its own grains and brightness.
 const crunchFn = (k: number) => {
-  const f = 300 + 110 * k, tau = 0.0055 - 0.0006 * k, ph = 1.3 * k;
-  let lp = 0;
+  const grains = [0, 0.004, 0.009, 0.013, 0.02].map((at, i) => [at + 0.002 * ((k * 7 + i * 3) % 5), 0.25 + 0.75 * (((k + i * 2) % 4) / 3)]);
+  const c = 0.15 + 0.07 * k; // lowpass coefficient (brightness)
+  let lp = 0, prev = 0;
   return (t: number, rnd: () => number) => {
-    lp += 0.2 * (rnd() - lp);
-    return (0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, t / 0.0015))) *
-      (sin(TAU * f * t + ph) * e(t, tau) + 0.45 * sin(TAU * 1.57 * f * t + 2 * ph) * e(t, 0.5 * tau) + 2.2 * lp * e(t, 0.8 * tau));
+    let s = 0;
+    for (const [at, a] of grains) if (t >= at) s += a * e(t - at, 0.0018) * Math.min(1, (t - at) / 0.0003);
+    lp += c * (rnd() * 2 - 1 - lp);
+    const hp = lp - prev; // a touch of highpass: no thump
+    prev = lp;
+    return s * (lp + 0.6 * hp);
   };
 };
 // The landing's tick (and the plastic's rattle after a slam): a bright plastic click with a little body. Dominant mode
@@ -664,8 +698,10 @@ function build(ctx: BaseAudioContext, muted: boolean) {
   road.connect(filter('highpass', 90, 0.7)).connect(roadF).connect(filter('lowpass', 1200, 0.7)).connect(cavity).connect(roadG).connect(master);
   const dirt = loop(dirtLoop(ctx, 4)), dirtF = filter('lowpass', 400, 0.7), dirtG = gain(0);
   dirt.connect(filter('highpass', 55, 0.7)).connect(dirtF).connect(dirtG).connect(master);
+  const gravel = loop(gravelLoop(ctx, 3)), gravelF = filter('lowpass', 2000, 0.6), gravelG = gain(0);
+  gravel.connect(gravelF).connect(gravelG).connect(master);
   const crunchG = gain(0);
-  crunchG.connect(filter('lowpass', 1800, 0.7)).connect(master);
+  crunchG.connect(filter('lowpass', 3500, 0.7)).connect(master);
   const grassF = filter('lowpass', 140, 0.9), grassBump = gain(0.75), grassG = gain(0);
   loop(brown).connect(grassF).connect(grassBump).connect(grassG).connect(master);
   lfo(6.5, 0.25, grassBump.gain); // bumps
@@ -698,12 +734,12 @@ function build(ctx: BaseAudioContext, muted: boolean) {
   loop(white).connect(whistleF).connect(whistleG).connect(master);
 
   return {
-    master, mute, white, wander, humF, humG, road, roadF, roadG, dirt, dirtF, dirtG, crunchG, grassF, grassG,
+    master, mute, white, wander, humF, humG, road, roadF, roadG, dirt, dirtF, dirtG, gravel, gravelF, gravelG, crunchG, grassF, grassG,
     swishG, sqG, sqF1, sqF2, scF1, scF2, scG, jetF, jetG, windF, windG, windLowF, windLowG, whistleF, whistleG,
     pops: [0, 1, 2].map((kind) => [0, 1, 2].map((k) => render(ctx, [0.05, 0.1, 0.18][kind], popFn(kind, k), 0.9, 0x4c1d + 31 * kind + 7 * k))),
     tick: render(ctx, 0.03, tickFn, 0.9),
     tock: [1300, 1420, 1560].map((f, i) => render(ctx, 0.03, tockFn(f), 0.9, 0x2f6b + i)),
-    crunch: [0, 1, 2, 3, 4, 5].map((k) => render(ctx, 0.03, crunchFn(k), 0.9, 0x7a31 + 97 * k)),
+    crunch: [0, 1, 2, 3, 4, 5].map((k) => render(ctx, 0.04, crunchFn(k), 0.9, 0x7a31 + 97 * k)),
     slam: render(ctx, 0.7, slamFn, 0.95),
     clack: render(ctx, 0.12, clackFn, 0.9),
     thud: render(ctx, 0.3, thudFn, 0.95),
@@ -1080,6 +1116,9 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     g.dirt.playbackRate.setTargetAtTime(rate + 0.15 * slide, now, 0.05);
     g.dirtF.frequency.setTargetAtTime(220 + 6 * v, now, 0.05);
     g.dirtG.gain.setTargetAtTime(rise * DIRT * mixD * (1 + 0.6 * slide), now, tc);
+    g.gravel.playbackRate.setTargetAtTime(0.45 + v / 55 + 0.2 * slide, now, 0.05);
+    g.gravelF.frequency.setTargetAtTime(1300 + 45 * v, now, 0.05);
+    g.gravelG.gain.setTargetAtTime(rise * GRAVEL * mixD * (1 + 0.7 * slide), now, tc);
     g.crunchG.gain.setTargetAtTime(rise * CRUNCH * mixD * (1 + 0.4 * slide), now, tc);
     g.grassF.frequency.setTargetAtTime(110 + 4 * v, now, 0.05);
     g.grassG.gain.setTargetAtTime(roll * 0.32 * mixV * (1 + 0.6 * slide), now, tc);
@@ -1203,7 +1242,7 @@ export function createAudio(offline?: BaseAudioContext): DriveAudio {
     // Scheduled one frame ahead at their sub-frame moments, so the rhythms stay even at any frame rate:
     const lead = Math.max(dt, 1 / 60) + 0.006, t0 = now + lead - dt;
     // the gravel's crunches, at random moments (a Poisson stream at a rate that follows the speed; a slide sprays more)
-    const due = grounded && mixD > 0.02 ? v * (0.8 + 1.4 * slide) * dt : 0; // crunches expected this frame
+    const due = grounded && mixD > 0.02 ? v * (0.06 + 1.2 * slide) * dt : 0; // kicks expected this frame (mostly slides)
     let left = due;
     while (due > 0 && crunchGap <= left) {
       left -= crunchGap;

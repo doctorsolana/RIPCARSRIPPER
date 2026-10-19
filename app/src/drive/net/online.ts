@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BUILD_ID } from 'virtual:build-id';
 import { shortWallet } from '../../auth/address';
 import { clearSession, loadSession, onSession, type Session } from '../../auth/session';
 import { isDev } from '../../dev';
@@ -293,7 +294,7 @@ export async function runOnline() {
   /** Into the room as your wallet (the session token is all the server needs). */
   const join = () => session && send({
     t: 'join', room: ROOM, token: session.token, car: CAR, track: COURSE, laps: LAPS, min: MIN || undefined, bots: BOTS || undefined,
-    solo: SOLO || undefined, auto: AUTO || undefined,
+    solo: SOLO || undefined, auto: AUTO || undefined, v: BUILD_ID,
   });
   function connect() {
     if (!SERVER) {
@@ -451,8 +452,18 @@ export async function runOnline() {
       }
       notice = m.code === 'replaced'
         ? { title: 'Racing elsewhere', text: `${esc(m.msg)}. A wallet races one car at a time, so your car left this room.`, reload: true, again: 'Race here' }
+        : m.code === 'version'
+        ? { title: 'A new version is out', text: 'Reload the page to race on it.', reload: true, again: 'Reload' }
+        : m.code === 'restart'
+        ? { title: 'Server restarting', text: 'The game server is restarting for an update. Try again in a minute.', reload: true }
         : { title: "Can't join", text: `${esc(m.msg)}. Pick another room, or make your own.`, reload: false };
       return void renderCard();
+    }
+    if (m.t === 'notice') {
+      // the server restarts once the race on now is over (no new one starts): say so, in the race or on the card
+      if (inRace && (phase === 'race' || phase === 'countdown')) hud.toast('Server restarts after this race', '#ffb347');
+      else (notice = { title: 'Server restarting', text: 'The game server is restarting for an update. Try again in a minute.', reload: true }), renderCard();
+      return;
     }
     if (m.t === 'room') return onRoom(m);
     if (m.t === 'lap') {

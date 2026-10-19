@@ -123,6 +123,8 @@ export interface RoomListing {
     players: { name: string; wallet: string | null; car: string; carName: string; bot: boolean; ready: boolean; host: boolean }[];
   }[];
   courses: { id: string; name: string; color: string; blurb: string }[];
+  /** The server's sim build id (server/build-id.ts): a page with another can't race here ('A new version is out'). */
+  version: string;
 }
 
 /** A row of the weekly leaderboard: a wallet's best clean lap on a track this week (steps: the race's own count). */
@@ -151,6 +153,7 @@ export type C2S =
       t: 'join'; room: string; token: string; car: string; track: string; laps: number; min?: number; bots?: number;
       solo?: boolean; // a time trial: a room of your own (no bots, no one else, not listed)
       auto?: boolean; // the page's autopilot drives (?auto=1): its laps never make the leaderboard
+      v: string; // the page's sim build id (server/build-id.ts): another than the server's is refused (error 'version')
     }
   | { t: 'ready'; on: boolean }
   | { t: 'car'; car: string } // another car (in the lobby; between races it takes effect back in the lobby)
@@ -162,8 +165,11 @@ export type S2C =
   | { t: 'welcome'; you: number; room: string; track: string; laps: number; tick: number }
   | { t: 'track'; track: string; laps: number } // the room races another track: reload on it
   /** code: 'full' the room is full; 'auth' no valid sign-in (sign in again, then join); 'replaced' your wallet joined
-   *  from another tab or device - one car per wallet: this connection's car has left and it closes. */
-  | { t: 'error'; msg: string; code?: 'full' | 'auth' | 'replaced' }
+   *  from another tab or device - one car per wallet: this connection's car has left and it closes; 'version' the page
+   *  runs another sim build than the server (reload); 'restart' the server is restarting (it closes). */
+  | { t: 'error'; msg: string; code?: 'full' | 'auth' | 'replaced' | 'version' | 'restart' }
+  /** The server is about to restart (an update): the race on now still runs to its end, no new one starts. */
+  | { t: 'notice'; code: 'restart'; msg: string }
   | {
       t: 'room'; phase: Phase; players: PlayerInfo[]; go: number; laps: number; track: string; min: number;
       host: number; // the host's id: the room's first human (it passes on in join order when they leave)

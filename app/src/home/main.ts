@@ -3,6 +3,7 @@ import { checkSession, loadSession, onSession, type Session } from '../auth/sess
 import { WORDMARK } from '../brand';
 import { openCreateRoom } from '../create-room';
 import { isDev, onDev } from '../dev';
+import { BUILD_ID } from 'virtual:build-id';
 import type { GarageListing, Leaderboard, RoomListing } from '../drive/net/protocol';
 import { roomHref, serverHttp, serverUrl } from '../drive/net/prefs';
 import { EXT, mountNav, RIPCARS_URL, WALLET } from '../nav';
@@ -207,10 +208,12 @@ tracksEl.addEventListener('click', async (e) => {
 const STATE: Record<string, [string, boolean]> = { lobby: ['Waiting', false], countdown: ['Starting', true], race: ['Racing', true], results: ['Racing', true] };
 function renderRooms() {
   const list = $('r-list'), create = $<HTMLButtonElement>('r-create');
-  create.disabled = !rooms;
-  $('r-count').textContent = rooms?.rooms.length ? String(rooms.rooms.length) : '';
+  const stale = !!rooms?.version && rooms.version !== BUILD_ID; // (this page's sim isn't the server's: reload for the new one)
+  create.disabled = !rooms || stale;
+  $('r-count').textContent = rooms?.rooms.length && !stale ? String(rooms.rooms.length) : '';
   let html: string;
-  if (!rooms) html = roomsDown ? '<p class="note">Game server offline</p>' : '';
+  if (stale) html = '<p class="note">A new version is out<button type="button" class="btn sm" data-reload>Reload</button></p>';
+  else if (!rooms) html = roomsDown ? '<p class="note">Game server offline</p>' : '';
   else if (!rooms.rooms.length) html = '<p class="note">No open rooms</p>';
   else {
     html = `<div class="rooms">${rooms.rooms.slice(0, 6).map((r) => {
@@ -235,6 +238,7 @@ async function pollRooms() {
   renderTracks();
 }
 $('r-list').addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('[data-reload]')) return location.reload();
   const j = (e.target as HTMLElement).closest<HTMLElement>('[data-join]');
   if (j) void join(j.dataset.join!);
 });

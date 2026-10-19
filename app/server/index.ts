@@ -1,14 +1,16 @@
-import { createServer } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
+import { createServer, type IncomingMessage } from 'node:http';
 import { PerformanceObserver } from 'node:perf_hooks';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { isAddress, shortWallet } from '../src/auth/address.ts';
 import { H, MAX_PLAYERS, PORT, type C2S, type Leaderboard, type RoomListing, type S2C } from '../src/drive/net/protocol.ts';
 import { COURSES, courseOf, isCourse } from '../src/drive/tracks/index.ts';
-import { handleAuth, ipOf, originOk, verifySession } from './auth.ts';
+import { ALLOWED, handleAuth, ipOf, originOk, verifySession } from './auth.ts';
+import { buildId } from './build-id.ts';
 import { garageOf } from './garage.ts';
 import { mayDrive, newPlayerId, Room, type Player } from './room.ts';
 import { carName, trackOf } from './sim.ts';
-import { board, DB_PATH } from './store.ts';
+import { board, DB_PATH, flushLaps } from './store.ts';
 
 // RIPCARS drive: the local multiplayer demo's server. `npm run server` -> ws://localhost:8790 (PORT to change it).
 // Server-authoritative: it runs the drive page's own sim (vehicles/arcade.ts, tracks/, car-to-car contact in
@@ -22,12 +24,26 @@ import { board, DB_PATH } from './store.ts';
 // The clock: each step is due at its own moment of real time (hrtime), the timer set for the next one; a late wake
 // runs the steps it owes at once (never drifting), and more than half a second behind drops the backlog.
 // GET http://localhost:8790/stats: rooms, players, step time, how late the steps ran, GC pauses and bandwidth as JSON
-// (/reset-stats zeroes them). Logs a line per room every 5 s. GET /rooms: the open rooms and the courses, for the lobby
-// browser (online.html; RoomListing) - a time trial (a solo room) isn't listed. GET /leaderboard[?wallet=]: this week's
-// best clean laps per track (store.ts; Leaderboard). GET /garage?wallet=: the wallet's Rip Cars (garage.ts). Public
-// GETs, open to any site (CORS *), like /rooms.
+// (POST /reset-stats zeroes them). Locked with STATS_KEY (env: ?key= or Authorization: Bearer <key>); without one they're
+// open in dev and off (404) in production (NODE_ENV=production, or ALLOWED_ORIGINS without a localhost). Logs a line per
+// room every 5 s. GET /rooms: the open rooms and the courses, for the lobby browser (online.html; RoomListing) - a time
+// trial (a solo room) isn't listed. GET /leaderboard[?wallet=]: this week's best clean laps per track (store.ts;
+// Leaderboard). GET /garage?wallet=: the wallet's Rip Cars (garage.ts). GET /version: the sim build id; GET /health:
+// 200 while the server runs. Public GETs, open to any site (CORS *).
+// The sim build id (build-id.ts): a join from a page with another is refused ('version': the page says a new version is
+// out). SIGTERM (a deploy): no new joins or races, the players are told, and the server exits once no race is on (or
+// after DRAIN_S); a second SIGTERM, or SIGINT, exits now.
 
 const port = Number(process.env.PORT) || PORT;
+const host = process.env.HOST || undefined; // (unset: every interface, IPv4 and IPv6)
+const BUILD = buildId();
+const BUILD_ID = BUILD.id;
+console.log(`sim build ${BUILD_ID} (${BUILD.files.length} files)`);
+const PROD = process.env.NODE_ENV === 'production' || !ALLOWED.some((o) => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(o));
+const STATS_KEY = process.env.STATS_KEY ? Buffer.from(process.env.STATS_KEY, 'utf8') : null;
+if (STATS_KEY && STATS_KEY.length < 16) console.warn('stats: STATS_KEY is short - use 16+ random characters.');
+console.log(`stats: ${STATS_KEY ? 'locked with STATS_KEY' : PROD ? 'off (production, no STATS_KEY)' : 'open (dev, no STATS_KEY)'}`);
+const DRAIN_S = Number(process.env.DRAIN_S) || 180; // s a SIGTERM waits for the races on to end
 const rooms = new Map<string, Room>();
 for (const c of COURSES) trackOf(c.id); // (built once now: building one on a room's first join stalls every room)
 const t0 = process.hrtime.bigint();
@@ -111,9 +127,20 @@ function leaderboard(wallet: string | null): Leaderboard {
   return { ...week, now, tracks };
 }
 
+/** /stats and /reset-stats: with STATS_KEY, the key (?key= or a Bearer header, compared in constant time); without one,
+ *  open in dev and off in production. */
+function statsAllowed(req: IncomingMessage, url: URL) {
+  if (!STATS_KEY) return !PROD;
+  const a = req.headers.authorization ?? '';
+  const got = Buffer.from(a.startsWith('Bearer ') ? a.slice(7) : (url.searchParams.get('key') ?? ''), 'utf8');
+  return got.length === STATS_KEY.length && timingSafeEqual(got, STATS_KEY);
+}
+
 const http = createServer(async (req, res) => {
   if (await handleAuth(req, res)) return;
   const url = new URL(req.url ?? '/', 'http://localhost');
+  if (url.pathname === '/health') return sendJson(res, 200, { ok: true, version: BUILD_ID, draining });
+  if (url.pathname === '/version') return sendJson(res, 200, { version: BUILD_ID });
   if (url.pathname === '/leaderboard' && req.method === 'GET') {
     const w = url.searchParams.get('wallet');
     if (w !== null && w !== '' && !isAddress(w)) return sendJson(res, 400, { error: 'Not a wallet address' });
@@ -135,7 +162,7 @@ const http = createServer(async (req, res) => {
       return sendJson(res, 502, { error: "Can't reach RIPCARS right now" });
     }
   }
-  if (req.url?.startsWith('/rooms')) {
+  if (url.pathname === '/rooms') {
     const body: RoomListing = {
       rooms: [...rooms.values()].filter((r) => !r.solo).map((r) => {
         const c = courseOf(isCourse(r.course) ? r.course : 'meadow');
@@ -145,16 +172,19 @@ const http = createServer(async (req, res) => {
         };
       }),
       courses: COURSES.map((c) => ({ id: c.id, name: c.name, color: c.color, blurb: c.blurb })),
+      version: BUILD_ID,
     };
-    res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' });
-    res.end(JSON.stringify(body));
-    return;
+    return sendJson(res, 200, body);
   }
-  if (req.url?.startsWith('/stats')) {
+  if ((url.pathname === '/stats' || url.pathname === '/reset-stats') && !statsAllowed(req, url)) {
+    res.writeHead(404, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
+    return void res.end('Not found\n');
+  }
+  if (url.pathname === '/stats' && req.method === 'GET') {
     const up = nowMs() / 1000;
-    res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     res.end(JSON.stringify({
-      tick, uptime: up, behind: stats.behind, stepUs: stats.step.json(), lateUs: stats.late.json(), gcUs: stats.gc.json(),
+      version: BUILD_ID, draining, tick, uptime: up, behind: stats.behind, stepUs: stats.step.json(), lateUs: stats.late.json(), gcUs: stats.gc.json(),
       heapMB: process.memoryUsage().heapUsed / 2 ** 20,
       rooms: [...rooms.values()].map((r) => ({
         name: r.name, course: r.course, laps: r.laps, phase: r.phase, race: r.race, log: r.logPath, solo: r.solo,
@@ -165,12 +195,15 @@ const http = createServer(async (req, res) => {
     }));
     return;
   }
-  if (req.url?.startsWith('/reset-stats')) {
+  if (url.pathname === '/reset-stats') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { allow: 'POST', 'content-type': 'text/plain' });
+      return void res.end('POST only\n');
+    }
     for (const r of rooms.values()) (r.stepTime = { n: 0, sum: 0, max: 0 }), (r.sendUs = r.simUs = 0);
     stats.step.reset(), stats.late.reset(), stats.gc.reset(), (stats.behind = 0);
-    res.writeHead(200, { 'access-control-allow-origin': '*' });
-    res.end('ok');
-    return;
+    res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
+    return void res.end('ok');
   }
   res.writeHead(200, { 'content-type': 'text/plain' });
   res.end('RIPCARS drive server: connect a WebSocket (drive.html?online=1)\n');
@@ -180,6 +213,10 @@ const wss = new WebSocketServer({
   server: http, maxPayload: 16 * 1024,
   verifyClient: (info: { origin?: string }, cb: (ok: boolean, code?: number, msg?: string) => void) => (originOk(info.origin || undefined) ? cb(true) : cb(false, 403, 'Origin not allowed')),
 });
+
+/** Every open connection's way to tell its player the server is restarting (the drain, below). */
+const conns = new Set<{ restarting: (final: boolean) => void }>();
+let draining = false;
 
 /** The connection each wallet races on: a newer join from the wallet replaces it (one car per wallet). */
 const byWallet = new Map<string, { replace: () => void }>();
@@ -219,6 +256,13 @@ wss.on('connection', (ws: WebSocket) => {
     room = me = null;
   };
   const conn = {
+    /** The server is restarting: say so (final: it's going now - the connection closes). */
+    restarting(final: boolean) {
+      if (final) {
+        send({ t: 'error', code: 'restart', msg: 'The game server is restarting for an update' });
+        ws.close(1012, 'restarting');
+      } else if (me) send({ t: 'notice', code: 'restart', msg: 'The game server restarts after this race' });
+    },
     /** The same wallet joined on another connection: this one's car leaves now, and it closes. */
     replace() {
       gone = true;
@@ -251,6 +295,14 @@ wss.on('connection', (ws: WebSocket) => {
     if (m.t === 'join') {
       if (me || joining || gone) return;
       // who: the wallet of a valid sign-in, or no join (the page asks to sign in again, then joins on this connection)
+      if (m.v !== BUILD_ID) {
+        send({ t: 'error', code: 'version', msg: 'A new version is out' });
+        return void ws.close(4002, 'version');
+      }
+      if (draining) {
+        send({ t: 'error', code: 'restart', msg: 'The game server is restarting for an update' });
+        return void ws.close(1012, 'restarting');
+      }
       const auth = verifySession(m.token);
       if (!auth) return send({ t: 'error', code: 'auth', msg: 'Sign in with your wallet to race' });
       joining = true;
@@ -311,7 +363,9 @@ wss.on('connection', (ws: WebSocket) => {
       if (mayDrive(me.wallet, String(m.car))) room.setCar(me, String(m.car));
     } else if (m.t === 'leave') ws.close();
   });
+  conns.add(conn);
   ws.on('close', () => {
+    conns.delete(conn);
     gone = true;
     if (wallet && byWallet.get(wallet) === conn) byWallet.delete(wallet);
     drop();
@@ -360,4 +414,32 @@ setInterval(() => {
   if (stats.behind) console.log(`server: fell behind by ${stats.behind} steps (dropped)`), (stats.behind = 0);
 }, 5000);
 
-http.listen(port, () => console.log(`RIPCARS drive server on ws://localhost:${port} (stats: http://localhost:${port}/stats; store ${DB_PATH})`));
+http.listen(port, host, () => console.log(`RIPCARS drive server on ws://${host ?? 'localhost'}:${port} (stats: http://localhost:${port}/stats; store ${DB_PATH})`));
+
+// ---- shutting down. SIGTERM (a deploy, fly's stop): no new joins, no new races (Room.draining), every player told; out
+// once no race is counting down or running, or after DRAIN_S. A second SIGTERM, or SIGINT (Ctrl+C): out now.
+const racing = () => [...rooms.values()].filter((r) => r.phase === 'countdown' || r.phase === 'race');
+function exitNow(why: string) {
+  console.log(`server: exiting (${why})`);
+  for (const c of conns) c.restarting(true);
+  for (const r of rooms.values()) r.close(tick);
+  flushLaps();
+  http.close();
+  setTimeout(() => process.exit(0), 300).unref(); // (the closes go out first)
+}
+function drain() {
+  if (draining) return exitNow('second signal');
+  draining = Room.draining = true;
+  const n = racing().length;
+  console.log(`server: SIGTERM - draining: no new joins or races; ${n ? `waiting for ${n} race(s) to end (up to ${DRAIN_S} s)` : 'no race on'}`);
+  for (const c of conns) c.restarting(false);
+  const until = Date.now() + DRAIN_S * 1000;
+  const check = () => {
+    if (!racing().length) return exitNow('no race on');
+    if (Date.now() >= until) return exitNow(`${DRAIN_S} s up`);
+    setTimeout(check, 500);
+  };
+  check();
+}
+process.on('SIGTERM', drain);
+process.on('SIGINT', () => exitNow('SIGINT'));

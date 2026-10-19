@@ -1,0 +1,15 @@
+# The game server's image (Dockerfile) takes only what the server runs. Everything else stays out - the site, the
+# GLBs, textures, Tripo files and photos, node_modules, the local store and logs, and any .env (secrets go in as Fly
+# secrets, never in the image).
+*
+!app/package.json
+!app/package-lock.json
+!app/src/**
+!app/server/**
+!asset-generation/assets/cars/*/model.json
+!asset-generation/assets/cars/*/meta.json
+app/server/.env
+app/server/.env.*
+app/server/data/
+app/server/logs/
+**/.DS_Store

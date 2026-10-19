@@ -1,0 +1,50 @@
+# The racecars game server on Fly.io (app/server/DEPLOY.md). Run fly commands from the repo root: the image builds from
+# ./Dockerfile with the repo root as its context, on Fly's remote builder.
+app = "racecars-server" # placeholder: the name `fly launch` reserved
+primary_region = "ams" # placeholder: the region nearest most players (`fly platform regions`), e.g. ams, fra, lhr, iad
+
+# a deploy or restart sends SIGTERM: the server takes no new joins or races, tells the players, and exits once no race
+# is on (at most 180 s, DRAIN_S) - so Fly must wait longer than that before it kills it
+kill_signal = "SIGTERM"
+kill_timeout = 200
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  HOST = "0.0.0.0"
+  DATA_DIR = "/data"
+  TRUST_PROXY = "1"
+  ALLOWED_ORIGINS = "https://racecars.fun"
+  # secrets (fly secrets set, never here): AUTH_SECRET, HELIUS_RPC_URL, STATS_KEY
+
+# the store (laps, toy numbers) and the race logs: a volume, so they survive deploys (one machine: a volume is one disk)
+[[mounts]]
+  source = "racecars_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false # a race must never be stopped mid-way
+  auto_start_machines = true
+  min_machines_running = 1
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 800
+    hard_limit = 1000
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    timeout = "5s"
+    method = "GET"
+    path = "/health"
+
+# the sim steps every room at 120 Hz on one thread: if /stats shows steps running late (lateUs p99 over a few ms), move
+# to a dedicated CPU (size = "performance-1x")
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
