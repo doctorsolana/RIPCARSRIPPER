@@ -1031,6 +1031,7 @@ export async function runOnline() {
       rig.update(rs, dt);
       world.update(rs, dt);
       cam.lookBack = input.lookBack;
+      cam.intro = phase === 'lobby' || phase === 'countdown'; // before the gate drops: the car from the front
       cam.update(rs, dt, track, rig.root);
       fx.update(rs, dt, rig.root);
       audio.update(rs, net.input, dt);

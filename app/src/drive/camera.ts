@@ -36,6 +36,8 @@ import type { Track, TrackFrame, VehicleState } from './types';
 //   spin  a spin-out (events.spinOut, or the nose > 60 deg off the travel at speed) kicks the roll the way
 //         the car spins and pulls the camera back a touch; the yaw keeps to the travel at speed whatever
 //         the car's facing, so the car spins in frame instead of the world spinning round it
+//   intro before the start (the countdown, the gate) the car from the front, a little to its right and low, the
+//         lens a touch long; at the start it swings round the car to the chase position (INTRO_OUT s, eased)
 //   back  look back (E held): the chase camera mirrored to the car's front, looking back over it down the road. A cut
 //         each way, not a swing (half a turn in a blend reads as the world spinning); the chase springs run on under it,
 //         so letting go cuts straight back to where the chase camera is. It wins over the ad shot while held
@@ -62,6 +64,8 @@ export interface ChaseCamera {
   resize(w: number, h: number): void;
   /** Held (input's lookBack): the view from the car's front, looking back over it at the road behind. */
   lookBack: boolean;
+  /** On before the start (the countdown, the gate): the car seen from the front; off swings round behind it. */
+  intro: boolean;
 }
 
 /** Live-tunable camera numbers (u, deg, s). */
@@ -342,7 +346,9 @@ export function createChaseCamera(): ChaseCamera {
     pop.v += 90; // the FOV pops out with the roar
   }
 
-  let lookBack = false;
+  let lookBack = false, intro = false, introT = 1; // introT: 1 = the intro shot, 0 = the chase
+  const INTRO_OUT = 0.85; // s: the swing from the front to behind at the start
+  const iPos = new THREE.Vector3(), iC = new THREE.Vector3(), iA = new THREE.Vector3(), iB = new THREE.Vector3();
   function update(state: VehicleState, dtIn: number, track: Track, pose?: Pose) {
     const dt = clamp(dtIn, 0, 0.1);
     time += dt;
@@ -617,6 +623,28 @@ export function createChaseCamera(): ChaseCamera {
       }
     }
 
+    // The intro: in front of the car (a little to its right, low), looking at it; at the start it orbits round the car
+    // back to the chase position (never nearer the car than either end), eased in and out.
+    introT = intro ? 1 : resetting ? 0 : Math.max(0, introT - dt / INTRO_OUT);
+    if (introT > 0 && !lookBack) {
+      const w = smoother(introT);
+      iC.copy(P).addScaledVector(up, 0.55);
+      iPos.copy(iC).addScaledVector(fwd, 4.6).addScaledVector(right, 1.7).addScaledVector(up, 0.35);
+      iA.subVectors(pos, iC);
+      iB.subVectors(iPos, iC);
+      const la = Math.max(iA.length(), 1e-3), lb = Math.max(iB.length(), 1e-3);
+      iA.divideScalar(la);
+      iB.divideScalar(lb);
+      const th = Math.acos(clamp(iA.dot(iB), -1, 1));
+      if (th > 1e-3 && th < Math.PI - 1e-3) {
+        const sn = Math.sin(th);
+        tmp.copy(iA).multiplyScalar(Math.sin((1 - w) * th) / sn).addScaledVector(iB, Math.sin(w * th) / sn);
+      } else tmp.copy(iA).lerp(iB, w).normalize();
+      pos.copy(iC).addScaledVector(tmp, la + (lb - la) * w);
+      look.lerp(iC, w);
+      fov += (fovBase - 6 - fov) * w;
+    }
+
     // Look back: the chase position mirrored to the car's front (kept on the driving side of the track ahead, as the
     // chase one is behind), aimed back past the car; the chase's lens without the ad shot's
     if (lookBack && !resetting) {
@@ -696,6 +724,13 @@ export function createChaseCamera(): ChaseCamera {
     },
     set lookBack(on: boolean) {
       lookBack = on;
+    },
+    get intro() {
+      return intro;
+    },
+    set intro(on: boolean) {
+      if (on && !intro) introT = 1; // (back to the front at once: a new race)
+      intro = on;
     },
     resize(w: number, h: number) {
       camera.aspect = w / Math.max(1, h);

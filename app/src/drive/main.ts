@@ -362,6 +362,7 @@ async function main() {
       rig.update(rs, dt);
       world.update(rs, dt);
       cam.lookBack = input.lookBack;
+      cam.intro = phase === 'gate'; // before the start: the car from the front
       cam.update(rs, dt, track, rig.root);
       fx.update(rs, dt, rig.root);
       audio.update(rs, input0, dt);
