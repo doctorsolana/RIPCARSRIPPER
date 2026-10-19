@@ -16,11 +16,11 @@ The site stays on Vercel (https://racecars.fun); the game server runs on Fly.io 
    `fly secrets set AUTH_SECRET='…' STATS_KEY='…' HELIUS_RPC_URL='…'`
 5. Deploy: `fly deploy`.
 6. Check it's up: `curl https://racecars-server.fly.dev/health` should answer `{"ok":true,"version":"…","draining":false}`.
-7. Set up the domain: `fly certs add play.racecars.fun`. At the DNS for racecars.fun, add a `CNAME` record from `play` to `racecars-server.fly.dev` (on Cloudflare, set it to DNS only, the grey cloud). Then run `fly certs check play.racecars.fun` until it says the certificate is issued.
+7. Set up the domain: `fly certs add play.racecars.fun`, then `fly certs setup play.racecars.fun` to get this app's exact DNS target. At the DNS for racecars.fun, add a `CNAME` record from `play` to the target shown by Fly (on Cloudflare, set it to DNS only, the grey cloud). Then run `fly certs check play.racecars.fun` until it says the certificate is issued.
 8. Check it on the domain:
    - `curl https://play.racecars.fun/health` returns 200.
    - `curl -H "Authorization: Bearer $STATS_KEY" https://play.racecars.fun/stats` returns the stats JSON. Without the key it's a 404.
-9. On Vercel, open the project's Settings, then Environment Variables, and add `VITE_GAME_SERVER` = `wss://play.racecars.fun` for Production (and Preview if you want). Then go to Deployments and Redeploy the latest one: the variable is baked in at build time.
+9. On Vercel, open the project's Settings, then Environment Variables, and add `VITE_GAME_SERVER` = `wss://play.racecars.fun` for Production (and Preview if you want). Until the custom domain is ready, `wss://racecars-server.fly.dev` also works. Then go to Deployments and Redeploy the latest one: the variable is baked in at build time.
 10. Open https://racecars.fun/online. You should see the room list (no "Game server offline", no "A new version is out"). Connect a wallet and race a time trial.
 
 ## Every update

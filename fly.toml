@@ -17,7 +17,7 @@ kill_timeout = 200
   HOST = "0.0.0.0"
   DATA_DIR = "/data"
   TRUST_PROXY = "1"
-  ALLOWED_ORIGINS = "https://racecars.fun"
+  ALLOWED_ORIGINS = "https://racecars.fun,https://www.racecars.fun"
   # secrets (fly secrets set, never here): AUTH_SECRET, HELIUS_RPC_URL, STATS_KEY
 
 # the store (laps, toy numbers) and the race logs: a volume, so they survive deploys (one machine: a volume is one disk)
