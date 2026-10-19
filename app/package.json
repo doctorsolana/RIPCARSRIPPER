@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && tsc --noEmit -p server && vite build && node scripts/prune-dist.mjs",
     "preview": "vite preview",
-    "server": "node server/index.ts",
+    "server": "node --env-file-if-exists=server/.env server/index.ts",
     "replay": "node server/replay.ts"
   },
   "dependencies": {

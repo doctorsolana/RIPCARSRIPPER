@@ -9,7 +9,8 @@ import { saveToy, toyOf } from './store.ts';
 // time). A toy number the game has a car for (asset-generation/assets/cars/<id>/meta.json "toy" - the reference
 // manifest's product_code, the NFT's 'Toy #' attribute) maps to that car: drivable. The cars are Metaplex Core assets of
 // the Rip Cars collection (DiRqf7eyipQ7nPKtjWzFUZRyWT3M63GC75qyMDHe9Z81); racing doesn't check ownership yet
-// (room.ts mayDrive). RIPCARS_API (env) points at another API base (tests).
+// (room.ts mayDrive). RIPCARS_API (env) points at another API base (tests). With HELIUS_RPC_URL set (a DAS-capable RPC;
+// keep it in server/.env, never in the repo or the page) the garage comes from the chain instead: loadOnChain below.
 
 const API = (process.env.RIPCARS_API || 'https://app.ripcars.io/api/gacha').replace(/\/+$/, '');
 const TTL = 60_000; // ms a wallet's garage is kept
@@ -99,7 +100,59 @@ const rank = (r: string | null) => {
   return i < 0 ? RARITY.length : i;
 };
 
+// ---- on chain (HELIUS_RPC_URL set): the wallet's Rip Cars straight from a DAS search - ownership and each car's 'Toy #'
+// attribute in one call (pages of 1000), no toy lookups. RIPCARS's my-cars, if it answers within 3 s, only adds what
+// the chain doesn't have (rarity, value, its smaller photo).
+const RPC = process.env.HELIUS_RPC_URL?.trim() || '';
+const COLLECTION = 'DiRqf7eyipQ7nPKtjWzFUZRyWT3M63GC75qyMDHe9Z81';
+interface DasAsset {
+  id?: unknown;
+  burnt?: unknown;
+  content?: { metadata?: { name?: unknown; attributes?: { trait_type?: unknown; value?: unknown }[] }; links?: { image?: unknown } };
+}
+async function dasAssets(wallet: string): Promise<DasAsset[]> {
+  const all: DasAsset[] = [];
+  for (let page = 1; page <= 5; page++) {
+    const r = await fetch(RPC, {
+      method: 'POST', signal: AbortSignal.timeout(8000), headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'searchAssets', params: { ownerAddress: wallet, grouping: ['collection', COLLECTION], page, limit: 1000 } }),
+    });
+    if (!r.ok) throw new Error(`DAS: HTTP ${r.status}`); // (never the URL: it is the key)
+    const j = (await r.json()) as { result?: { items?: DasAsset[] }; error?: { message?: string } };
+    if (!j.result) throw new Error(`DAS: ${j.error?.message ?? 'no result'}`);
+    const items = j.result.items ?? [];
+    all.push(...items);
+    if (items.length < 1000) break;
+  }
+  return all;
+}
+async function loadOnChain(wallet: string): Promise<Garage> {
+  const [assets, extra] = await Promise.all([
+    dasAssets(wallet),
+    getJson(`${API}/my-cars?wallet=${encodeURIComponent(wallet)}`).then((l) => (Array.isArray(l) ? l : []), () => []),
+  ]);
+  const info = new Map<string, Record<string, unknown>>();
+  for (const c of extra as Record<string, unknown>[]) if (c && isMint(c.id)) info.set(c.id as string, c);
+  const byToy = carsByToy();
+  const cars: GarageCar[] = assets.filter((a) => isMint(a.id) && !a.burnt).slice(0, 2000).map((a) => {
+    const mint = a.id as string, md = a.content?.metadata, c = info.get(mint) ?? {};
+    const attr = (k: string) => md?.attributes?.find((x) => x?.trait_type === k)?.value;
+    const t = attr('Toy #');
+    const toy = typeof t === 'string' && /^[A-Za-z0-9-]{1,24}$/.test(t) ? t.toUpperCase() : null;
+    if (toy && !toyOf(mint)) saveToy(mint, toy);
+    const model = toy ? byToy.get(toy) ?? null : null;
+    return {
+      mint, name: str(md?.name) ?? str(c.name) ?? 'Rip Car', rarity: str(c.rarity, 40), image: https(c.image) ?? https(a.content?.links?.image),
+      fmv: num(c.fmv), mintedAt: str(c.mintedAt, 40), collectorRarity: str(c.collectorRarity, 40), assortment: str(c.assortment, 60) ?? str(attr('Assortment'), 60),
+      toy, model, modelName: model ? carName(model) : null,
+    };
+  });
+  cars.sort((a, b) => Number(!a.model) - Number(!b.model) || rank(a.rarity) - rank(b.rarity) || (b.fmv ?? 0) - (a.fmv ?? 0) || String(b.mintedAt).localeCompare(String(a.mintedAt)));
+  return { wallet, cars, partial: false, at: Date.now() };
+}
+
 async function load(wallet: string): Promise<Garage> {
+  if (RPC) return loadOnChain(wallet);
   const list = await getJson(`${API}/my-cars?wallet=${encodeURIComponent(wallet)}`);
   if (!Array.isArray(list)) throw new Error('my-cars: not a list');
   const raw = list.filter((c) => c && typeof c === 'object' && isMint((c as { id?: unknown }).id)).slice(0, 2000) as Record<string, unknown>[];
