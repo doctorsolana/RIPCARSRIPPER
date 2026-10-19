@@ -48,8 +48,8 @@ export interface Course<Id extends string = string> {
   /** Its set dressing: the start gate, arches, hoops ... (tracks/props.ts has the stock pieces). */
   props(ctx: PropsContext): void;
   /** Medal pace: the autopilot's average speed (u/s) over 3 laps (3 x the lap's length / its 3-lap total in node
-   *  laps.ts 'auto'), per car - a key is any word of the car's id (each drives its own way: PROFILES in
-   *  vehicles/arcade.ts), '*' the stock car's, for a car without a profile; medals at x1.03 / 1.10 / 1.20 of laps x
+   *  laps.ts 'auto'; npm run stats prints the rows), per car - keyed as PROFILES in vehicles/arcade.ts
+   *  (profileKey: the car's toy number, else a word of its id), '*' the stock car's, for a car without a profile; medals at x1.03 / 1.10 / 1.20 of laps x
    *  length / pace (main.ts). A car missing here takes the default course's number: the same pace, so its par time
    *  scales with the lap's length. Remeasure the row whenever the layout changes. */
   pars: Record<string, number>;

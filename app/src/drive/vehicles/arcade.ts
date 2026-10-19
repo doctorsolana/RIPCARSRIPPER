@@ -266,93 +266,118 @@ const STOCK: Profile = {
   top: 1, pull: 1, rev: 2, spool: 0, brake: 1, grip: 1, turn: 1, steer: 1, slide: 1, unstick: 1, float: 1, angle: 1, charge: 1,
   aero: 1, heft: 1, dirt: 1,
 };
-// Keyed by a word of the car id. Fair - each is quickest somewhere else: the Porsche through the asphalt corners and
-// on the brakes, the Skyline drifting and pulling out of the corners, the Impala over the dirt and down the hills.
+// Keyed by a word of the car id (or a car's toy number: profileKey). Ordered like the real cars - power to weight,
+// era, layout, tyres - squeezed into a field that stays close on a lap (each 3-lap autopilot total within ~7% of the
+// next), and fair: each is quickest somewhere else - the race Porsches on the brakes and through the asphalt corners,
+// the Skylines pulling out of the corners and drifting, the light cars turning in, the heavy ones through the knocks,
+// over the dirt and down the hills. The garage's stats are measured off these (npm run stats: src/garage/stats.ts).
 // (The Impala's hydraulic hop into a drift is rig.ts's, on its soft springs.)
+// Nissan Skyline GT-R (BNR34, the stock one and Godzilla's): the RB26's twin turbos on ATTESA four-wheel drive - a
+// breath of lag, then strong pull and the best traction out of a corner; planted and grippy, heavier than the
+// Porsches, harder to throw sideways than the rear-drive ER34s, and the AWD claws through the dirt.
+const GTR: Partial<Profile> = {
+  top: 1.02, pull: 1.03, rev: 2.7, spool: 0.12, brake: 1.08, grip: 1.08, turn: 1.02, steer: 0.9,
+  slide: 1.05, unstick: 0.95, float: 0.95, angle: 0.98, charge: 1.04, aero: 1.05, heft: 1.15, dirt: 1.06,
+};
 const PROFILES: Record<string, Partial<Profile>> = {
-  // Porsche 911 GT3 R: a race car - slicks, wings, race brakes, a flat-6 that revs to the top. The most grip and
-  // braking, the sharpest steering, the highest top speed; hard to get sideways and it slides short and tight, its
-  // wing's drag eats a hill's extra speed soonest, and it's light and stiff: hits knock it about, it hates the dirt.
+  // Porsche 911 GT3 R "Roxy" (992, 2023): a race car - ~565 hp in ~1250 kg, slicks, a big wing, race brakes. The most
+  // grip and braking, the sharpest steering, the highest top speed; hard to get sideways and it slides short and tight,
+  // its wing's drag eats a hill's extra speed soonest, and it's light and stiff: hits knock it about, it hates the dirt.
   roxy: {
-    top: 1.04, rev: 2.3, brake: 1.15, grip: 1.15, turn: 1.05, steer: 0.75,
-    unstick: 0.5, float: 0.95, angle: 0.9, aero: 1.25, heft: 0.9, dirt: 0.9,
+    top: 1.06, pull: 1.07, rev: 2.6, brake: 1.18, grip: 1.16, turn: 1.06, steer: 0.75,
+    unstick: 0.72, float: 0.95, angle: 0.9, charge: 1.06, aero: 1.25, heft: 0.9, dirt: 0.92,
   },
-  // Nissan LB-ER34 Super Silhouette Skyline: the RB26's twin turbos - a breath of lag, then the strongest mid-range
-  // pull - in a drift machine: the easiest to throw sideways, a big controllable slide that charges quickest; close on
-  // top speed.
-  skyline: { top: 1.02, pull: 1.04, rev: 3, spool: 0.2, unstick: 1.3, float: 0.85, angle: 1.1, charge: 1.06, aero: 1.1 },
-  // 1964 Chevy Impala lowrider: big, heavy and soft. A big-block V8's shove fading to a lower top speed, drum brakes,
-  // lazy steering, skinny whitewalls: it slides big and floaty - a fun boat. Its weight carries a hill's speed furthest
-  // and shrugs off the knocks; its soft hydraulics float it over the dirt.
+  // Porsche 911 GT3 RS (997.2, 2011): the road-going racer - 450 hp, 1370 kg, 310 km/h; sharp, grippy, brakes hard
+  // and revs to the top; a step below the GT3 R on grip and aero, a little easier to get sideways
+  gt3: {
+    top: 1.05, pull: 1.05, rev: 2.5, brake: 1.14, grip: 1.12, turn: 1.05, steer: 0.8,
+    unstick: 0.82, float: 0.95, angle: 0.95, charge: 1.04, aero: 1.15, heft: 0.95, dirt: 0.92,
+  },
+  fyg14: GTR,
+  jhw90: GTR,
+  // Nissan LB-ER34 Super Silhouette Skyline (the Liberty Walk widebodies): turbo-six pull - a breath of lag, then the
+  // strongest mid-range - on wide rubber in a rear-drive drift machine: the easiest to throw sideways, a big
+  // controllable slide that charges quickest; grippy, close on top speed, slammed (no dirt car)
+  skyline: {
+    top: 1.02, pull: 1.04, rev: 3, spool: 0.2, brake: 1.06, grip: 1.07, turn: 1.03, steer: 0.88,
+    unstick: 1.3, float: 0.85, angle: 1.1, charge: 1.06, aero: 1.1, heft: 1.05, dirt: 0.95,
+  },
+  // Porsche 964 (1989; Magnus Walker's outlaw): an air-cooled 911, ~250-300 hp in 1350 kg - the engine hung out behind
+  // the rear axle, so the tail swings readily on a lift and the slide runs long; good brakes, quick steering
+  '964': {
+    top: 1.01, pull: 1.01, rev: 2.1, brake: 1.06, grip: 1.03, turn: 1.02, steer: 0.85,
+    slide: 0.95, unstick: 1.2, float: 0.95, angle: 1.08, aero: 1.05, heft: 0.97, dirt: 1,
+  },
+  // Splittin' Image (a Hot Wheels original, 2004): a light fantasy racer - twin canopies, a big blown V8 out in the
+  // open. Explosive pull and a top speed with the Porsches' - the straight-line car - but a loose, lively tail and
+  // just ordinary grip and brakes; light, so hits knock it about, and it's no dirt car
+  splittin: {
+    top: 1.04, pull: 1.12, rev: 1.9, brake: 0.98, grip: 0.99, turn: 1, steer: 0.9,
+    slide: 0.95, unstick: 1.15, float: 0.98, angle: 1.08, aero: 0.95, heft: 0.85, dirt: 0.94,
+  },
+  // 1993 Ford Mustang Cobra R: a stripped Fox-body with the 5.0 V8 (235 hp, 1450 kg) - strong low-down pull, a willing
+  // tail under power, decent race brakes; a touch heavier than the imports
+  mustang: {
+    top: 1.01, pull: 1.03, rev: 1.9, brake: 1.02, grip: 0.98, turn: 0.99, steer: 1,
+    slide: 0.95, unstick: 1.15, float: 1.05, angle: 1.1, aero: 0.95, heft: 1.08, dirt: 1,
+  },
+  // 1964 Jaguar E-Type (the XK six, ~265 hp claimed, 1250 kg): a long, low GT - quick in its day and slippery: a high
+  // top speed it holds on to and carries off a hill, stable and long-legged; but soft, a long nose that turns in
+  // lazily, skinny period tyres and brakes; a long, smooth slide
+  jaguar: {
+    top: 1.01, pull: 0.99, rev: 2.4, brake: 0.92, grip: 0.96, turn: 0.96, steer: 1.1,
+    slide: 1, unstick: 0.95, float: 1.08, angle: 1.06, aero: 0.85, heft: 0.97, dirt: 0.95,
+  },
+  // '99 Honda Civic Type R (EK9): a light front-drive hot hatch - 185 hp in 1050 kg, quick to turn in, grippy and
+  // planted, a VTEC four that loves the top of the revs but runs out of top speed; front drive means it's harder to
+  // get sideways and the slide stays tidy
+  civic: {
+    top: 0.97, pull: 0.98, rev: 2.7, brake: 1.06, grip: 1.07, turn: 1.07, steer: 0.78,
+    slide: 0.95, unstick: 0.75, float: 0.9, angle: 0.92, charge: 1.04, aero: 1, heft: 0.8, dirt: 1,
+  },
+  // '77 Pontiac Firebird Trans Am: the 6.6 V8 (200 hp) in 1650 kg - a big shove off the corners that fades up top, a
+  // heavy nose, a lazy wheel and a tail that steps out under power - the muscle car slides; soft brakes
+  firebird: {
+    top: 0.97, pull: 1.02, rev: 1.7, brake: 0.88, grip: 0.93, turn: 0.97, steer: 1.12,
+    slide: 0.92, unstick: 1.25, float: 1.15, angle: 1.15, aero: 0.9, heft: 1.25, dirt: 1.04,
+  },
+  // 1964 Chevy Impala lowrider: big, heavy and soft - a V8's shove fading to a lower top speed, drum brakes, lazy
+  // steering, skinny whitewalls: it slides big and floaty - a fun boat. Its weight carries a hill's speed furthest and
+  // shrugs off the knocks; its soft hydraulics float it over the dirt.
   impala: {
-    top: 0.96, pull: 0.96, rev: 1.8, brake: 0.82, grip: 0.9, turn: 0.97, steer: 1.25,
+    top: 0.96, pull: 0.94, rev: 1.8, brake: 0.8, grip: 0.89, turn: 0.96, steer: 1.25,
     slide: 0.9, unstick: 1.1, float: 1.3, angle: 1.18, aero: 0.8, heft: 1.35, dirt: 1.12,
   },
-  // Porsche 911 GT3 RS (997): the road-going racer - sharp, grippy, brakes hard and revs to the top; a step below
-  // the GT3 R on grip and aero, a little easier to get sideways
-  gt3: {
-    top: 1.03, pull: 1.02, rev: 2.3, brake: 1.12, grip: 1.1, turn: 1.04, steer: 0.8,
-    unstick: 0.7, float: 0.95, angle: 0.95, aero: 1.15, heft: 0.9, dirt: 0.92,
-  },
-  // Porsche 964 (Magnus Walker's outlaw): an air-cooled classic 911 - the engine hung out behind the rear axle, so
-  // the tail swings readily on a lift and the slide runs long; good brakes, quick steering, a tad less top
-  '964': {
-    top: 1, pull: 1, rev: 2.1, brake: 1.08, grip: 1.03, turn: 1.01, steer: 0.85,
-    slide: 0.95, unstick: 1.2, float: 0.95, angle: 1.08, aero: 1.05, heft: 0.95, dirt: 0.95,
-  },
-  // '77 Pontiac Firebird Trans Am: a big V8's shove off the corners that fades up top, a heavy nose, a lazy wheel
-  // and a tail that steps out under power - the muscle car slides; soft brakes
-  firebird: {
-    top: 0.99, pull: 1.06, rev: 1.7, brake: 0.88, grip: 0.93, turn: 0.97, steer: 1.12,
-    slide: 0.92, unstick: 1.25, float: 1.15, angle: 1.15, aero: 0.9, heft: 1.25, dirt: 1.05,
-  },
-  // '99 Honda Civic Type R (EK9): a light front-drive hot hatch - quick to turn in, grippy and planted, a VTEC four
-  // that loves the top of the revs; front drive means it's harder to get sideways and the slide stays tidy
-  civic: {
-    top: 0.98, pull: 0.97, rev: 2.6, brake: 1.05, grip: 1.05, turn: 1.06, steer: 0.8,
-    slide: 0.95, unstick: 0.75, float: 0.9, angle: 0.92, aero: 1.05, heft: 0.85, dirt: 1,
-  },
-  // 1993 Ford Mustang Cobra R: a stripped Fox-body with a V8 - strong low-down pull, a willing tail under power,
-  // decent race brakes; a touch heavier than the imports
-  mustang: {
-    top: 1.01, pull: 1.04, rev: 1.9, brake: 1.02, grip: 0.97, turn: 0.99, steer: 1,
-    slide: 0.95, unstick: 1.15, float: 1.05, angle: 1.1, aero: 0.95, heft: 1.1, dirt: 1,
-  },
-  // Beach Bomb Too (a VW bus with surfboards): tall, soft and slow - an air-cooled flat-4's putter, a floaty lean
-  // into every slide, drum brakes, but it shrugs over the dirt and carries a hill's speed (a box on wheels)
-  beach: {
-    top: 0.93, pull: 0.9, rev: 1.8, brake: 0.8, grip: 0.92, turn: 0.96, steer: 1.25,
-    slide: 0.9, unstick: 1.15, float: 1.35, angle: 1.15, aero: 0.85, heft: 1.3, dirt: 1.1,
-  },
-  // 1965 Nissan Silvia (CSP311): a small, light hand-built coupe with a 1.6 four - not much shove and a lower top
-  // speed, but the quickest to turn in, nimble and easy to place; light, so the knocks throw it about
+  // 1965 Nissan Silvia (CSP311): a small, light hand-built coupe with a 1.6 four (96 hp, 980 kg) - not much shove and a
+  // low top speed, but the quickest to turn in, nimble and easy to place; light, so the knocks throw it about
   silvia: {
-    top: 0.97, pull: 0.96, rev: 2.4, brake: 1.04, grip: 1.04, turn: 1.07, steer: 0.82,
-    slide: 1, unstick: 1.05, float: 0.92, angle: 1, charge: 1.02, aero: 1.05, heft: 0.82, dirt: 1,
+    top: 0.94, pull: 0.91, rev: 2.1, brake: 1, grip: 1.03, turn: 1.08, steer: 0.8,
+    slide: 1, unstick: 1.08, float: 0.92, angle: 1, charge: 1.04, aero: 1, heft: 0.78, dirt: 1.02,
   },
-  // '73 Volvo 142 GL: a heavy, boxy sedan with the B20 four - slow to get going and to turn, soft and roll-y, but a
+  // '73 Volvo 142 GL: a boxy sedan with the B20 four (~100 hp) - slow to get going and to turn, soft and roll-y, but a
   // tank: it shrugs off the knocks, carries a hill's speed, and the rally-bred Volvo likes the dirt
   volvo: {
-    top: 0.95, pull: 0.95, rev: 1.9, brake: 0.95, grip: 0.95, turn: 0.97, steer: 1.15,
-    slide: 0.95, unstick: 0.95, float: 1.12, angle: 1.06, aero: 0.85, heft: 1.3, dirt: 1.08,
+    top: 0.95, pull: 0.92, rev: 2, brake: 0.95, grip: 0.95, turn: 0.97, steer: 1.15,
+    slide: 0.95, unstick: 1, float: 1.12, angle: 1.06, charge: 1.02, aero: 0.85, heft: 1.2, dirt: 1.1,
   },
-  // 1964 Jaguar E-Type: a long, low GT with the XK straight-six - a high top speed that it holds on to, stable and
-  // long-legged, but a long nose that turns in lazily and period brakes; a long, smooth slide
-  jaguar: {
-    top: 1.02, pull: 0.98, rev: 2.3, brake: 0.92, grip: 0.98, turn: 0.96, steer: 1.1,
-    slide: 1, unstick: 0.92, float: 1.05, angle: 1.06, aero: 0.92, heft: 1.05, dirt: 0.95,
-  },
-  // Splittin' Image (a Hot Wheels original): a light fantasy racer - twin canopies, a big blown V8 out in the open.
-  // Explosive pull, a loose and lively tail, quick steering; light, so hits knock it about, and it's no dirt car
-  splittin: {
-    top: 1.01, pull: 1.07, rev: 1.9, brake: 1, grip: 1.01, turn: 1.03, steer: 0.88,
-    slide: 0.95, unstick: 1.15, float: 0.95, angle: 1.08, charge: 1.05, aero: 1, heft: 0.85, dirt: 0.95,
+  // Beach Bomb Too (a VW bus with surfboards): tall, soft and slow - an air-cooled flat-4's putter, a floaty lean into
+  // every slide, drum brakes, but it shrugs over the dirt and carries a hill's speed (a box on wheels)
+  beach: {
+    top: 0.93, pull: 0.9, rev: 1.8, brake: 0.8, grip: 0.92, turn: 0.96, steer: 1.25,
+    slide: 0.9, unstick: 1.15, float: 1.35, angle: 1.15, charge: 1.04, aero: 0.85, heft: 1.25, dirt: 1.12,
   },
 };
-/** The car's profile: the first word of its id that has one (skyline-..., chevy-impala-..., roxy-porsche-...). */
+/** Which PROFILES entry a car drives on: its id's last word - the toy number, for a car with a profile of its own - if
+ *  that has one, else the first word that has one (skyline-..., chevy-impala-..., roxy-porsche-...). Each course's pars
+ *  (tracks/course.ts) go by the same key. */
+export function profileKey(id: string): string | undefined {
+  const w = id.toLowerCase().split('-');
+  return [w[w.length - 1], ...w.slice(0, -1)].find((x) => PROFILES[x]);
+}
+/** The car's profile (STOCK for a car without one). */
 export function profileOf(id: string): Profile {
-  for (const w of id.toLowerCase().split('-')) if (PROFILES[w]) return { ...STOCK, ...PROFILES[w] };
-  return { ...STOCK };
+  const k = profileKey(id);
+  return k ? { ...STOCK, ...PROFILES[k] } : { ...STOCK };
 }
 
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);

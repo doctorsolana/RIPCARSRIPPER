@@ -18,6 +18,8 @@ export interface RaceResult {
 
 export interface Hud {
   setCar(name: string, color: string): void;
+  /** A small tag by the car's name ('Test drive': a car the wallet can't race); '' none. */
+  setTag(text: string): void;
   /** The course: its name, with a dot in its colour, over the start prompt. */
   setCourse(name: string, color: string): void;
   /** The start prompt (before the drop). */
@@ -61,6 +63,9 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .spd span { font-size: 10px; letter-spacing: 0.32em; opacity: 0.7; }
 #hud .car { position: absolute; left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom));
   font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.75; display: flex; align-items: center; gap: 10px; }
+#hud .car .tag { padding: 4px 6px 3px; border-radius: 5px; font: 800 9px/1 Inter, system-ui, sans-serif; letter-spacing: 0.16em;
+  text-transform: uppercase; color: #0b0c10; background: rgba(255, 255, 255, 0.85); text-shadow: none; }
+#hud .car .tag[hidden] { display: none; }
 #hud .car::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--car); box-shadow: 0 0 10px var(--car); }
 #hud .mute { pointer-events: auto; cursor: pointer; border: 0; background: rgba(255, 255, 255, 0.1); color: #fff; width: 30px; height: 30px;
   border-radius: 50%; display: grid; place-items: center; padding: 0; }
@@ -185,7 +190,7 @@ export function createHud(root: HTMLElement): Hud {
       <div class="times"><span>Lap</span><b class="tlap">0:00.00</b><span>Total</span><b class="ttot">0:00.00</b><span>Best</span><b class="tbest">-</b></div>
     </div>
     <div class="spd"><b>0</b><span>KM/H</span></div>
-    <div class="car"><span class="cn"></span><button class="mute" aria-label="Sound on/off" title="Sound (M)">
+    <div class="car"><span class="cn"></span><span class="tag" hidden></span><button class="mute" aria-label="Sound on/off" title="Sound (M)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M2.5 6v4h2.5l3.5 3V3L5 6z" fill="currentColor" stroke="none"/><path class="w" d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.6a6 6 0 0 1 0 8.8"/>
         <path class="x" d="M11 6l4 4M15 6l-4 4"/></svg></button></div>
@@ -227,6 +232,11 @@ export function createHud(root: HTMLElement): Hud {
     setCar(name, color) {
       set($('.cn'), name);
       root.style.setProperty('--car', color);
+    },
+    setTag(text) {
+      const t = $('.car .tag');
+      set(t, text);
+      t.hidden = !text;
     },
     setCourse(name, color) {
       set($('.gate i'), name);

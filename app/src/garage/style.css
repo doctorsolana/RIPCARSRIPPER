@@ -1,0 +1,119 @@
+/* The garage (garage.html, garage/main.ts): the car big in 3D with its name, buttons and stats beside it, the rail of
+   cars under it. On top of the landing's sheet (home/style.css: the tokens, the buttons). */
+#garage-page { --rail: 238px; overflow-x: clip; min-height: 100svh; padding-top: 48px; display: flex; flex-direction: column;
+  background: radial-gradient(70% 70% at 36% 46%, #1d1f2b 0%, rgba(13, 14, 18, 0) 70%), var(--bg); }
+
+/* ---- the car and its panel */
+.g-top { position: relative; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: max(440px, calc(100svh - 48px - var(--rail)));
+  padding-right: max(var(--gut), env(safe-area-inset-right)); }
+.g-stage { position: relative; min-width: 0; isolation: isolate; overflow: hidden; }
+.g-stage::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: 12%; height: 22%; border-radius: 50%; z-index: -1; pointer-events: none;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(61, 255, 139, 0.16), rgba(61, 255, 139, 0) 72%); filter: blur(12px); }
+.g-make { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: -1; white-space: nowrap; pointer-events: none;
+  font: 400 clamp(110px, 15vw, 240px)/1 Anton, Impact, sans-serif; letter-spacing: 0.02em; text-transform: uppercase;
+  color: transparent; -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.07); }
+.g-still, .g-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.g-still { object-fit: contain; padding: 6% 4%; transition: opacity 0.5s; }
+.g-still:not([src]) { visibility: hidden; }
+.g-3d { opacity: 0; transition: opacity 0.5s; cursor: grab; touch-action: none;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.g-3d:active { cursor: grabbing; }
+.g-stage.live3d .g-3d { opacity: 1; }
+.g-stage.live3d .g-still { opacity: 0; }
+.g-stage.photo-on .g-3d, .g-stage.photo-on .g-still { display: none; }
+.g-photo { position: absolute; inset: 7% 10%; margin: 0; }
+.g-photo[hidden] { display: none; }
+.g-photo img { width: 100%; height: 100%; object-fit: contain; display: block; filter: saturate(0.55) brightness(0.8); }
+.g-photo img:not([src]) { visibility: hidden; }
+
+.g-info { position: relative; z-index: 1; align-self: center; display: flex; flex-direction: column; padding: 28px 0 28px 8px; }
+.g-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; font: 700 11px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.26em; text-transform: uppercase; color: var(--muted); }
+.g-eyebrow i { font-style: normal; margin: 0 7px; opacity: 0.5; }
+.g-rar, .g-own { padding: 5px 7px 4px; border-radius: 6px; letter-spacing: 0.16em; color: #0b0b0d; background: var(--rc, #fff); }
+.g-own { color: var(--text); background: rgba(255, 255, 255, 0.1); }
+.g-info h1 { margin: 14px 0 0; font: 400 clamp(40px, 4.4vw, 64px)/0.95 Anton, Impact, sans-serif; letter-spacing: 0.01em; text-transform: uppercase;
+  overflow-wrap: anywhere; }
+.g-go { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.g-go .btn { flex: 1; min-width: 0; }
+.g-line { margin: 14px 0 0; color: var(--muted); font-size: 13.5px; }
+.g-line a { color: var(--text); font-weight: 600; text-decoration: none; }
+.g-line a:hover { color: var(--accent); }
+.g-line a svg { width: 8px; height: 8px; margin: 0 2px 1px 4px; opacity: 0.7; }
+
+/* stats: label, a segmented bar, the number */
+.g-stats { list-style: none; margin: 28px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); display: grid; gap: 13px; }
+.g-stats li { display: grid; grid-template-columns: 96px minmax(0, 1fr) 76px; align-items: center; gap: 14px; }
+.g-stats .k { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.g-stats b { text-align: right; font: 400 19px/1 Anton, Impact, sans-serif; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.g-stats b small { margin-left: 4px; font: 600 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.08em; color: var(--muted); text-transform: none; }
+.g-bar { position: relative; height: 8px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.07);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+  mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%); }
+.g-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #1cc965, var(--accent)); box-shadow: 0 0 12px rgba(61, 255, 139, 0.5);
+  transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.g-bar.plain i { background: #d9dde6; box-shadow: none; }
+
+/* ---- the rail */
+.g-rail { padding: 0 0 max(18px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(10, 11, 15, 0.55); }
+.g-rail-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px;
+  padding: 0 max(var(--gut), env(safe-area-inset-right)) 0 max(var(--gut), env(safe-area-inset-left)); }
+.g-tabs { display: flex; gap: 22px; min-width: 0; }
+.g-tabs button { display: flex; align-items: baseline; gap: 8px; padding: 17px 0 14px; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font: 400 19px/1 Anton, Impact, sans-serif; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; box-shadow: inset 0 -2px 0 transparent; }
+.g-tabs button small { font: 600 12px/1 Inter, system-ui, sans-serif; letter-spacing: 0; color: var(--dim); font-variant-numeric: tabular-nums; }
+.g-tabs button:hover { color: var(--text); }
+.g-tabs button[aria-selected="true"] { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+.g-act { display: flex; align-items: center; gap: 12px; flex: none; }
+.g-note { color: var(--muted); font-size: 13px; }
+.g-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: thin;
+  scrollbar-color: #2a2c35 transparent; padding: 4px max(var(--gut), env(safe-area-inset-right)) 8px max(var(--gut), env(safe-area-inset-left));
+  scroll-padding-inline: var(--gut); }
+.g-card { position: relative; flex: none; width: 168px; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 8px 10px 11px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: inherit; font: inherit; text-align: left; cursor: pointer;
+  scroll-snap-align: start; transition: border-color 0.12s, background 0.12s, transform 0.12s; }
+.g-card:hover { border-color: #3a3d48; transform: translateY(-2px); }
+.g-card[aria-selected="true"] { border-color: var(--accent); background: linear-gradient(180deg, rgba(61, 255, 139, 0.1), rgba(61, 255, 139, 0.02)), var(--panel);
+  box-shadow: 0 0 0 1px var(--accent), 0 10px 30px rgba(61, 255, 139, 0.12); }
+.g-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 14px; }
+.g-card .pic { position: relative; display: block; height: 84px; margin: 0 -6px 4px; overflow: hidden; }
+.g-card .pic img { width: 100%; height: 100%; object-fit: contain; display: block; transform: scale(1.18); }
+.g-card .pic img.ph { transform: none; padding: 2px 18px; border-radius: 6px; }
+.g-card .nm { font-weight: 600; font-size: 13px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-card .sub { font: 700 9.5px/1.2 Inter, system-ui, sans-serif; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-card .n { position: absolute; top: 8px; right: 8px; z-index: 1; padding: 4px 6px 3px; border-radius: 6px; font: 800 10px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.06em; color: var(--text); background: rgba(255, 255, 255, 0.12); font-variant-numeric: tabular-nums; }
+.g-card::before { content: ''; position: absolute; left: 10px; top: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--rc, transparent); z-index: 1; }
+.g-card.off .pic img { filter: saturate(0.3); opacity: 0.45; }
+.g-card.off .nm { opacity: 0.55; }
+
+@media (max-width: 1100px) {
+  .g-top { grid-template-columns: minmax(0, 1fr) 350px; }
+  .g-stats li { grid-template-columns: 88px minmax(0, 1fr) 70px; gap: 12px; }
+}
+/* a phone, a narrow window: the car on top, the rail under it, then the panel */
+@media (max-width: 860px) {
+  #garage-page { min-height: 0; }
+  .g-top { display: contents; }
+  .g-stage { order: 1; height: min(62vw, 440px); min-height: 230px; }
+  .g-make { font-size: 30vw; top: 44%; }
+  .g-rail { order: 2; border-bottom: 1px solid var(--line); }
+  .g-info { order: 3; padding: 22px max(var(--gut), env(safe-area-inset-right)) max(36px, env(safe-area-inset-bottom)) max(var(--gut), env(safe-area-inset-left)); }
+  .g-info h1 { font-size: clamp(36px, 10.5vw, 56px); }
+  .g-go { margin-top: 20px; }
+  .g-go .btn.big { padding: 16px 14px; }
+  .g-stats { margin-top: 22px; }
+  .g-stats li { grid-template-columns: 92px minmax(0, 1fr) 72px; }
+  .g-card { width: 138px; }
+  .g-card .pic { height: 66px; }
+  .g-tabs { gap: 16px; }
+  .g-tabs button { font-size: 17px; }
+}
+@media (max-width: 380px) {
+  .g-act .btn { padding: 9px 10px; letter-spacing: 0.1em; }
+  .g-stats li { grid-template-columns: 80px minmax(0, 1fr) 64px; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-still, .g-3d, .g-card, .g-bar i { transition: none; }
+}

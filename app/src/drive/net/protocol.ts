@@ -127,6 +127,11 @@ export interface RoomListing {
   version: string;
 }
 
+/** The starter: the car everyone may drive and race, no Rip Car needed (a plain '73 Volvo 142 GL sedan). Online, any
+ *  other car must be one of the wallet's Rip Cars - server/room.ts mayDrive checks, at the join, at every car change
+ *  and before each countdown; offline (a test drive) any car drives. */
+export const STARTER_CAR = 'volvo-142-gl-hck20';
+
 /** A row of the weekly leaderboard: a wallet's best clean lap on a track this week (steps: the race's own count). */
 export interface BoardRow { rank: number; wallet: string; name: string; car: string; carName: string; steps: number; time: number; at: number }
 /** GET http://<server>/leaderboard[?wallet=]: this ISO week's board (Monday 00:00 UTC to the next, ms) per course - the
@@ -158,6 +163,7 @@ export type C2S =
   | { t: 'ready'; on: boolean }
   | { t: 'car'; car: string } // another car (in the lobby; between races it takes effect back in the lobby)
   | { t: 'p'; c: number; rtt?: number } // ping (c: the client's clock), with its last measured round trip
+  | { t: 'auto' } // the page's autopilot (the console's) drives from now on: the server marks this wallet's laps auto (one way)
   | { t: 'leave' };
 
 /** Server -> client. */
@@ -170,6 +176,9 @@ export type S2C =
   | { t: 'error'; msg: string; code?: 'full' | 'auth' | 'replaced' | 'version' | 'restart' }
   /** The server is about to restart (an update): the race on now still runs to its end, no new one starts. */
   | { t: 'notice'; code: 'restart'; msg: string }
+  /** Your car, as the server has it: the car you asked for isn't one of your wallet's Rip Cars (msg says so), so you
+   *  race this one - the one you had, or the starter. */
+  | { t: 'car'; car: string; msg: string }
   | {
       t: 'room'; phase: Phase; players: PlayerInfo[]; go: number; laps: number; track: string; min: number;
       host: number; // the host's id: the room's first human (it passes on in join order when they leave)

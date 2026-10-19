@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import futardUrl from './img-futard.webp';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Track, TrackFrame, TrackLook, VehicleState } from './types';
@@ -41,7 +42,7 @@ import type { Track, TrackFrame, TrackLook, VehicleState } from './types';
 // an open, stadium-like meadow on a smaller budget (its track is heavier, and from up on its decks the camera sees most
 // of the meadow at once): fewer trees, the ground cover gathered where the lap runs low, 6 chunks - and dressed like
 // Trackmania's stadium in a toy's meadow: grandstands (a crowd, ad boards, a roof with pennants) beside the booster
-// stadium, beside the double jump and across the spiral facing the tower, and the RIPCARS sign on the tower's crown.
+// stadium, beside the double jump and across the spiral facing the tower, and the sign on the tower's crown (the boards print the FUTARD TRADE ad).
 
 export interface World {
   update(state: VehicleState, dt: number): void;
@@ -100,7 +101,7 @@ const CHUNKS = 8; // the scenery's area chunks (draw calls at most; the ones out
  *  stilts and sees most of the meadow at once - from the top of the spiral, the whole of it - so it gets an open,
  *  stadium-like meadow on a smaller budget (its own track is heavier than the meadow's): fewer trees, the flowers and
  *  grass tufts gathered where the lap runs low (`low`: up on a deck nobody sees them), fewer chunks; and the dressing -
- *  grandstands beside the booster stadium, the double jump and facing the tower, the RIPCARS sign on the tower's crown. */
+ *  grandstands beside the booster stadium, the double jump and facing the tower, the sign on the tower's crown (FUTARD TRADE). */
 interface Style { look: typeof LOOK; cap: typeof CAP; chunks: number; low: boolean; dressing: boolean }
 const STYLES: Record<TrackLook['world'], Style> = {
   meadow: { look: LOOK, cap: CAP, chunks: CHUNKS, low: false, dressing: false },
@@ -566,32 +567,28 @@ function cloudAtlas(rnd: () => number) {
   return t;
 }
 
-/** The big jump's banner (4:1): RIPCARS in the app's display face on charcoal, orange bands, chequered ends. Redrawn
- *  once the web font has loaded (Impact stands in until then). */
+/** The boards' print (4:1: the big jump's banner, track 2's tower sign and ad boards): the FUTARD TRADE logo (a 4 KB
+ *  lossless webp) on its own charcoal, between chequered ends and thin hood-blue bands. The charcoal and chequers show
+ *  at once; the logo is drawn in when its image has loaded. */
 function bannerTexture(aniso: number) {
   const c = canvas(1024, 256), g = c.getContext('2d')!;
-  const draw = () => {
-    g.fillStyle = '#16171c';
-    g.fillRect(0, 0, 1024, 256);
-    g.fillStyle = '#ff6b00';
-    g.fillRect(0, 0, 1024, 22);
-    g.fillRect(0, 234, 1024, 22);
-    g.fillStyle = '#f4f4f2';
-    for (const x0 of [0, 928]) for (let i = 0; i < 4; i++) for (let j = 0; j < 7; j++) if ((i + j) % 2 === 0) g.fillRect(x0 + i * 24, 22 + j * 30, 24, 30);
-    g.fillStyle = '#ffffff';
-    g.font = 'italic 176px Anton, Impact, "Arial Black", sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText('RIPCARS', 512, 134, 740);
-  };
-  draw();
+  g.fillStyle = '#0f1114';
+  g.fillRect(0, 0, 1024, 256);
+  g.fillStyle = '#1f3c78';
+  g.fillRect(0, 0, 1024, 14);
+  g.fillRect(0, 242, 1024, 14);
+  g.fillStyle = '#f4f4f2';
+  for (const x0 of [0, 928]) for (let i = 0; i < 4; i++) for (let j = 0; j < 7; j++) if ((i + j) % 2 === 0) g.fillRect(x0 + i * 24, 23 + j * 30, 24, 30);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = aniso;
-  document.fonts?.load('176px Anton').then(() => {
-    draw();
+  const img = new Image();
+  img.onload = () => {
+    const h = 228, w = (img.width / img.height) * h; // the logo's own margins sit inside the bands
+    g.drawImage(img, 512 - w / 2, 14, w, h);
     t.needsUpdate = true;
-  }, () => {});
+  };
+  img.src = futardUrl;
   return t;
 }
 

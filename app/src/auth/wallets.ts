@@ -29,7 +29,7 @@ export function detectedWallets(): Wallet[] {
 
 /** Where to get one, and the universal links that open a page in each app's own browser (phones). */
 const KNOWN = [
-  { name: 'Phantom', color: '#ab9ff2', ink: '#1c1a2e', get: 'https://phantom.com/download', browse: 'https://phantom.app/ul/browse/' },
+  { name: 'Phantom', color: '#ab9ff2', ink: '#1c1a2e', get: 'https://phantom.com/download', browse: 'https://phantom.com/ul/browse/' },
   { name: 'Solflare', color: '#fc7227', ink: '#1f1206', get: 'https://solflare.com/download/', browse: 'https://solflare.com/ul/v1/browse/' },
   { name: 'Backpack', color: '#e33e3f', ink: '#fff', get: 'https://backpack.app/download', browse: 'https://backpack.app/ul/v1/browse/' },
 ];

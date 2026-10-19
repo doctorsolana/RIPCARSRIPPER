@@ -68,7 +68,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: 'index.html', rip: 'rip.html', compare: 'compare.html', views: 'views.html', inspect: 'inspect.html', drive: 'drive.html', online: 'online.html',
+        main: 'index.html', rip: 'rip.html', compare: 'compare.html', views: 'views.html', inspect: 'inspect.html', drive: 'drive.html', online: 'online.html', garage: 'garage.html',
         notfound: '404.html',
       },
     },

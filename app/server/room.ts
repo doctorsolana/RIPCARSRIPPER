@@ -4,8 +4,9 @@ import {
 } from '../src/drive/net/codec.ts';
 import {
   COUNTDOWN, H, JITTER_STEPS, LOG_VERSION, MAX_AHEAD, MAX_PLAYERS, Q, SNAP_EVERY, STEER_SLEW, hashSnap, noViolations,
-  type Phase, type PlayerInfo, type ResultRow, type S2C, type Violations,
+  STARTER_CAR, type Phase, type PlayerInfo, type ResultRow, type S2C, type Violations,
 } from '../src/drive/net/protocol.ts';
+import { ownedModels } from './garage.ts';
 import { CORE_LENGTH, SNAP_LENGTH } from '../src/drive/vehicles/arcade.ts';
 import { RaceSim, carName, loadSpec, type SimCar } from './sim.ts';
 import { DATA_DIR, recordLap } from './store.ts';
@@ -285,7 +286,15 @@ export class Room {
     if (this.phase === 'lobby') {
       let n = 0, all = true;
       for (const p of this.players) if ((this.botsOnly || p.send) && p.slot >= 0) (n++), (all &&= p.ready);
-      if (n >= Math.max(1, this.min) && all && !Room.draining) this.countdown(k);
+      if (n >= Math.max(1, this.min) && all && !Room.draining) {
+        // the gate drops only on cars their wallets hold right now: each human's car is checked again first (a car
+        // sold since it was picked goes back to the starter, and its player isn't ready any more)
+        if (Date.now() - this.checked < 1000) this.countdown(k);
+        else if (!this.checking) {
+          this.checking = true;
+          void this.recheck().then((ok) => ((this.checking = false), (this.checked = ok ? Date.now() : 0)));
+        }
+      }
     } else if (this.phase === 'countdown' && k >= this.sim.go) {
       this.setPhase('race', k);
     }
@@ -331,6 +340,19 @@ export class Room {
     if (us > b.max) b.max = us;
   }
 
+  private checking = false;
+  private checked = 0; // when every human's car last passed mayDrive (ms; the countdown waits for one under a second old)
+  private async recheck() {
+    let ok = true;
+    for (const p of this.humans) {
+      if (await mayDrive(p.wallet, p.car)) continue;
+      ok = false;
+      if (!this.players.includes(p)) continue;
+      this.setCar(p, STARTER_CAR);
+      p.send?.({ t: 'car', car: STARTER_CAR, msg: NOT_YOURS });
+    }
+    return ok;
+  }
   private setPhase(ph: Phase, k: number) {
     this.phase = ph;
     this.phaseAt = k;
@@ -530,8 +552,15 @@ export class Room {
 }
 
 export const validCar = (id: string) => !!loadSpec(id);
-/** Whether a wallet may race this car: any car the game has, for now. Later the car must be one of the wallet's Rip
- *  Cars (an asset of the collection it holds, its 'Toy #' the car's product code): that check goes here - the join and
- *  every car change ask it. */
-export const mayDrive = (_wallet: string | null, car: string) => validCar(car);
+/** Whether a wallet may race this car: a car the game has, and either the starter (STARTER_CAR: everyone's) or one of
+ *  the wallet's Rip Cars - an asset of the collection it holds whose 'Toy #' is the car's (garage.ts ownedModels: the
+ *  garage's 60 s cache; RIPCARS or the chain down, the last garage seen, else only the starter). Bots (no wallet) race
+ *  any car. Asked at the join, at every car change, and before each countdown (Room.recheck). */
+export async function mayDrive(wallet: string | null, car: string): Promise<boolean> {
+  if (!validCar(car)) return false;
+  if (wallet === null || car === STARTER_CAR) return true;
+  return (await ownedModels(wallet)).has(car);
+}
+/** What the server says when it refuses a car. */
+export const NOT_YOURS = 'Not in your garage';
 export { JITTER_STEPS };

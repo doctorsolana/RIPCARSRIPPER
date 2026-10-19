@@ -2,7 +2,8 @@ import { shortWallet } from './auth/address';
 import { checkSession, loadSession, onSession, type Session } from './auth/session';
 import { openCreateRoom } from './create-room';
 import { isDev } from './dev';
-import { mountNav, WALLET } from './nav';
+import { mountNav, RIPCARS_URL, WALLET } from './nav';
+import { raceableCars } from './owned';
 import { BUILD_ID } from 'virtual:build-id';
 import type { RoomListing } from './drive/net/protocol';
 import { DEFAULT_CAR, roomHref, saveCar, savedCar, serverHttp, serverUrl } from './drive/net/prefs';
@@ -31,6 +32,7 @@ h1 { font: 400 56px/1 Anton, Impact, sans-serif; letter-spacing: 0.02em; margin:
   border: 1px solid var(--line); border-radius: 16px; align-items: start; }
 label, .me { display: grid; gap: 7px; min-width: 0; }
 label > span, .me > span { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+label > em { font: 500 12px/1.3 Inter, system-ui, sans-serif; font-style: normal; color: var(--muted); } label > em a { color: var(--text); }
 .me-v { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 10px; background: var(--panel2);
   border: 1px solid var(--line); font: 600 15px/1 Inter, system-ui, sans-serif; color: var(--text); }
 .me-v img, .me-v svg { width: 22px; height: 22px; border-radius: 6px; flex: none; }
@@ -154,10 +156,24 @@ async function main() {
   }
   const { cars } = (await fetch('/cars/index.json').then((r) => r.json()).catch(() => ({ cars: [] }))) as { cars: NavCar[] };
   const modelled = cars.filter((c) => c.modelled);
-  carSel.innerHTML = modelled.map((c) => `<option value="${c.id}">${esc(`${c.make} ${c.model}`)}${c.year ? ` · ${c.year}` : ''}</option>`).join('');
-  const want = [q.get('car'), savedCar(), DEFAULT_CAR].find((id) => id && modelled.some((c) => c.id === id));
-  if (want) carSel.value = want;
-  nav.setCar(carSel.value);
+  // the cars this wallet may race: its Rip Cars the game has, and the starter (signed out: the starter); a link's car
+  // that isn't one of them gets the starter and one line
+  const asked = q.get('car');
+  let carNote = false;
+  async function fillCars() {
+    const ok = await raceableCars();
+    const mine = modelled.filter((c) => ok.has(c.id));
+    const was = carSel.value;
+    carSel.innerHTML = mine.map((c) => `<option value="${c.id}">${esc(`${c.make} ${c.model}`)}${c.year ? ` · ${c.year}` : ''}</option>`).join('');
+    const want = [was, asked, savedCar(), DEFAULT_CAR].find((id) => id && ok.has(id) && mine.some((c) => c.id === id));
+    if (want) carSel.value = want;
+    carNote = !!asked && !ok.has(asked) && modelled.some((c) => c.id === asked);
+    carSel.closest('label')!.querySelector('em')?.remove();
+    if (carNote) carSel.closest('label')!.insertAdjacentHTML('beforeend', `<em class="note">Not in your garage · <a href="${RIPCARS_URL}" target="_blank" rel="noopener">Rip a pack</a></em>`);
+    nav.setCar(carSel.value);
+  }
+  await fillCars();
+  onSession(() => void fillCars());
   carSel.addEventListener('change', () => {
     saveCar(carSel.value);
     nav.setCar(carSel.value);

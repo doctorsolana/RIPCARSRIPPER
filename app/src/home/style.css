@@ -190,3 +190,4 @@ button { font: inherit; }
   .live::before { animation: none; }
   .btn, .car, .hero-car img, .hero-car canvas { transition: none; }
 }
+@media (max-width: 760px) { #g-act .more { display: inline-block; } }

@@ -6,6 +6,7 @@ import { isDev, onDev } from '../dev';
 import { BUILD_ID } from 'virtual:build-id';
 import type { GarageListing, Leaderboard, RoomListing } from '../drive/net/protocol';
 import { roomHref, serverHttp, serverUrl } from '../drive/net/prefs';
+import { STARTER_CAR } from '../drive/net/protocol';
 import { EXT, mountNav, RIPCARS_URL, WALLET } from '../nav';
 import { carImg, TRACK_IMG, TRACKS } from './tracks';
 import type { Turntable } from './turntable';
@@ -81,6 +82,9 @@ const garageWallet = () => {
   const g = q.get('garage');
   return isDev() && isAddress(g) ? g : session?.wallet ?? null;
 };
+/** The car the online buttons race: the hero if the wallet may race it (one of its Rip Cars), else the starter. */
+const raceCar = () => (heroOwned && garageFor === session?.wallet ? hero : STARTER_CAR);
+const garageHref = (car: string) => `/garage.html?car=${encodeURIComponent(car)}`;
 const driveHref = (car: string, track?: string) => `/drive.html?car=${encodeURIComponent(car)}${track && track !== 'meadow' ? `&track=${encodeURIComponent(track)}` : ''}`;
 const withServer = (href: string) => (serverQ ? `${href}${href.includes('?') ? '&' : '?'}server=${encodeURIComponent(serverQ)}` : href);
 
@@ -104,8 +108,8 @@ function renderHero() {
   }
   heroImg.hidden = !pic;
   heroImg.alt = c ? `${c.make} ${c.model}` : '';
-  $<HTMLAnchorElement>('h-race').href = withServer(`/online.html?car=${encodeURIComponent(hero)}`);
-  $<HTMLAnchorElement>('h-drive').href = driveHref(hero);
+  $<HTMLAnchorElement>('h-race').href = withServer(`/online.html?car=${encodeURIComponent(raceCar())}`);
+  $<HTMLAnchorElement>('h-garage').href = garageHref(hero);
 }
 async function setHero(id: string, owned: GarageCar | null) {
   if (id === hero && owned?.mint === heroOwned?.mint) return;
@@ -172,7 +176,7 @@ function renderTracks() {
     }
     card.querySelector<HTMLButtonElement>('[data-tt]')!.disabled = !server;
     const race = card.querySelector<HTMLAnchorElement>('[data-race]')!;
-    race.href = withServer(`/online.html?track=${encodeURIComponent(t.id)}&car=${encodeURIComponent(hero)}`);
+    race.href = withServer(`/online.html?track=${encodeURIComponent(t.id)}&car=${encodeURIComponent(raceCar())}`);
     race.setAttribute('aria-disabled', String(!server));
     card.querySelector<HTMLAnchorElement>('[data-drive]')!.href = driveHref(hero, t.id);
     const tb = board?.tracks.find((b) => b.id === t.id);
@@ -201,7 +205,7 @@ tracksEl.addEventListener('click', async (e) => {
   if (!(await signedIn())) return;
   const track = b.dataset.tt!;
   const room = `tt-${track}-${Math.random().toString(36).slice(2, 8)}`;
-  location.href = roomHref(room, track, 3, { car: hero, server: serverQ, solo: true });
+  location.href = roomHref(room, track, 3, { car: raceCar(), server: serverQ, solo: true });
 });
 
 // ---- open rooms (every 3 s)
@@ -245,7 +249,7 @@ $('r-list').addEventListener('click', (e) => {
 async function join(name: string) {
   const r = rooms?.rooms.find((x) => x.name === name);
   if (!r || !(await signedIn())) return;
-  location.href = roomHref(r.name, r.track, r.laps, { car: hero, server: serverQ });
+  location.href = roomHref(r.name, r.track, r.laps, { car: raceCar(), server: serverQ });
 }
 $('r-create').addEventListener('click', () => {
   if (!rooms) return;
@@ -253,7 +257,7 @@ $('r-create').addEventListener('click', () => {
     courses: rooms.courses,
     taken: (n) => !!rooms?.rooms.some((r) => r.name === n),
     go: async (room, track, laps, bots) => {
-      if (await signedIn()) location.href = roomHref(room, track, laps, { car: hero, bots, server: serverQ });
+      if (await signedIn()) location.href = roomHref(room, track, laps, { car: raceCar(), bots, server: serverQ });
     },
     join: (n) => void join(n),
   });
@@ -295,19 +299,19 @@ function renderGarage() {
   if (!w) {
     // signed out: the cars the game has, and Connect
     title.innerHTML = 'Garage';
-    act.innerHTML = `<button type="button" class="btn sm" data-connect>${WALLET}Connect wallet</button>`;
+    act.innerHTML = `<a class="more" href="/garage.html">Open garage</a><button type="button" class="btn sm" data-connect>${WALLET}Connect wallet</button>`;
     const list = cars.filter((c) => c.modelled);
     body.innerHTML = `<div class="cars">${list.map((c) => {
       const pic = carImg(c.id);
-      return `<a class="car render go" href="${driveHref(c.id)}"><div class="pic">${pic ? `<img src="${pic.small}" alt="${esc(`${c.make} ${c.model}`)}" loading="lazy" decoding="async">` : ''}</div>
-        <div class="nm">${esc(`${c.make} ${c.model}`)}</div><div class="sub">${c.year ?? ''}</div><span class="btn ghost sm">Drive</span></a>`;
+      return `<a class="car render go" href="${garageHref(c.id)}"><div class="pic">${pic ? `<img src="${pic.small}" alt="${esc(`${c.make} ${c.model}`)}" loading="lazy" decoding="async">` : ''}</div>
+        <div class="nm">${esc(`${c.make} ${c.model}`)}</div><div class="sub">${c.year ?? ''}</div></a>`;
     }).join('')}</div>`;
     return;
   }
   const mine = garage?.cars ?? [];
   const n = mine.filter((c) => drivable(c.model)).length;
   title.innerHTML = `${dev ? 'Rip Cars' : 'Your Rip Cars'}${mine.length ? `<small>${mine.length}${n ? ` · ${n} drivable` : ''}</small>` : ''}`;
-  act.innerHTML = dev ? `<span class="who" title="${esc(w)}">${esc(shortWallet(w))} · dev</span>` : '';
+  act.innerHTML = `${dev ? `<span class="who" title="${esc(w)}">${esc(shortWallet(w))} · dev</span>` : ''}<a class="more" href="/garage.html${dev ? `?garage=${w}` : ''}">Open garage</a>`;
   if (!garage) {
     body.innerHTML = garageErr === 502 ? "<p class=\"note\">Can't reach RIPCARS right now</p>" : garageErr ? '<p class="note">Game server offline</p>' : '';
     return;
@@ -322,8 +326,8 @@ function renderGarage() {
     const rc = RARITY[(c.rarity ?? '').toLowerCase()];
     const sub = [c.rarity, c.collectorRarity].filter(Boolean).join(' · ');
     const inner = `${go ? '<span class="tag">Drivable</span>' : ''}<div class="pic">${c.image ? `<img src="${esc(c.image)}" alt="${esc(c.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ''}</div>
-      <div class="nm" title="${esc(c.name)}">${esc(c.name)}</div><div class="sub"${rc ? ` style="--rc:${rc}"` : ''}>${esc(sub)}</div>${go ? '<span class="btn ghost sm">Drive</span>' : ''}`;
-    return go ? `<a class="car go" href="${driveHref(c.model!)}" title="Drive the ${esc(carTitle(c.model!))}">${inner}</a>` : `<div class="car off">${inner}</div>`;
+      <div class="nm" title="${esc(c.name)}">${esc(c.name)}</div><div class="sub"${rc ? ` style="--rc:${rc}"` : ''}>${esc(sub)}</div>`;
+    return go ? `<a class="car go" href="${garageHref(c.model!)}" title="The ${esc(carTitle(c.model!))} in the garage">${inner}</a>` : `<div class="car off">${inner}</div>`;
   }).join('')}</div>${mine.length > shown.length ? `<div class="g-more"><button type="button" class="btn ghost sm" data-all>Show all ${mine.length}</button></div>` : ''}`;
 }
 $('garage').addEventListener('click', (e) => {

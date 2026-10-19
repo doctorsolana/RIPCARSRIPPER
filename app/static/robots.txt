@@ -5,4 +5,4 @@ Disallow: /compare.html
 Disallow: /views.html
 Disallow: /stills.html
 
-Sitemap: https://racecars.fun/sitemap.xml
+Sitemap: https://www.racecars.fun/sitemap.xml

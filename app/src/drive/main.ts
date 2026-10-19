@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import '../style.css';
 import { mountNav, RIPCARS_URL } from '../nav';
+import { raceableCars } from '../owned';
+import { STARTER_CAR } from './net/protocol';
 import { tierOf } from '../rarity';
 import { createAudio } from './audio';
 import { CAMERA, createChaseCamera } from './camera';
@@ -31,7 +33,7 @@ import { buildWorld } from './world-outdoor';
 // frame for a screenshot).
 
 const q = new URLSearchParams(location.search);
-const CAR = q.get('car') ?? 'skyline-hck01';
+const CAR = q.get('car') ?? STARTER_CAR; // (any car: a car the wallet can't race online is a test drive)
 const trackQ = q.get('track');
 const COURSE: CourseId = isCourse(trackQ) ? trackQ : DEFAULT_COURSE; // ?track=<id> (tracks/ COURSES); anything else: the meadow
 const COURSE_DEF = courseOf(COURSE); // its name, colour (the switch's dot, the Try button) and medal pace
@@ -41,11 +43,13 @@ const LAPS = Math.min(9, Math.max(1, Math.round(Number(q.get('laps')) || 3)));
 const FAST = Math.min(16, Math.max(1, Math.round(Number(q.get('fast')) || 1))); // tests: run the sim N x real time
 const KMH = 4.3; // u/s -> km/h at toy scale
 // u/s: the medal pace, the autopilot's average speed over 3 laps per course and car (each course's `pars`, in its
-// tracks/<course>.ts: a key is any word of the car's id, '*' the stock car's); medals at x1.03 / 1.10 / 1.20 of laps x
+// tracks/<course>.ts: a key is the car's toy number or any word of its id, '*' the stock car's); medals at x1.03 / 1.10 / 1.20 of laps x
 // length / PAR. A course without a car's number takes the default course's: the same pace, so its par time is the
 // meadow's scaled by the lap's length.
-const parIn = (row: Record<string, number>): number | undefined =>
-  CAR.toLowerCase().split('-').map((w) => row[w]).find((x) => x !== undefined) ?? row['*'];
+const parIn = (row: Record<string, number>): number | undefined => {
+  const w = CAR.toLowerCase().split('-'); // (the car's profile key, as vehicles/arcade.ts profileKey: its toy number first)
+  return [w[w.length - 1], ...w.slice(0, -1)].map((x) => row[x]).find((x) => x !== undefined) ?? row['*'];
+};
 const PAR = parIn(COURSE_DEF.pars) ?? parIn(courseOf(DEFAULT_COURSE).pars)!;
 const HARD_HIT = 25; // u/s square into a wall: an extra camera kick and a hard buzz (the camera scales its own shake by the hit)
 const BOOST_NAMES = ['', 'Boost', 'Super boost', 'Ultra boost', 'Hyper boost!']; // 4: the hidden 'magic max' tier
@@ -124,6 +128,7 @@ async function main() {
   const tier = tierOf(String(meta.rarity ?? 'common'));
   const carName = [meta.make, meta.model].filter(Boolean).join(' ') || CAR;
   hud.setCar(carName, tier.color);
+  void raceableCars().then((ok) => hud.setTag(ok.has(CAR) ? '' : 'Test drive'));
   document.title = `Drive · ${carName} · ${COURSE_DEF.name} · racecars`;
 
   const cam = createChaseCamera();

@@ -7,7 +7,8 @@
     "build": "tsc --noEmit && tsc --noEmit -p server && vite build && node scripts/prune-dist.mjs",
     "preview": "vite preview",
     "server": "node --env-file-if-exists=server/.env server/index.ts",
-    "replay": "node server/replay.ts"
+    "replay": "node server/replay.ts",
+    "stats": "node scripts/car-stats.ts"
   },
   "dependencies": {
     "@solana/wallet-standard-features": "1.3.0",

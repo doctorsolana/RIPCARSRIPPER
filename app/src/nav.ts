@@ -3,8 +3,9 @@ import { clearSession, loadSession, onSession, type Session } from './auth/sessi
 import { WORDMARK } from './brand';
 import { isDev, onDev, setDev } from './dev';
 
-// The top bar shared by every page: the wordmark (home: the landing), Drive, Race online (the way into multiplayer:
-// online.html, the room browser), Rip a pack (app.ripcars.io, where the Rip Cars come from: a new tab), and in dev mode
+// The top bar shared by every page: the wordmark (home: the landing), Garage (garage.html: your cars in 3D, their
+// stats, Drive / Test drive - the way to the drive page), Race online (the way into multiplayer: online.html, the room
+// browser), Rip a pack (app.ripcars.io, where the Rip Cars come from: a new tab), and in dev mode
 // (dev.ts) the tools - Reveal (the pack-rip prototype, rip.html) and Inspect - with a DEV badge by the logo. On the
 // reveal and the drive page a car picker plus "random" (the drive page adds its track switch; in an online room the
 // picker swaps the car in place: onCar), and at the right end the wallet chip: "Connect wallet" signed out (the wallet
@@ -217,7 +218,10 @@ async function copy(text: string) {
 
 /** `onCar`: the car picker and Random car call this instead of reloading the page with ?car= (an online room swaps
  *  the car in place); it also puts the picker on a page that has none. */
-export async function mountNav(page: 'home' | 'rip' | 'inspect' | 'drive' | 'online', opts: { switch?: NavSwitch; onCar?: (id: string) => void } = {}): Promise<Nav> {
+export async function mountNav(
+  page: 'home' | 'rip' | 'inspect' | 'drive' | 'online' | 'garage',
+  opts: { switch?: NavSwitch; onCar?: (id: string) => void; allow?: Promise<Set<string>> } = {},
+): Promise<Nav> {
   // embedded (the inspector's Reveal tab shows the reveal in a frame): the outer page has the bar
   if (window.top !== window.self) return { el: document.createElement('header'), setCar() {} };
   document.body.classList.add('nav-on');
@@ -229,7 +233,7 @@ export async function mountNav(page: 'home' | 'rip' | 'inspect' | 'drive' | 'onl
   el.innerHTML = `
     <a class="brand" href="/" aria-label="racecars">${WORDMARK}<b class="dv" title="Dev mode is on">DEV</b></a>
     <nav class="links">
-      <a href="/drive.html" data-page="drive">Drive</a>
+      <a href="/garage.html" data-page="garage">Garage</a>
       <a href="/online.html" data-page="online" class="race"><span class="wide">Race online</span><span class="narrow">Online</span></a>
       <a href="${RIPCARS_URL}" class="ext" target="_blank" rel="noopener" data-page="ripcars"><span class="wide">Rip a pack</span><span class="narrow">Rip</span>${EXT}</a>
       <a href="/rip.html" data-page="rip" class="dev">Reveal</a>
@@ -262,10 +266,11 @@ export async function mountNav(page: 'home' | 'rip' | 'inspect' | 'drive' | 'onl
   document.body.prepend(el);
 
   const { cars } = (await fetch('/cars/index.json').then((r) => r.json()).catch(() => ({ cars: [] }))) as { cars: NavCar[] };
-  const modelled = cars.filter((c) => c.modelled);
+  const allowed = opts.allow ? await opts.allow.catch(() => null) : null; // (online: the cars this wallet may race)
+  const modelled = cars.filter((c) => c.modelled && (!allowed || allowed.has(c.id)));
   const rip = el.querySelector<HTMLAnchorElement>('[data-page="rip"]')!;
   const inspect = el.querySelector<HTMLAnchorElement>('[data-page="inspect"]')!;
-  const drive = el.querySelector<HTMLAnchorElement>('[data-page="drive"]')!;
+  const garage = el.querySelector<HTMLAnchorElement>('[data-page="garage"]')!;
   const online = el.querySelector<HTMLAnchorElement>('[data-page="online"]')!;
   let select: HTMLSelectElement | null = null;
 
@@ -298,12 +303,10 @@ export async function mountNav(page: 'home' | 'rip' | 'inspect' | 'drive' | 'onl
     el,
     setCar(id: string) {
       if (select && [...select.options].some((o) => o.value === id)) select.value = id;
-      // the links carry the car across: inspect what you just ripped, rip what you're inspecting, drive it (from the
-      // drive page: on the same track; from anywhere else: the meadow)
-      if (modelled.some((c) => c.id === id)) {
+      // the links carry the car across: inspect what you just ripped, rip what you're inspecting, see it in the garage
+      if (cars.some((c) => c.id === id && c.modelled)) {
         rip.href = `/rip.html?car=${id}`;
-        const track = page === 'drive' ? new URLSearchParams(location.search).get('track') : null;
-        drive.href = `/drive.html?car=${id}${track ? `&track=${encodeURIComponent(track)}` : ''}`;
+        garage.href = `/garage.html?car=${id}`;
       }
       inspect.href = `/inspect.html?car=${id}`;
       if (modelled.some((c) => c.id === id)) online.href = `/online.html?car=${id}`;

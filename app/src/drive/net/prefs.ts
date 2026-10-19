@@ -1,11 +1,11 @@
-import { PORT } from './protocol';
+import { PORT, STARTER_CAR } from './protocol';
 
 // What the online pages share: the player's car (remembered in localStorage), where the game server is, and the link
 // into a room (the drive page with ?online=1 - what the lobby browser's Join / Create and the invite link open). Who you
 // are is your wallet's sign-in (auth/session.ts), not a setting.
 
 const CAR_KEY = 'ripcars.online.car';
-export const DEFAULT_CAR = 'skyline-hck01';
+export const DEFAULT_CAR = STARTER_CAR; // (online, the car everyone may race)
 
 function get(key: string) {
   try {

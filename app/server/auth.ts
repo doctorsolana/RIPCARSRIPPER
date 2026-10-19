@@ -36,7 +36,8 @@ const SESSION_TTL = 24 * 3600; // s
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const STATEMENT = 'Sign in to race on racecars. Free, no transaction: it only proves this wallet is yours.';
 const MAX_PENDING = 10_000; // sign-in requests remembered at once (all IPs)
-const RATE = { challenge: [30, 30 / 60], verify: [30, 30 / 60] } as const; // per IP: a burst, then per second (30 a minute)
+const RATE = { challenge: [150, 150 / 60], verify: [150, 150 / 60] } as const; // per IP: a burst, then per second (150 a minute: a venue's
+// wifi or a carrier's NAT puts dozens of people behind one IP)
 
 if (!process.env.AUTH_SECRET) {
   console.warn('auth: AUTH_SECRET is not set - using a random secret for this process, so every sign-in ends when the server restarts. Set AUTH_SECRET (32+ random characters) in production.');

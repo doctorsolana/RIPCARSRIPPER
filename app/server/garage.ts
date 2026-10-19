@@ -8,16 +8,21 @@ import { saveToy, toyOf } from './store.ts';
 // and value; each mint's toy number comes from its asset record (once: kept in the store for good, three lookups at a
 // time). A toy number the game has a car for (asset-generation/assets/cars/<id>/meta.json "toy" - the reference
 // manifest's product_code, the NFT's 'Toy #' attribute) maps to that car: drivable. The cars are Metaplex Core assets of
-// the Rip Cars collection (DiRqf7eyipQ7nPKtjWzFUZRyWT3M63GC75qyMDHe9Z81); racing doesn't check ownership yet
+// the Rip Cars collection (DiRqf7eyipQ7nPKtjWzFUZRyWT3M63GC75qyMDHe9Z81); racing checks ownership with ownedModels below
 // (room.ts mayDrive). RIPCARS_API (env) points at another API base (tests). With HELIUS_RPC_URL set (a DAS-capable RPC;
 // keep it in server/.env, never in the repo or the page) the garage comes from the chain instead: loadOnChain below.
 
+// Tests: GARAGE_MOCK=<file> - a JSON { "<wallet>": ["<toy #>", ...] }, read on every lookup, in place of RIPCARS and the
+// chain (security tests: a wallet that holds this car, one that doesn't).
+const MOCK = process.env.GARAGE_MOCK?.trim() || '';
 const API = (process.env.RIPCARS_API || 'https://app.ripcars.io/api/gacha').replace(/\/+$/, '');
-const TTL = 60_000; // ms a wallet's garage is kept
+const TTL = MOCK ? 0 : 60_000; // ms a wallet's garage is kept (the tests' mock: none)
 const STALE = 10 * 60_000; // ... and served anyway, marked stale, while RIPCARS doesn't answer
 const WAIT = 6000; // ms a request waits for toy numbers still being looked up (then answers partial: ask again)
 const LOOKUPS = 3; // asset lookups at once (all wallets)
 const MAX_WALLETS = 2000; // garages kept in memory
+const RETRY = MOCK ? 0 : 15_000; // ms after a failed lookup before the wallet's garage is asked for again (RIPCARS or the
+// chain down: every car check and page reload in that time gets the last garage, or the error, without asking)
 
 /** A car: RIPCARS's fields, its toy number (null: not known yet, or RIPCARS has none) and the game's car with that toy
  *  number (`model`: drivable). */
@@ -94,6 +99,7 @@ function toyNumber(mint: string): string | null | Promise<string | null> {
 // ---- a wallet's garage
 const garages = new Map<string, Garage>();
 const loading = new Map<string, Promise<Garage>>();
+const failed = new Map<string, { at: number; e: unknown }>(); // wallet -> its last failed lookup (RETRY)
 const RARITY = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
 const rank = (r: string | null) => {
   const i = RARITY.indexOf((r ?? '').toLowerCase());
@@ -151,7 +157,19 @@ async function loadOnChain(wallet: string): Promise<Garage> {
   return { wallet, cars, partial: false, at: Date.now() };
 }
 
+function loadMock(wallet: string): Garage {
+  const all = JSON.parse(readFileSync(MOCK, 'utf8')) as Record<string, unknown>;
+  const toys = Array.isArray(all[wallet]) ? (all[wallet] as unknown[]).filter((t): t is string => typeof t === 'string') : [];
+  const byToy = carsByToy();
+  const cars: GarageCar[] = toys.map((t, i) => {
+    const toy = t.toUpperCase(), model = byToy.get(toy) ?? null;
+    return { mint: `mock${i}`, name: toy, rarity: null, image: null, fmv: null, mintedAt: null, collectorRarity: null, assortment: null, toy, model, modelName: model ? carName(model) : null };
+  });
+  return { wallet, cars, partial: false, at: Date.now() };
+}
+
 async function load(wallet: string): Promise<Garage> {
+  if (MOCK) return loadMock(wallet);
   if (RPC) return loadOnChain(wallet);
   const list = await getJson(`${API}/my-cars?wallet=${encodeURIComponent(wallet)}`);
   if (!Array.isArray(list)) throw new Error('my-cars: not a list');
@@ -186,12 +204,20 @@ export async function garageOf(wallet: string): Promise<Garage> {
   const had = garages.get(wallet);
   if (had && Date.now() - had.at < (had.partial ? 3000 : TTL)) return had;
   let p = loading.get(wallet);
-  if (!p) {
+  const f = failed.get(wallet);
+  if (!p && f && Date.now() - f.at < RETRY) p = Promise.reject(f.e);
+  else if (!p) {
     p = load(wallet).then((g) => {
+      failed.delete(wallet);
       garages.delete(wallet);
       garages.set(wallet, g);
       if (garages.size > MAX_WALLETS) garages.delete(garages.keys().next().value!);
       return g;
+    }, (e) => {
+      failed.delete(wallet);
+      failed.set(wallet, { at: Date.now(), e });
+      if (failed.size > MAX_WALLETS) failed.delete(failed.keys().next().value!);
+      throw e;
     }).finally(() => loading.delete(wallet));
     loading.set(wallet, p);
   }
@@ -201,4 +227,31 @@ export async function garageOf(wallet: string): Promise<Garage> {
     if (had && Date.now() - had.at < STALE) return { ...had, stale: true };
     throw e;
   }
+}
+
+// ---- what a wallet may race (room.ts mayDrive)
+const OWN_WAIT = 5000; // ms a car check waits for the garage
+/** The game's cars this wallet holds - a Rip Car whose toy number is the car's - from its garage: the same lookup and
+ *  cache as GET /garage (60 s). The garage not answering within OWN_WAIT s, or failing (RIPCARS or the chain down): the
+ *  last one seen for the wallet, however old, else none (then only the starter races). Never throws. */
+export async function ownedModels(wallet: string): Promise<Set<string>> {
+  const of = (g: Garage) => new Set(g.cars.map((c) => c.model).filter((m): m is string => !!m));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const g = await Promise.race([garageOf(wallet), new Promise<null>((r) => (timer = setTimeout(() => r(null), OWN_WAIT)))]);
+    if (g) return of(g);
+  } catch {
+    // (no garage: below)
+  } finally {
+    clearTimeout(timer);
+  }
+  const had = garages.get(wallet);
+  return had ? of(had) : new Set();
+}
+
+/** GET /garage answers this wallet without asking RIPCARS or the chain (a fresh garage, a lookup already on its way, or
+ *  one that failed moments ago): the per-IP limit doesn't count it. */
+export function garageCached(wallet: string) {
+  const g = garages.get(wallet), f = failed.get(wallet);
+  return (!!g && Date.now() - g.at < (g.partial ? 3000 : TTL)) || loading.has(wallet) || (!!f && Date.now() - f.at < RETRY);
 }

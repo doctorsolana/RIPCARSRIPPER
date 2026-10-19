@@ -374,5 +374,5 @@ export const sky: Course<'sky'> = {
   supports: { spire: (G, frameAt, sp, o) => spire(G, frameAt, sp, o.tags, o.posts) },
   props,
   // medal pace (u/s) per car: see Course.pars
-  pars: { skyline: 47.30, impala: 45.89, roxy: 47.20, gt3: 47.28, '964': 46.67, firebird: 46.36, beach: 45.11, civic: 46.11, mustang: 46.88, silvia: 46.21, volvo: 45.65, jaguar: 47.17, splittin: 47.02, '*': 46.65 },
+  pars: { roxy: 47.87, gt3: 47.88, fyg14: 47.42, jhw90: 47.41, skyline: 47.42, splittin: 47.64, '964': 46.91, mustang: 46.87, jaguar: 47.11, civic: 46.04, firebird: 46.03, silvia: 45.51, volvo: 45.65, impala: 45.83, beach: 45.11, '*': 46.65 },
 };

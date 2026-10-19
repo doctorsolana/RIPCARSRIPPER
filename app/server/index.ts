@@ -3,12 +3,12 @@ import { createServer, type IncomingMessage } from 'node:http';
 import { monitorEventLoopDelay, PerformanceObserver } from 'node:perf_hooks';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { isAddress, shortWallet } from '../src/auth/address.ts';
-import { H, MAX_PLAYERS, PORT, type C2S, type Leaderboard, type RoomListing, type S2C } from '../src/drive/net/protocol.ts';
+import { H, MAX_PLAYERS, PORT, STARTER_CAR, type C2S, type Leaderboard, type RoomListing, type S2C } from '../src/drive/net/protocol.ts';
 import { COURSES, courseOf, isCourse } from '../src/drive/tracks/index.ts';
 import { ALLOWED, handleAuth, ipOf, originOk, verifySession } from './auth.ts';
 import { buildId } from './build-id.ts';
-import { garageOf } from './garage.ts';
-import { mayDrive, newPlayerId, Room, type Player } from './room.ts';
+import { garageCached, garageOf } from './garage.ts';
+import { mayDrive, newPlayerId, NOT_YOURS, Room, type Player } from './room.ts';
 import { carName, trackOf } from './sim.ts';
 import { board, DB_PATH, flushLaps, lapsWritten } from './store.ts';
 
@@ -44,6 +44,14 @@ const STATS_KEY = process.env.STATS_KEY ? Buffer.from(process.env.STATS_KEY, 'ut
 if (STATS_KEY && STATS_KEY.length < 16) console.warn('stats: STATS_KEY is short - use 16+ random characters.');
 console.log(`stats: ${STATS_KEY ? 'locked with STATS_KEY' : PROD ? 'off (production, no STATS_KEY)' : 'open (dev, no STATS_KEY)'}`);
 const DRAIN_S = Number(process.env.DRAIN_S) || 180; // s a SIGTERM waits for the races on to end
+// abuse caps (one shared vCPU steps every room; env to tune): rooms open at once (time trials too), rooms with bots,
+// sockets per IP (a venue's NAT: generous), seconds a socket may sit without joining, messages a connection may send a
+// second (the page sends ~65)
+const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 16, MAX_BOT_ROOMS = Number(process.env.MAX_BOT_ROOMS) || 4;
+const MAX_SOCKETS_PER_IP = Number(process.env.MAX_SOCKETS_PER_IP) || 80;
+const JOIN_WITHIN_S = Number(process.env.JOIN_WITHIN_S) || 20, MAX_MSGS_PER_S = Number(process.env.MAX_MSGS_PER_S) || 400;
+const socketsByIp = new Map<string, number>();
+const botRooms = new WeakSet<Room>(); // rooms made with bots (marked before the bots' cars load)
 const rooms = new Map<string, Room>();
 for (const c of COURSES) trackOf(c.id); // (built once now: building one on a room's first join stalls every room)
 const t0 = process.hrtime.bigint();
@@ -100,11 +108,12 @@ function sendJson(res: import('node:http').ServerResponse, status: number, body:
   res.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': cache });
   res.end(JSON.stringify(body));
 }
-/** GET /garage's per-IP limit (each miss costs requests to RIPCARS): a burst of 20, then 20 a minute. */
+/** GET /garage's per-IP limit (each miss costs requests to RIPCARS or the chain): a burst of 100, then 100 a minute (a
+ *  venue's NAT). A garage in the cache isn't counted; the server's own car checks (room.ts mayDrive) never are. */
 const garageBuckets = new Map<string, { tokens: number; at: number }>();
 function garageAllowed(ip: string) {
-  const now = Date.now() / 1000, b = garageBuckets.get(ip) ?? { tokens: 20, at: now };
-  b.tokens = Math.min(20, b.tokens + (now - b.at) * (20 / 60));
+  const now = Date.now() / 1000, b = garageBuckets.get(ip) ?? { tokens: 100, at: now };
+  b.tokens = Math.min(100, b.tokens + (now - b.at) * (100 / 60));
   b.at = now;
   garageBuckets.set(ip, b);
   if (garageBuckets.size > 10_000) garageBuckets.delete(garageBuckets.keys().next().value!);
@@ -166,7 +175,7 @@ const http = createServer(async (req, res) => {
   if (url.pathname === '/garage' && req.method === 'GET') {
     const w = url.searchParams.get('wallet') ?? '';
     if (!isAddress(w)) return sendJson(res, 400, { error: 'Not a wallet address' });
-    if (!garageAllowed(ipOf(req))) return sendJson(res, 429, { error: 'Too many requests. Try again in a minute.' });
+    if (!garageCached(w) && !garageAllowed(ipOf(req))) return sendJson(res, 429, { error: 'Too many requests. Try again in a minute.' });
     try {
       return sendJson(res, 200, await garageOf(w));
     } catch (e) {
@@ -248,9 +257,21 @@ function leaveRoom(r: Room, p: Player) {
   closeIfEmpty(r);
 }
 
-wss.on('connection', (ws: WebSocket) => {
+wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  const ip = ipOf(req), open = (socketsByIp.get(ip) ?? 0) + 1;
+  socketsByIp.set(ip, open);
+  ws.on('close', () => {
+    const n = (socketsByIp.get(ip) ?? 1) - 1;
+    if (n > 0) socketsByIp.set(ip, n);
+    else socketsByIp.delete(ip);
+  });
+  if (open > MAX_SOCKETS_PER_IP) return void ws.close(1013, 'too many connections');
+  const idle = setTimeout(() => !me && ws.close(4003, 'join timeout'), JOIN_WITHIN_S * 1000);
+  ws.on('close', () => clearTimeout(idle));
+  let msgs = 0, msgWin = Date.now();
   let room: Room | null = null, me: Player | null = null, joining = false, wallet: string | null = null, gone = false;
   let entering: Room | null = null; // the room this connection's player is being added to (its car loading)
+  let carAsks = 0; // car changes asked for (only the latest one's check counts)
   const send = (m: S2C) => {
     if (ws.readyState !== ws.OPEN) return;
     const s = JSON.stringify(m);
@@ -286,6 +307,9 @@ wss.on('connection', (ws: WebSocket) => {
     },
   };
   ws.on('message', async (data, isBinary) => {
+    const now = Date.now();
+    if (now - msgWin >= 1000) (msgWin = now), (msgs = 0);
+    if (++msgs > MAX_MSGS_PER_S) return void ws.close(1008, 'flood');
     const buf = data as Buffer;
     if (me) me.bytesIn += buf.length ?? 0;
     if (isBinary) {
@@ -319,7 +343,9 @@ wss.on('connection', (ws: WebSocket) => {
       if (!auth) return send({ t: 'error', code: 'auth', msg: 'Sign in with your wallet to race' });
       joining = true;
       const rn = String(m.room ?? '').replace(/[^a-z0-9_-]/gi, '').slice(0, 32) || 'demo';
-      const car = mayDrive(auth.wallet, String(m.car)) ? String(m.car) : 'skyline-hck01';
+      // a car the wallet doesn't hold races as the starter (and the page is told: below)
+      const asked = String(m.car).slice(0, 64), car = (await mayDrive(auth.wallet, asked)) ? asked : STARTER_CAR;
+      if (gone) return;
       const laps = Math.min(9, Math.max(1, Math.round(Number(m.laps)) || 3));
       const solo = m.solo === true; // a time trial: this wallet alone
       const elsewhere = (r: Room) => r.course !== m.track || r.laps !== Math.round(Number(m.laps) || 3);
@@ -342,14 +368,23 @@ wss.on('connection', (ws: WebSocket) => {
       byWallet.set(wallet, conn);
       if (prev && prev !== conn) prev.replace();
       r = rooms.get(rn);
+      const wantBots = solo ? 0 : Math.min(9, Math.max(0, Math.round(Number(m.bots)) || 0));
+      if (!r && (rooms.size >= MAX_ROOMS || (wantBots && [...rooms.values()].filter((x) => botRooms.has(x)).length >= MAX_BOT_ROOMS))) {
+        joining = false;
+        if (byWallet.get(wallet) === conn) byWallet.delete(wallet);
+        wallet = null;
+        return send({ t: 'error', code: 'full', msg: 'The server is busy right now: join an open room, or try again in a few minutes' });
+      }
       if (!r) {
         r = new Room(rn, String(m.track), laps);
         r.solo = solo;
         r.min = solo ? 1 : Math.min(10, Math.max(1, Math.round(Number(m.min)) || 1));
         rooms.set(rn, r);
         console.log(`[room ${rn}] created: ${r.course}, ${laps} laps, ${solo ? 'time trial' : `waits for ${r.min}`}`);
-        const bots = solo ? 0 : Math.min(9, Math.max(0, Math.round(Number(m.bots)) || 0));
-        if (bots) await r.addBots(bots, tick);
+        if (wantBots) {
+          botRooms.add(r);
+          await r.addBots(wantBots, tick);
+        }
       } else if (m.min && !r.solo) r.min = Math.max(r.min, Math.min(10, Math.round(Number(m.min)) || 1));
       if (gone) return closeIfEmpty(r); // (closed, or replaced, while the room was made)
       if (elsewhere(r)) return refuse(r, 'track');
@@ -366,13 +401,20 @@ wss.on('connection', (ws: WebSocket) => {
       me = p;
       console.log(`[room ${rn}] + ${p.name} (${wallet}, #${p.id}, ${car}) slot ${p.slot}; ${r.players.length} in the room`);
       send({ t: 'welcome', you: p.id, room: rn, track: r.course, laps: r.laps, tick });
+      if (car !== asked) send({ t: 'car', car, msg: NOT_YOURS });
       r.broadcastRoom();
       return;
     }
     if (!room || !me) return;
-    if (m.t === 'ready') room.setReady(me, !!m.on);
+    if (m.t === 'auto') me.auto = true; // (the console's autopilot: one way, never back)
+    else if (m.t === 'ready') room.setReady(me, !!m.on);
     else if (m.t === 'car') {
-      if (mayDrive(me.wallet, String(m.car))) room.setCar(me, String(m.car));
+      // only a car the wallet holds (or the starter); refused, the player keeps the car it has (the page is told)
+      const want = String(m.car).slice(0, 64), seq = ++carAsks, p = me, r = room;
+      const ok = await mayDrive(p.wallet, want);
+      if (seq !== carAsks || me !== p || room !== r) return; // (a later pick, or left, meanwhile)
+      if (ok) r.setCar(p, want);
+      else send({ t: 'car', car: p.car, msg: NOT_YOURS });
     } else if (m.t === 'leave') ws.close();
   });
   conns.add(conn);

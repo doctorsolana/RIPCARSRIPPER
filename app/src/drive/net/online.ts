@@ -4,6 +4,7 @@ import { shortWallet } from '../../auth/address';
 import { clearSession, loadSession, onSession, type Session } from '../../auth/session';
 import { isDev } from '../../dev';
 import { mountNav } from '../../nav';
+import { raceableCars } from '../../owned';
 import { tierOf } from '../../rarity';
 import { createAudio } from '../audio';
 import { createChaseCamera } from '../camera';
@@ -156,6 +157,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 export async function runOnline() {
   const q = new URLSearchParams(location.search);
   let CAR = q.get('car') || savedCar() || DEFAULT_CAR;
+  let serverCar: string | null = null; // the car the server set (its { t: 'car' }), not yet swapped to
   const trackQ = q.get('track');
   const COURSE: CourseId = isCourse(trackQ) ? trackQ : DEFAULT_COURSE;
   const COURSE_DEF = courseOf(COURSE);
@@ -171,6 +173,9 @@ export async function runOnline() {
   const LOSS = Math.min(50, Math.max(0, Number(q.get('loss')) || 0)) / 100;
   const SERVER = serverUrl(q);
   const MIN = Math.round(Number(q.get('min')) || 0), BOTS = Math.round(Number(q.get('bots')) || 0);
+  // a car this wallet can't race (a link, the remembered one): the starter, and one line to say so
+  const notMine = !!session && !(await raceableCars(session.wallet)).has(CAR);
+  if (notMine) CAR = DEFAULT_CAR;
 
   const hudRoot = document.getElementById('hud')!;
   const hud = createHud(hudRoot);
@@ -179,8 +184,10 @@ export async function runOnline() {
   document.head.append(style);
   hud.setCourse(COURSE_DEF.name, COURSE_DEF.color);
   hud.gate(false, false);
+  if (notMine) hud.toast('Not in your garage', '#fff');
   // (no track switch online: the room has its course; the car picker swaps the car in place, in the lobby)
-  const navP = mountNav('online', { onCar: (id) => void swapCar(id) });
+  // the picker: the cars this wallet may race (signed out: all - the server sets the car at the join: { t: 'car' })
+  const navP = mountNav('online', { onCar: (id) => void swapCar(id), allow: session ? raceableCars(session.wallet) : undefined });
   navP.then((n) => n.setCar(CAR));
   const canvas = document.getElementById('c') as HTMLCanvasElement;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -294,7 +301,7 @@ export async function runOnline() {
   /** Into the room as your wallet (the session token is all the server needs). */
   const join = () => session && send({
     t: 'join', room: ROOM, token: session.token, car: CAR, track: COURSE, laps: LAPS, min: MIN || undefined, bots: BOTS || undefined,
-    solo: SOLO || undefined, auto: AUTO || undefined, v: BUILD_ID,
+    solo: SOLO || undefined, auto: AUTO || autoDrive || undefined, v: BUILD_ID,
   });
   function connect() {
     if (!SERVER) {
@@ -429,6 +436,7 @@ export async function runOnline() {
     if (m.t === 'welcome') {
       net.onWelcome(m);
       me = m.you;
+      if (autoDrive) send({ t: 'auto' }); // (switched on while this join was on its way)
       void loadWeek();
       renderCard();
       syncRemotes();
@@ -466,6 +474,11 @@ export async function runOnline() {
       return;
     }
     if (m.t === 'room') return onRoom(m);
+    if (m.t === 'car') {
+      // the car asked for isn't one of the wallet's: the server races this one
+      hud.toast(m.msg, '#fff');
+      return void swapCar(m.car, false);
+    }
     if (m.t === 'lap') {
       if (m.id === me) {
         const n = m.lap;
@@ -492,6 +505,7 @@ export async function runOnline() {
     const mine = players.find((p) => p.id === me);
     ready = !!mine?.ready;
     syncRemotes();
+    if (phase === 'lobby' && serverCar && serverCar !== CAR) void swapCar(serverCar, false);
     if (what === 'race') {
       results = null;
       showResults = false;
@@ -864,10 +878,13 @@ export async function runOnline() {
   /** Another car, in place: its rig, a fresh vehicle on my grid slot, the effects and engine for it; the server swaps
    *  its car too (and un-readies me). Only in the lobby - mid-race the car is the race's. */
   let swapping = false;
-  async function swapCar(id: string) {
+  /** `tell`: ask the server for it (false: it's the server's own pick - { t: 'car' } - taken once in the lobby). */
+  async function swapCar(id: string, tell = true) {
     const nav = await navP;
+    if (!tell) serverCar = id;
     if (id === CAR || swapping) return;
     if (phase !== 'lobby') {
+      if (!tell) return; // (in the lobby: onRoom)
       nav.setCar(CAR);
       hud.toast('Change cars in the lobby', '#fff');
       return;
@@ -902,7 +919,8 @@ export async function runOnline() {
       const p = new URLSearchParams(location.search);
       p.set('car', id);
       history.replaceState(null, '', `${location.pathname}?${p}`);
-      send({ t: 'car', car: id });
+      if (tell) send({ t: 'car', car: id });
+      if (serverCar === id) serverCar = null;
     } catch (err) {
       console.warn('car swap failed', id, err);
       hud.toast('No 3D model for that car', '#fff');
@@ -939,7 +957,8 @@ export async function runOnline() {
     get view() { return cardView; }, get car() { return CAR; }, get name() { return myName(); }, get wallet() { return session?.wallet ?? null; },
     get host() { return host; },
     invite: () => invite(),
-    autoDrive: (on = true) => void (autoDrive = on),
+    // (the server marks the wallet's laps as the autopilot's from now on: never on the leaderboard)
+    autoDrive: (on = true) => void ((autoDrive = on), on && me >= 0 && send({ t: 'auto' })),
     /** Tests: the steering the autopilot gets on top (shove the car into another: crash tests) and its throttle's
      *  share (keep pace with another car) ... */
     nudge: (x: number, p = 1) => void ((nudge = x), (pace = p)),
