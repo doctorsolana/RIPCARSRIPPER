@@ -20,6 +20,7 @@ import { DATA_DIR, recordLap } from './store.ts';
 // solo room is a time trial: one wallet, no bots, not listed (index.ts).
 
 const RING = 1024; // steps of inputs kept per player
+const LOG_CHUNK = 16 * 1024; // chars of race log gathered before a write
 const FULL_EVERY = Number(process.env.FULL_EVERY ?? 3) * SNAP_EVERY; // steps: a client mispredicting all the time (in a pack) is corrected 20 times a s
 const FINISH_WAIT = 30 / H; // steps: after the first car finishes, the rest have this long
 const RESULTS_TIME = 8 / H; // steps the results stay up before the next lobby
@@ -188,6 +189,7 @@ export class Room {
     if (p.sim) {
       if (this.phase === 'race' || this.phase === 'results') {
         p.sim.out = true; // (kept in the race's car list, which the log indexes; no longer stepped)
+        if (p.send) this.leftViol.set(p.wallet ?? p.name, { ...p.viol });
         this.writeLog({ k: tick, out: this.sim.cars.indexOf(p.sim) });
       } else this.sim.remove(p.id);
     }
@@ -303,7 +305,8 @@ export class Room {
         row.push(i, q[0], q[1], q[2], q[3]);
         l[o] = q[0], l[o + 1] = q[1], l[o + 2] = q[2], l[o + 3] = q[3];
       }
-      if (row.length && this.log) this.log.write(`{"k":${k},"in":[${row.join(',')}]}\n`);
+      if (row.length && this.log) this.logBuf += `{"k":${k},"in":[${row.join(',')}]}\n`;
+      if (this.logBuf.length > LOG_CHUNK) this.flushLog();
       if (this.phase === 'race') {
         let racing = 0, done = true, someone = false;
         for (const c of cars) if (!c.out) (racing++), (done &&= c.lap.finish >= 0);
@@ -476,6 +479,7 @@ export class Room {
   // state) - replay.ts re-simulates it exactly, every collision included.
   private openLog(k: number) {
     this.endLog(k, 'restart');
+    this.leftViol.clear();
     const dir = `${LOG_DIR}${this.name.replace(/[^a-z0-9_-]/gi, '_').slice(0, 32) || 'room'}/`;
     mkdirSync(dir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -490,20 +494,30 @@ export class Room {
       }),
     });
   }
+  private leftViol = new Map<string, Violations>();
   private raceContact = { pairs: 0, touches: 0, hits: 0, maxDepth: 0, maxVn: 0 };
   /** This race's contact counts (the room's since it opened, less those before the race). */
   raceContacts() {
     const a = this.sim.contact, b = this.raceContact;
     return { pairs: a.pairs - b.pairs, touches: a.touches - b.touches, hits: a.hits - b.hits };
   }
+  // (the lines gather here and go to the file in chunks of LOG_CHUNK: one write a second or so, not one per step)
+  private logBuf = '';
   private writeLog(o: object) {
-    this.log?.write(JSON.stringify(o) + '\n');
+    if (this.log) this.logBuf += JSON.stringify(o) + '\n';
+  }
+  private flushLog() {
+    if (this.log && this.logBuf) this.log.write(this.logBuf);
+    this.logBuf = '';
   }
   private endLog(k: number, why: string, rows?: ResultRow[]) {
     if (!this.log) return;
     const viol: Record<string, Violations> = {};
     for (const p of this.players) if (p.send) viol[p.wallet ?? p.name] = p.viol;
+    for (const [w, v] of this.leftViol) viol[w] ??= v; // (and those who left mid-race: their late inputs too)
+    this.leftViol.clear();
     this.writeLog({ t: 'end', k, why, results: rows ?? this.results(), hash: this.sim.hash(), viol, contact: this.raceContacts() });
+    this.flushLog();
     this.log.end();
     this.log = null;
   }

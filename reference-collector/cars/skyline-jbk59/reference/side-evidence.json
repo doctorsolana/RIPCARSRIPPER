@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-19",
+  "id": "skyline-jbk59",
+  "product_code": "JBK59",
+  "physical_side_convention": "Vehicle left/right as seated facing forward. Right elevation nose-right; left nose-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "White sill exhaust only on the vehicle-left; side number/text is independently readable."
+  ],
+  "inferred_details": [
+    "Exact vertical overhead and concealed geometry inferred from oblique photos; fine printing and reflection placement approximate."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "4397aef74c71adea9ff778dffa64fcd787221831b35b957d0080cfcc760b90a7",
+          "source_page": "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-27325-ba55d805.jpg?v=",
+          "width": 2149,
+          "height": 1001
+        }
+      ],
+      "inferred_details": [
+        "Orthographic reprojection remains synthesized."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "a9f16531cead31d52abec14a3dba15feb019bca01d7c359d7f3d9b91bfc5bd88",
+          "source_page": "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-27325-19f4feb7.jpg?v=",
+          "width": 2121,
+          "height": 983
+        }
+      ],
+      "inferred_details": [
+        "Orthographic reprojection remains synthesized."
+      ]
+    }
+  }
+}

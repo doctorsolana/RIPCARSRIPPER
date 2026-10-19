@@ -1,0 +1,35 @@
+{
+  "id": "splittin-image-b3575",
+  "code": "B3575",
+  "name": "Splittin' Image — white Treasure Hunt",
+  "edition": "2004 Treasure Hunt 6/12, collector 106",
+  "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=B3575",
+  "files": [
+    {
+      "file": "catalog-01.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=B3575",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Splittin_%20Image%20%28retool%29-8401-cccd2697.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 320,
+      "height": 240,
+      "bytes": 11935,
+      "sha256": "5b6345da1d1ead602caa5579a696700ff8dd148965a26a196cc15d462f32b1a6"
+    },
+    {
+      "file": "pack-photo.png",
+      "source_page": null,
+      "image_url": null,
+      "kind": "user-supplied pack photograph",
+      "width": 2322,
+      "height": 3542,
+      "bytes": 9866450,
+      "sha256": "66ddab58c5155ada9bcca697c53a6681ccfe60baca5e9f68852628d95d04ccb5"
+    }
+  ],
+  "retrieved_on": "2026-10-19",
+  "notes": [
+    "Vehicle-left lacks a reliable exact-release photo; opposite flames, hidden rear and top contours are conservatively inferred.",
+    "Original bytes and visible watermarks preserved unchanged. Packaging illustrations are secondary evidence only."
+  ]
+}

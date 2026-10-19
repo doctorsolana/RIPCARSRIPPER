@@ -15,6 +15,7 @@ import { World, type WorldCar } from './world.ts';
 
 const RING = 1024;
 const SNAP_DIST = 6; // u: a correction bigger than this (a respawn) snaps instead
+const MAX_MARGIN = 8; // steps (67 ms): the most lead the clock adds for a jittery link
 
 type Room = Extract<S2C, { t: 'room' }>;
 
@@ -37,6 +38,11 @@ export class NetClient {
   extra = 0;
   private settleUntil = 0;
   private bHist: { at: number; b: number }[] = [];
+  private bSort = new Float64Array(1024);
+  /** Extra steps of lead on top of JITTER_STEPS, learnt from late inputs (steerClock). */
+  margin = 0;
+  private marginAt = 0;
+  private lateAt = 0;
   // ---- your inputs and predicted states by step; the states whose hash was sent (exact: the server's when it matches)
   private ring = new Int32Array(RING * 4);
   private ringK = new Float64Array(RING).fill(-1);
@@ -73,7 +79,7 @@ export class NetClient {
     rcorr: [] as number[], // ... the other cars'
     mis: [] as number[], // your prediction's error at the snapshot's step (u), when the server sent your state
     reconciles: 0, rollbacks: 0, replayed: 0, holds: 0, jumps: 0, snaps: 0, fulls: 0, lateHits: 0, snapped: 0,
-    lead: 0, b: [] as number[], snapBytes: 0, extraSteps: 0, holdSteps: 0,
+    lead: 0, margin: 0, b: [] as number[], snapBytes: 0, extraSteps: 0, holdSteps: 0,
   };
 
   constructor(o: { track: Track; specOf: (car: string) => Promise<CarSpec>; vehicle: Vehicle; car: string; send: (d: string | Uint8Array, droppable: boolean) => void; raw?: boolean }) {
@@ -160,6 +166,9 @@ export class NetClient {
   // ---- snapshots (binary). `apply` false: a snapshot the page's simulated network "lost" - read (the next one is a
   // change from it) but not acted on.
   onSnapshot(buf: Uint8Array, apply: boolean, now: number) {
+    // a rewind still waiting carries your corrected state (the server's full one): do it now, before this snapshot's
+    // cars overwrite the ones it rewinds to (a plain one is just superseded by this newer one)
+    if (this.pending?.m) this.settle();
     const r = new Reader(buf);
     if (r.u8() !== MSG_SNAP) return;
     const k = r.u32(), race = r.u16(), flags = r.u8();
@@ -195,6 +204,8 @@ export class NetClient {
       this.bHist.length = 0;
     }
     if (b !== null) {
+      // your input for a step the server had already run (it repeated your last one): ask for more lead
+      if (b < 0 && this.racing()) this.lateAt = now;
       this.bHist.push({ at: now, b });
       this.stats.b.push(b);
       if (this.stats.b.length > 4000) this.stats.b.splice(0, 2000);
@@ -202,7 +213,9 @@ export class NetClient {
     if (lapR && race === this.raceNo) this.lap = lapR;
     if (this.own) this.own.finish = this.lap[2];
     this.updateActive();
-    if (race === this.raceNo && this.raceOn() && this.cs !== null && k >= this.go && k <= this.cs) this.rewind(k, m, ok);
+    // the rewind waits for the next step or frame (settle): snapshots that come in a burst - after a stall on the
+    // way - cost one rewind and replay, not one each
+    if (race === this.raceNo && this.raceOn() && this.cs !== null && k >= this.go && k <= this.cs) this.pending = { k, m, ok };
     else if (!this.raceOn()) {
       // not racing: the others stand where the server says (the grid)
       for (const c of this.world.cars) {
@@ -214,6 +227,15 @@ export class NetClient {
         c.qOff.identity();
       }
     }
+  }
+
+  private pending: { k: number; m: boolean; ok: boolean } | null = null;
+  /** The newest snapshot's rewind, if one waits (stepOnce and the page's frame call it). */
+  settle() {
+    const p = this.pending;
+    if (!p) return;
+    this.pending = null;
+    if (this.cs !== null && p.k <= this.cs && this.raceOn()) this.rewind(p.k, p.m, p.ok);
   }
 
   /** Who steps: your car when you're racing, every other car in the race once its state and vehicle are here. */
@@ -312,6 +334,7 @@ export class NetClient {
   /** One step of yours: the input (`read`: the page's - keys, pad, touch or the autopilot; null when not racing),
    *  quantized as the server will apply it, kept, and the world stepped on it. */
   stepOnce(read: (racing: boolean) => DriveInput) {
+    this.settle();
     if (this.cs === null) return void read(false);
     if (this.hold > 0) {
       this.hold--;
@@ -368,28 +391,37 @@ export class NetClient {
     this.send(w.view().slice(), true);
   }
 
-  /** The clock: keep your inputs arriving JITTER_STEPS early (the worst of the last 2 s). Returns the sim's speed
-   *  against real time (a hair fast or slow), or 1 after a jump. */
+  /** The clock: keep your inputs arriving JITTER_STEPS + margin early. Returns the sim's speed against real time.
+   *  How early they arrive is the low end of the last 4 s (its 5th percentile: one stall on the way - a lost packet TCP
+   *  re-sends - is a blip to ride out, not a new lag to jump to); the margin grows a step each time an input still
+   *  arrives late (up to MAX_MARGIN) and shrinks a step after a calm 10 s. Racing, the clock only ever speeds up or
+   *  slows down a little (your car never stops or leaps): a jump only for a lag far off what it is steering to. Not
+   *  racing yet, it just moves. */
   steerClock(now: number): number {
     const bh = this.bHist;
-    while (bh.length && bh[0].at < now - 2000) bh.shift();
+    while (bh.length && bh[0].at < now - 4000) bh.shift();
+    if (this.lateAt > this.marginAt + 1500 && this.margin < MAX_MARGIN) (this.margin++), (this.marginAt = now);
+    else if (this.margin > 0 && now - Math.max(this.lateAt, this.marginAt) > 10000) (this.margin--), (this.marginAt = now);
     if (this.cs === null || bh.length < 6 || now < this.settleUntil) return 1;
-    let minB = Infinity;
-    for (const x of bh) minB = Math.min(minB, x.b);
-    const err = minB - JITTER_STEPS;
+    const sc = this.bSort, nb = Math.min(bh.length, sc.length);
+    for (let i = 0; i < nb; i++) sc[i] = bh[bh.length - nb + i].b;
+    const lo = sc.subarray(0, nb).sort()[Math.floor(nb * 0.05)];
+    const target = JITTER_STEPS + this.margin;
+    const err = lo - target;
     this.stats.lead = err;
+    this.stats.margin = this.margin;
     if (Math.abs(err) > 2 && !this.raceOn() && !(this.go >= 0 && this.cs - err >= this.go)) {
       this.cs -= err; // not driving yet: just move the clock
       this.stats.jumps++;
-    } else if (err < -8) {
-      this.extra += -err; // my inputs arrive late: catch up now
+    } else if (err < -12) {
+      this.extra += -err; // far behind (the lag went up for good): catch up now
       this.stats.jumps++;
-    } else if (err > 24) {
-      this.hold += err - 4; // far too early (the lag went down): wait
+    } else if (err > 60 && !this.racing()) {
+      this.hold += err - 4; // far too early, not driving: wait
       this.stats.jumps++;
     } else {
       // (asymmetric: a late input costs a correction, an early one only a few ms of latency)
-      return err < 0 ? 1 + Math.min(0.03, -err * 0.01) : err > 3 ? 1 - Math.min(0.03, (err - 3) * 0.004) : 1;
+      return err < 0 ? 1 + Math.min(0.06, -err * 0.01) : err > 2 ? 1 - Math.min(0.05, (err - 2) * 0.004) : 1;
     }
     bh.length = 0;
     this.settleUntil = now + this.rtt + 300;

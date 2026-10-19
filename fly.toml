@@ -45,6 +45,12 @@ kill_timeout = 200
 
 # the sim steps every room at 120 Hz on one thread: if /stats shows steps running late (lateUs p99 over a few ms), move
 # to a dedicated CPU (size = "performance-1x")
+# RECOMMENDED (not applied - the founder decides; `fly deploy` applies it): a shared-cpu-1x is guaranteed 6.25% of a core
+# and bursts on a credit balance. A 3-car race (2 bots) already used ~5-6% (Fly metrics, 2026-10-19); a full 10-car room
+# needs ~3x that, so long sessions drain the balance and then throttle to 6.25% - every step and snapshot late. For real
+# multiplayer load use a dedicated core:
+#   size = "performance-1x"   # 1 dedicated vCPU, 2 GB (the smallest performance size); ~$31/month vs ~$3/month now
+# (a cheap middle step: size = "shared-cpu-2x", memory = "512mb" - a 12.5% baseline, still burst-and-throttle)
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"

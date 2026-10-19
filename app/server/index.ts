@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
-import { PerformanceObserver } from 'node:perf_hooks';
+import { monitorEventLoopDelay, PerformanceObserver } from 'node:perf_hooks';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { isAddress, shortWallet } from '../src/auth/address.ts';
 import { H, MAX_PLAYERS, PORT, type C2S, type Leaderboard, type RoomListing, type S2C } from '../src/drive/net/protocol.ts';
@@ -10,7 +10,7 @@ import { buildId } from './build-id.ts';
 import { garageOf } from './garage.ts';
 import { mayDrive, newPlayerId, Room, type Player } from './room.ts';
 import { carName, trackOf } from './sim.ts';
-import { board, DB_PATH, flushLaps } from './store.ts';
+import { board, DB_PATH, flushLaps, lapsWritten } from './store.ts';
 
 // RIPCARS drive: the local multiplayer demo's server. `npm run server` -> ws://localhost:8790 (PORT to change it).
 // Server-authoritative: it runs the drive page's own sim (vehicles/arcade.ts, tracks/, car-to-car contact in
@@ -127,6 +127,18 @@ function leaderboard(wallet: string | null): Leaderboard {
   return { ...week, now, tracks };
 }
 
+/** The leaderboard's answers, kept a few seconds and until the next lap is written: the board's queries are sync SQLite
+ *  on the thread that steps the races, so a burst of page loads mustn't run them each time. */
+const boardCache = new Map<string, { at: number; v: number; body: Leaderboard }>();
+function cachedBoard(wallet: string | null): Leaderboard {
+  const key = wallet ?? '', now = Date.now(), hit = boardCache.get(key);
+  if (hit && hit.v === lapsWritten && now - hit.at < 5000) return hit.body;
+  const body = leaderboard(wallet);
+  if (boardCache.size > 1000) boardCache.clear();
+  boardCache.set(key, { at: now, v: lapsWritten, body });
+  return body;
+}
+
 /** /stats and /reset-stats: with STATS_KEY, the key (?key= or a Bearer header, compared in constant time); without one,
  *  open in dev and off in production. */
 function statsAllowed(req: IncomingMessage, url: URL) {
@@ -145,7 +157,7 @@ const http = createServer(async (req, res) => {
     const w = url.searchParams.get('wallet');
     if (w !== null && w !== '' && !isAddress(w)) return sendJson(res, 400, { error: 'Not a wallet address' });
     try {
-      return sendJson(res, 200, leaderboard(w || null));
+      return sendJson(res, 200, cachedBoard(w || null));
     } catch (e) {
       console.error('leaderboard:', e);
       return sendJson(res, 500, { error: 'Server error' });
@@ -210,7 +222,7 @@ const http = createServer(async (req, res) => {
 });
 // a browser's WebSocket only from the allowed origins (a client that isn't a browser sends none: it still needs a token)
 const wss = new WebSocketServer({
-  server: http, maxPayload: 16 * 1024,
+  server: http, maxPayload: 16 * 1024, perMessageDeflate: false, // (ws's default, said: no compression of 20-200 B messages)
   verifyClient: (info: { origin?: string }, cb: (ok: boolean, code?: number, msg?: string) => void) => (originOk(info.origin || undefined) ? cb(true) : cb(false, 403, 'Origin not allowed')),
 });
 
@@ -231,7 +243,7 @@ function closeIfEmpty(r: Room) {
 /** A player out of their room (a disconnect, a replaced connection). */
 function leaveRoom(r: Room, p: Player) {
   if (!r.players.includes(p)) return;
-  console.log(`[room ${r.name}] - ${p.name} (#${p.id})`);
+  console.log(`[room ${r.name}] - ${p.name} (#${p.id})${p.send ? `: ${p.viol.late} late inputs, ${p.snaps} snapshots (${p.fulls} with a correction)` : ''}`);
   r.leave(p, tick);
   closeIfEmpty(r);
 }
@@ -398,19 +410,26 @@ function pump() {
 }
 pump();
 
-let lastBytes = new Map<number, number>();
+// the event loop's blocks (anything that holds it - a GC, a sync call - delays every step and snapshot behind it)
+const loopDelay = monitorEventLoopDelay({ resolution: 5 });
+loopDelay.enable();
+let lastBytes = new Map<number, number>(), lastLate = new Map<number, number>();
 setInterval(() => {
   for (const r of rooms.values()) {
     const st = r.stepWin;
     const ps = r.players.map((p) => {
       const kbs = ((p.bytesOut - (lastBytes.get(p.id) ?? 0)) / 5 / 1024).toFixed(1);
-      return p.send ? `${p.name}${p.ready ? '*' : ''} ${p.ping}ms ${kbs}KB/s` : p.name;
+      const late = p.viol.late - (lastLate.get(p.id) ?? 0); // inputs that came after their step ran (the last one repeated)
+      return p.send ? `${p.name}${p.ready ? '*' : ''} ${p.ping}ms ${kbs}KB/s${late ? ` ${late} late` : ''}` : p.name;
     });
     console.log(`[room ${r.name}] ${r.course} ${r.phase} race ${r.race} | ${r.players.length} cars: ${ps.join(', ')} | step ${st.n ? (st.sum / st.n).toFixed(0) : '-'} us avg, ${st.max.toFixed(0)} max`);
     st.n = st.sum = st.max = 0;
   }
   lastBytes = new Map([...rooms.values()].flatMap((r) => r.players.map((p) => [p.id, p.bytesOut] as [number, number])));
-  if (rooms.size) console.log(`server: steps late p50 ${(stats.late.q(0.5) / 1000).toFixed(2)} ms, p99 ${(stats.late.q(0.99) / 1000).toFixed(2)}, max ${(stats.late.max / 1000).toFixed(1)}; gc ${stats.gc.n} pauses, max ${(stats.gc.max / 1000).toFixed(1)} ms`);
+  lastLate = new Map([...rooms.values()].flatMap((r) => r.players.map((p) => [p.id, p.viol.late] as [number, number])));
+  const blockMs = loopDelay.max / 1e6;
+  loopDelay.reset();
+  if (rooms.size) console.log(`server: steps late p50 ${(stats.late.q(0.5) / 1000).toFixed(2)} ms, p99 ${(stats.late.q(0.99) / 1000).toFixed(2)}, max ${(stats.late.max / 1000).toFixed(1)}; gc ${stats.gc.n} pauses, max ${(stats.gc.max / 1000).toFixed(1)} ms; loop blocked max ${blockMs.toFixed(1)} ms (5 s)`);
   if (stats.behind) console.log(`server: fell behind by ${stats.behind} steps (dropped)`), (stats.behind = 0);
 }, 5000);
 

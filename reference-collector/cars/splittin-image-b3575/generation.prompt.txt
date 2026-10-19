@@ -1,0 +1,25 @@
+Use case: product-mockup
+Asset type: photographic five-view Hot Wheels miniature reference sheet for Tripo and 3D texture work.
+Generate a NEW sheet directly from the attached REAL miniature photographs. These are identity/detail evidence, NOT camera-angle templates. No previous generated sheet is an input. Preserve the toy casting rather than replacing it with a full-size vehicle.
+
+FIVE VIEWS IN FOUR ROWS, PORTRAIT 2:3:
+1. Full-width vehicle-RIGHT SIDE, nose RIGHT.
+2. Full-width vehicle-LEFT SIDE, nose LEFT.
+3. Full-width true vertical OVERHEAD, nose RIGHT.
+4. Straight FRONT on left, straight REAR on right.
+Matching longitudinal scale for both sides and overhead. Complete silhouettes and generous WHITE gutters. One fixed pose, wheels straight, all doors/bonnet closed. No labels, packaging, borders or additional views.
+
+CRITICAL CAMERA: Both side rows are dead-level ENGINEERING LATERAL ELEVATIONS, orthographic-style, viewed exactly horizontally from mid-door height, exactly perpendicular to doors: zero pitch, yaw and roll. Hood, roof and trunk TOP planes collapse to THIN curved silhouette contours. No wide windshield, top-facing hood graphics, grille/headlight FACE, rear lamp FACE, or look down into seat cushions. Real wraparound lamp SIDE edges may remain. Wheel faces are circles, hub baseline level, far wheels and wing supports align behind the near ones. Change projection, never squash body height or square the nose into a slab. Preserve genuine roof height, curved fenders, wheelbase, tire diameter, ride height and bumper silhouette. Never hide/erase hood artwork to disguise a high camera.
+Front/rear cameras also horizontal, level at bumper height; no downward view over a broad hood/deck. Overhead camera vertical, not oblique. These are dimensional photographs under orthographic cameras, not flat line drawings.
+
+MATERIALS: Smooth natural photographic die-cast paint gradients and controlled reflections, subtle random metallic flecks where appropriate, round tire volume, recessed spokes, thick glass, dark wheel wells and cabin depth. No etched/engraved/swirled/paisley paint pattern, vector tracing, cel shading or sprite appearance. Keep form shading ON the toy. PURE WHITE #FFFFFF outside every silhouette: no receiving floor, contact/cast shadows, halo or floor reflections. Do not copy photographic background/watermarks as car decals. High native detail, clean uncropped silhouettes.
+
+TARGET: Splittin' Image — white Treasure Hunt; B3575.
+INPUTS:
+Image 1: Actual miniature in blister: physical right side; ignore blue card illustration.
+Image 2: Low-resolution real right-front-quarter photo; twin canopy and exposed engine.
+RIGHT: real_reference. LEFT: inferred, conservative continuity only; do not invent extra text.
+
+IDENTITY AND SIDE DETAILS:
+Splittin' Image B3575 2004 Treasure Hunt: pearl WHITE low fantasy twin-pod car, TWO separate long MAGENTA/PURPLE translucent canopy bubbles side by side (not one central windscreen), exposed bright chrome engine/intake between the pods toward the front, plain unpainted metal lower sides/base. Black flame shapes edged with lavender/purple on white body. Thick black rubber tires, chrome deep-dish perforated-disc rims with small round holes, not five-spoke wheels. Two split protruding front nose pods and curved rear humps. Tiny TH/treasure marking and 35 YEARS OF RACING on front upper body where supported by the small catalog photo. Pack photo controls right side profile/flames, wheel proportions and purple canopy. IMPORTANT: the large BLUE CAR ILLUSTRATION on the cardboard is an unrelated casting; never borrow its shape/wing/lamps. Only miniature inside blister is evidence. Left-side precise flame paths and unseen front/rear details are inferred conservatively, not claimed observed.
+Never horizontally mirror one side to produce the other. All numbers/words read normally from their own view. Hidden details and exact top projection are synthesized conservatively.

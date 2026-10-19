@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-19",
+  "id": "splittin-image-b3575",
+  "product_code": "B3575",
+  "physical_side_convention": "Vehicle left/right as seated facing forward. Right elevation nose-right; left nose-left.",
+  "opposite_side_status": "inferred",
+  "whole_side_inferred": true,
+  "notes": [
+    "Vehicle-left lacks a reliable exact-release photo; opposite flames, hidden rear and top contours are conservatively inferred.",
+    "HWtreasure gallery identified, but original image downloads returned HTTP 403; not falsely recorded as inspected or used. Additional searches did not yield a saved reliable opposite-side photograph."
+  ],
+  "inferred_details": [
+    "Exact vertical overhead and concealed geometry inferred from oblique photos; fine printing and reflection placement approximate."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/Search?searchText=B3575",
+    "https://www.hwtreasure.com/2004-hot-wheels-treasure-hunts/splittin-image/",
+    "https://www.hwtreasure.com/image-gallery/?from=450"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/pack-photo.png",
+          "sha256": "66ddab58c5155ada9bcca697c53a6681ccfe60baca5e9f68852628d95d04ccb5",
+          "source_page": null,
+          "image_url": null,
+          "width": 2322,
+          "height": 3542
+        }
+      ],
+      "inferred_details": [
+        "Orthographic reprojection remains synthesized."
+      ]
+    },
+    "left": {
+      "status": "inferred",
+      "files": [],
+      "inferred_details": [
+        "Vehicle-left lacks a reliable exact-release photo; opposite flames, hidden rear and top contours are conservatively inferred."
+      ]
+    }
+  }
+}

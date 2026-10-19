@@ -49,11 +49,14 @@ export interface Lap {
 const insert = db.prepare(`INSERT INTO laps (wallet, car, track, len, steps, lap, room, race, log, at, cars, contact, pre, auto)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 const queue: Lap[] = [];
+/** Bumped on every write of laps (index.ts's leaderboard cache keys on it). */
+export let lapsWritten = 0;
 let flushing = false;
 /** Write the queued laps now (one transaction). */
 export function flushLaps() {
   flushing = false;
   if (!queue.length) return;
+  lapsWritten++;
   const rows = queue.splice(0);
   try {
     db.exec('BEGIN');

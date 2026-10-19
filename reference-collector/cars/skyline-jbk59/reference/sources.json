@@ -1,0 +1,68 @@
+{
+  "id": "skyline-jbk59",
+  "code": "JBK59",
+  "name": "LB-ER34 Super Silhouette Nissan Skyline — white/yellow #23",
+  "edition": "2025 Car Culture Silhouettes 1/5",
+  "source_page": "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077",
+  "files": [
+    {
+      "file": "catalog-01.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-27325-ba55d805.jpg?v=",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2149,
+      "height": 1001,
+      "bytes": 228561,
+      "sha256": "4397aef74c71adea9ff778dffa64fcd787221831b35b957d0080cfcc760b90a7"
+    },
+    {
+      "file": "catalog-02.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-27325-6ef255eb.jpg?v=",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 955,
+      "height": 1184,
+      "bytes": 126447,
+      "sha256": "0e18d116e84ce9c28da7af56fa9d8c7053c1d1b9cdc919d28d215a9bf1309ceb"
+    },
+    {
+      "file": "catalog-03.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-27325-19f4feb7.jpg?v=",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2121,
+      "height": 983,
+      "bytes": 227713,
+      "sha256": "a9f16531cead31d52abec14a3dba15feb019bca01d7c359d7f3d9b91bfc5bd88"
+    },
+    {
+      "file": "catalog-04.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/seriesdefinitions/details/2077",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/LB-ER34%20Super%20Silhouette%20Nissan%20Skyline-27325-6efc82be.jpg?v=",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 954,
+      "height": 937,
+      "bytes": 118478,
+      "sha256": "9abc20cc532fab29e654c211185bce306d55ff2ac5af6269c74cbdd1a5f8a454"
+    },
+    {
+      "file": "pack-photo.png",
+      "source_page": null,
+      "image_url": null,
+      "kind": "user-supplied pack photograph",
+      "width": 486,
+      "height": 600,
+      "bytes": 457847,
+      "sha256": "64d4eed8429b60a2be0b3eb93c8e9d31ce96a451635ae84034e0e4bba0d3513c"
+    }
+  ],
+  "retrieved_on": "2026-10-19",
+  "notes": [
+    "White sill exhaust only on the vehicle-left; side number/text is independently readable.",
+    "Original bytes and visible watermarks preserved unchanged. Packaging illustrations are secondary evidence only."
+  ]
+}

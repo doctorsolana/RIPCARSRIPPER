@@ -1,0 +1,68 @@
+{
+  "id": "nissan-silvia-htf93",
+  "code": "HTF93",
+  "name": "Nissan Silvia (CSP311) — red Collector Edition",
+  "edition": "2024 Collector Edition, Dollar General #1",
+  "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93",
+  "files": [
+    {
+      "file": "catalog-01.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Silvia%20CSP311-23958-b57e736f.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1789,
+      "height": 752,
+      "bytes": 191526,
+      "sha256": "6a51ce99c9cec4e4dca41a5bc14f78e4c2c8eb4da89b467644f0eff55a4dc977"
+    },
+    {
+      "file": "catalog-02.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Silvia%20CSP311-23958-4546200b.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 832,
+      "height": 868,
+      "bytes": 113553,
+      "sha256": "203213c6624871c712cb2a7ff3130db62010c684622eb4a9c683940d4b7ad668"
+    },
+    {
+      "file": "catalog-03.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Silvia%20CSP311-23958-38de3026.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1853,
+      "height": 789,
+      "bytes": 202431,
+      "sha256": "3fc15077195697186706f31a50ec12f5ddffc68f7cf95d10d7d72ac2a5de4b78"
+    },
+    {
+      "file": "catalog-04.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Silvia%20CSP311-23958-434ae684.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 814,
+      "height": 862,
+      "bytes": 104261,
+      "sha256": "8ab7cdd717d0615237366d1a4fec9fa03519fdfaa68dc23f662c9cdba717a98e"
+    },
+    {
+      "file": "pack-photo.png",
+      "source_page": null,
+      "image_url": null,
+      "kind": "user-supplied pack photograph",
+      "width": 2317,
+      "height": 3629,
+      "bytes": 8612770,
+      "sha256": "9de30fb21df6356027e3c6bc434f8d223820468e3e762a1602014806d2e8ffd2"
+    }
+  ],
+  "retrieved_on": "2026-10-19",
+  "notes": [
+    "Separate normally readable Hot Wheels logos, side numbers and Japanese text; hood number offset toward vehicle-left.",
+    "Original bytes and visible watermarks preserved unchanged. Packaging illustrations are secondary evidence only."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-19",
+  "id": "nissan-silvia-htf93",
+  "product_code": "HTF93",
+  "physical_side_convention": "Vehicle left/right as seated facing forward. Right elevation nose-right; left nose-left.",
+  "opposite_side_status": "real_reference",
+  "whole_side_inferred": false,
+  "notes": [
+    "Separate normally readable Hot Wheels logos, side numbers and Japanese text; hood number offset toward vehicle-left."
+  ],
+  "inferred_details": [
+    "Exact vertical overhead and concealed geometry inferred from oblique photos; fine printing and reflection placement approximate."
+  ],
+  "source_pages_checked": [
+    "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93"
+  ],
+  "sides": {
+    "right": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-01.jpg",
+          "sha256": "6a51ce99c9cec4e4dca41a5bc14f78e4c2c8eb4da89b467644f0eff55a4dc977",
+          "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Silvia%20CSP311-23958-b57e736f.jpg",
+          "width": 1789,
+          "height": 752
+        }
+      ],
+      "inferred_details": [
+        "Orthographic reprojection remains synthesized."
+      ]
+    },
+    "left": {
+      "status": "real_reference",
+      "files": [
+        {
+          "file": "reference/catalog-03.jpg",
+          "sha256": "3fc15077195697186706f31a50ec12f5ddffc68f7cf95d10d7d72ac2a5de4b78",
+          "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HTF93",
+          "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/Nissan%20Silvia%20CSP311-23958-38de3026.jpg",
+          "width": 1853,
+          "height": 789
+        }
+      ],
+      "inferred_details": [
+        "Orthographic reprojection remains synthesized."
+      ]
+    }
+  }
+}

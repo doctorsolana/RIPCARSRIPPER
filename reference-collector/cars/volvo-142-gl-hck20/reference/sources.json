@@ -1,0 +1,68 @@
+{
+  "id": "volvo-142-gl-hck20",
+  "code": "HCK20",
+  "name": "'73 Volvo 142 GL — black chase",
+  "edition": "2022 Car Culture AutoStrasse 0/5 chase",
+  "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HCK20",
+  "files": [
+    {
+      "file": "catalog-01.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HCK20",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/_73%20Volvo%20142%20GL-21437-106cabaa.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2191,
+      "height": 899,
+      "bytes": 244787,
+      "sha256": "17097b697089a36c9b28eb049d0811c44d0a7eb28c93f3c2455173f9e0f3ff88"
+    },
+    {
+      "file": "catalog-02.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HCK20",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/_73%20Volvo%20142%20GL-21437-4c37db75.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 1012,
+      "height": 1039,
+      "bytes": 152833,
+      "sha256": "c340417ffcc4c8a709612378d7609dddcc94dbc8117e5e35b6b323bcb204a651"
+    },
+    {
+      "file": "catalog-03.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HCK20",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/_73%20Volvo%20142%20GL-21437-c33551b8.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 2128,
+      "height": 879,
+      "bytes": 229370,
+      "sha256": "05592385c029904fdb879b0fd57fbcef38c61b10c8dcc7476e902191c9cfb2a2"
+    },
+    {
+      "file": "catalog-04.jpg",
+      "source_page": "https://catalog.hwcollectorsnews.com/Search?searchText=HCK20",
+      "image_url": "https://rockheaddiecast.blob.core.windows.net/images/Variation/wm/_73%20Volvo%20142%20GL-21437-abb76832.jpg",
+      "kind": "loose-toy catalog photograph",
+      "watermark": "Original Hot Wheels Newsletter watermark retained unchanged.",
+      "width": 997,
+      "height": 1007,
+      "bytes": 137445,
+      "sha256": "b17f9d137414a0081d19730eebb4213c31faa85b299140566598ef4320b0fb94"
+    },
+    {
+      "file": "pack-photo.png",
+      "source_page": null,
+      "image_url": null,
+      "kind": "user-supplied pack photograph",
+      "width": 2878,
+      "height": 3545,
+      "bytes": 11265147,
+      "sha256": "884b10d1c65a9a45a54dbf67362f2a9a839543f235be6be11ead025164c4a971"
+    }
+  ],
+  "retrieved_on": "2026-10-19",
+  "notes": [
+    "Round silver fuel cap only on vehicle-right; single exhaust under vehicle-right rear bumper.",
+    "Original bytes and visible watermarks preserved unchanged. Packaging illustrations are secondary evidence only."
+  ]
+}

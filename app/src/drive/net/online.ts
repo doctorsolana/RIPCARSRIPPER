@@ -548,6 +548,7 @@ export async function runOnline() {
         if (remotes.get(p.id) !== r) return g.dispose();
         r.rig = g;
         scene.add(g.root);
+        warm(g.root);
       }).catch((e) => console.warn('no rig for', p.car, e));
     }
     for (const [id, r] of remotes) {
@@ -556,6 +557,20 @@ export async function runOnline() {
       r.tag.remove();
       remotes.delete(id);
     }
+  }
+  /** A car that just loaded, ready to draw before it's first seen: its shaders compiled (off the main thread where the
+   *  GPU can) and its textures on the GPU - else the frame it first comes into view (it overtakes you, it rounds a bend)
+   *  stalls on them. */
+  function warm(root: THREE.Object3D) {
+    const was = root.visible;
+    root.visible = true;
+    void renderer.compileAsync(root, cam.camera, scene).catch(() => {});
+    root.visible = was;
+    root.traverse((o) => {
+      for (const m of ([] as THREE.Material[]).concat((o as THREE.Mesh).material ?? [])) {
+        for (const v of Object.values(m)) if ((v as THREE.Texture)?.isTexture) renderer.initTexture(v as THREE.Texture);
+      }
+    });
   }
   const proj = new THREE.Vector3(), V = new THREE.Vector3();
   /** Every other car at its predicted pose (between its last two steps) plus its visual error; its hits' sparks and
@@ -977,6 +992,7 @@ export async function runOnline() {
       const sc = net.steerClock(now);
       if (sc !== scale) loop.setTimeScale((scale = sc));
       for (let n = 0; net.extra > 0 && n < 60; n++, net.extra--) net.stepOnce(read);
+      net.settle(); // (a snapshot's rewind that no step took up this frame)
       net.flush();
       // the visual errors decay
       const kx = 1 - Math.exp(-dt / SMOOTH), kr = 1 - Math.exp(-dt / SMOOTH_REMOTE);
