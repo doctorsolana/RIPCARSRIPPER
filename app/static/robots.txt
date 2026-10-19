@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /rip.html
+Disallow: /inspect.html
+Disallow: /compare.html
+Disallow: /views.html
+Disallow: /stills.html
+
+Sitemap: https://racecars.fun/sitemap.xml

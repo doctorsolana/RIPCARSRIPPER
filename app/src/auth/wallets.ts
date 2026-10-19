@@ -39,6 +39,7 @@ const isPhone = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgen
 class SignInError extends Error {}
 
 async function post(url: string, body: unknown) {
+  if (url.startsWith('/')) throw new SignInError('The game server is offline. Try again later.'); // (no server set)
   let r: Response;
   try {
     r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store' });

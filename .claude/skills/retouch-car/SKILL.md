@@ -14,7 +14,7 @@ The scripts get each car most of the way automatically. You finish it, and you o
 - The sheet must exist and be accepted: `reference-collector/cars/<id>/generated/reference-sheet.png`, with `selected.layout` in its manifest. If it's missing or not accepted, the reference stage isn't done; don't model from drafts.
 - **New car:** create `asset-generation/assets/cars/<id>/`:
   - `hints.json`: `photo` (relative path to `reference-collector/cars/<id>/reference/pack-photo.webp`) and `carBox` `[x, y, w, h]`, the car in the blister. Look at the photo with a pixel ruler. Add `wheels` circles if the photo is small or the tyres are dark on a dark card.
-  - `meta.json`: make, model, year (+ `yearSource`), line, series, collection, rarity. RIPCARS tiers are still placeholders: common, rare, epic, legendary, chase.
+  - `meta.json`: make, model, year (+ `yearSource`), line, series, collection, `toy` (the reference manifest's `product_code`: the NFT's 'Toy #', which the game maps a wallet's Rip Cars by), rarity. RIPCARS tiers are still placeholders: common, rare, epic, legendary, chase.
 
 ## 2. Build
 
@@ -32,7 +32,7 @@ Read the console. `WARN ... check failed` names the gate. Then look at **every**
 - `glass.jpg`: every window found, and nothing else.
 - `pack-fit.png` and `extract.jpg`: the landing pose against the pack photo.
 
-Then look at it textured, the way the user will see it. With `cd app && npm run dev -- --port 5199` running:
+Then look at it textured, the way the user will see it, in the reveal (`http://localhost:5199/rip.html?car=<id>`; shoot.mjs opens it for a query). With `cd app && npm run dev -- --port 5199` running:
 
 ```sh
 node scripts/shoot.mjs /tmp/shots 1280x800 "q1:car=<id>&mode=view&az=0.75&el=0.3" "q2:car=<id>&mode=view&az=-0.9&el=0.3" "q3:car=<id>&mode=view&az=1.45&el=0.15" "land:car=<id>&mode=final&card=0.6"

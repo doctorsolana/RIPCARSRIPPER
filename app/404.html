@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0e12" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Not found · RACECARS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/home/style.css" />
+    <style>
+      .nf { min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 22px; padding: 64px 16px 40px; text-align: center;
+        background: radial-gradient(60% 60% at 50% 45%, #1d1f2b 0%, var(--bg) 72%); }
+      .nf h1 { margin: 0; font: 400 clamp(120px, 24vw, 240px)/0.9 Anton, Impact, sans-serif; letter-spacing: 0.02em; color: transparent; -webkit-text-stroke: 2px rgba(255, 255, 255, 0.5); }
+      .nf p { margin: 0; color: var(--muted); font-size: 15px; }
+      .nf div { display: flex; gap: 12px; margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <main class="nf">
+      <h1>404</h1>
+      <p>No page here</p>
+      <div><a class="btn primary" href="/">Home</a><a class="btn ghost" href="/drive.html">Drive</a></div>
+    </main>
+    <script type="module" src="/src/notfound.ts"></script>
+  </body>
+</html>

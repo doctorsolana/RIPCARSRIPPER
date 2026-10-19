@@ -142,7 +142,7 @@ $R promote <id>          # model.glb + model.json + landing fit (alignment.json)
 
 Promote copies the repaint to `model.glb` and writes `model.json` with silhouette IoU per view. Open windows don't count against it there. The checks use the looser `GATES_GENERATED`. Promote then re-fits the pack-photo landing. The scripts' own model is kept as `snapshots/scripted.glb`, and `$R model <id> --force` brings it back. After a promote, `model` and `build` leave the car's model alone unless you pass `--force`.
 
-Check `qa/<id>/silhouette-*.png` and `pack-fit.png`, then the landing in the reveal:
+Check `qa/<id>/silhouette-*.png` and `pack-fit.png`, then the landing in the reveal (`/rip.html?car=<id>`; shoot.mjs opens it for a query):
 
 ```sh
 node scripts/shoot.mjs /tmp/shots 1280x800 "land:car=<id>&mode=final&card=0.6" "q1:car=<id>&mode=view&az=0.75&el=0.3" "q2:car=<id>&mode=view&az=-2.3&el=0.35"

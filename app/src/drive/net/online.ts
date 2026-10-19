@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { shortWallet } from '../../auth/address';
 import { clearSession, loadSession, onSession, type Session } from '../../auth/session';
+import { isDev } from '../../dev';
 import { mountNav } from '../../nav';
 import { tierOf } from '../../rarity';
 import { createAudio } from '../audio';
@@ -295,6 +296,13 @@ export async function runOnline() {
     solo: SOLO || undefined, auto: AUTO || undefined,
   });
   function connect() {
+    if (!SERVER) {
+      // (an https page with no game server set: nothing to connect to)
+      return void setTimeout(() => {
+        notice = { title: 'Game server offline', text: 'Online races are not available right now.', reload: false };
+        renderCard();
+      });
+    }
     ws = new WebSocket(SERVER);
     ws.binaryType = 'arraybuffer';
     ws.onmessage = onMessage;
@@ -306,7 +314,7 @@ export async function runOnline() {
       if (notice) return; // (the server said why first: a full room, your wallet racing elsewhere)
       notice = me >= 0
         ? { title: 'Disconnected', text: 'Lost the connection to the game server.', reload: true }
-        : { title: 'No game server', text: `Can't reach it at ${esc(SERVER)}. Running it locally? Start it with <b>npm run server</b> in the app folder, then try again.`, reload: true };
+        : { title: 'Game server offline', text: isDev() ? `Nothing at ${esc(SERVER)}: <b>npm run server</b> in the app folder starts it.` : 'Online races are not available right now.', reload: true };
       renderCard();
     };
   }
@@ -351,7 +359,7 @@ export async function runOnline() {
   // a time trial: this visit's best lap (steps), and your best and rank on this week's board (GET /leaderboard)
   let bestRun: number | null = null, week: { rank: number; steps: number } | null | undefined;
   async function loadWeek() {
-    if (!SOLO || !session) return;
+    if (!SOLO || !session || !SERVER) return;
     try {
       const r = await fetch(`${serverHttp(SERVER)}/leaderboard?wallet=${session.wallet}`, { cache: 'no-store' });
       const lb = (await r.json()) as Leaderboard;

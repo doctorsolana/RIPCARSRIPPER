@@ -57,7 +57,7 @@ python3 reference-collector/workflow/validate_assets.py
 cd asset-generation && uv run --locked python -m ripcars status
 
 # 3. Run the reveal, or inspect every car at http://localhost:5199/inspect.html
-cd app && npm install && npm run dev -- --port 5199     # http://localhost:5199/?car=<car-id>
+cd app && npm install && npm run dev -- --port 5199     # the reveal: http://localhost:5199/rip.html?car=<car-id> (the site, racecars: http://localhost:5199/)
 ```
 
 ## Deploy (Vercel)

@@ -58,8 +58,8 @@ button { font: inherit; cursor: pointer; }
   font: 700 12px/1 Inter, system-ui, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #0b0b0d; background: #fff;
   text-decoration: none; white-space: nowrap; }
 .btn:hover { background: #e4e6ea; }
-.btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 24px rgba(255, 61, 110, 0.3); }
-.btn.primary:hover { background: #ff5582; }
+.btn.primary { color: #fff; background: #e0245a; box-shadow: 0 6px 24px rgba(255, 61, 110, 0.3); }
+.btn.primary:hover { background: #ea3366; }
 .btn.ghost { color: var(--text); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); }
 .btn.ghost:hover { background: rgba(255, 255, 255, 0.1); }
 .btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
@@ -167,6 +167,7 @@ async function main() {
   let data: RoomListing | null = null, lastJson = '', down = false;
   async function refresh() {
     try {
+      if (!SERVER) throw new Error('no game server'); // (an https page with none set)
       const r = await fetch(`${serverHttp(SERVER)}/rooms`, { cache: 'no-store' });
       const json = await r.text();
       down = false;

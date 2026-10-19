@@ -27,10 +27,15 @@ export const saveCar = (id: string) => put(CAR_KEY, id);
 export const cleanRoom = (s: string) => s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 32);
 
 /** The game server's WebSocket: ?server=ws://host:port, else the build's VITE_GAME_SERVER (the hosted site:
- *  wss://play.racecars.fun, say), else this host on PORT (the local demo). Its HTTP side serves GET /rooms and /auth. */
+ *  wss://play.racecars.fun, say), else this host on PORT (the local demo) - but never a plain ws:// one from an https
+ *  page (a browser blocks it as mixed content): there, with no server set, it's '' - none, the online parts say offline.
+ *  Its HTTP side serves GET /rooms, /leaderboard, /garage and /auth. */
 export function serverUrl(q = new URLSearchParams(location.search)) {
-  return q.get('server') ?? (import.meta.env.VITE_GAME_SERVER as string | undefined) ?? `ws://${location.hostname || 'localhost'}:${PORT}`;
+  const set = q.get('server') ?? (import.meta.env.VITE_GAME_SERVER as string | undefined);
+  if (set) return set;
+  return location.protocol === 'https:' ? '' : `ws://${location.hostname || 'localhost'}:${PORT}`;
 }
+/** Its HTTP side ('' for none). */
 export const serverHttp = (ws: string) => ws.replace(/^ws/, 'http');
 
 /** The drive page in a room (the invite link is the same, `absolute`: the friend brings their own wallet and car).

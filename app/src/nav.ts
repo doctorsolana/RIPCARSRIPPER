@@ -52,6 +52,7 @@ const CSS = `
 #nav .links a.dev.on { color: #ffc04d; box-shadow: inset 0 -2px 0 #ffb020; }
 #nav.dev .links a.dev { display: inline-flex; }
 #nav .spacer { flex: 1; }
+#nav a:focus-visible, #nav button:focus-visible, #nav select:focus-visible { outline: 2px solid #ff3d6e; outline-offset: 2px; }
 #nav .narrow { display: none; }
 #nav select, #nav button { font: inherit; color: #eef0f3; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px; padding: 7px 10px; cursor: pointer; max-width: 46vw; min-width: 0; }
@@ -121,9 +122,13 @@ const CSS = `
 }
 /* a phone's bar with the car picker has no room for every link: the dev tools step out for it, and Rip a pack (the
    bar's links stay on every other page) */
-@media (max-width: 440px) { #nav.picker .links a.dev, #nav.picker .links a.ext { display: none; } }
-@media (max-width: 400px) { #nav.dev .links a.ext { display: none; } }
-@media (max-width: 359px) { #nav .links a[data-page="inspect"] { display: none; } }
+@media (max-width: 440px) { #nav.picker .links a.ext { display: none; } }
+/* dev mode: the tools need room - Rip a pack steps out first, then on a phone the tools (they open by URL, and the
+   landing's foot links them) */
+@media (max-width: 900px) { #nav.dev .links a.ext { display: none; } }
+@media (max-width: 640px) { #nav.dev .links a.dev { display: none; } }
+@media (max-width: 374px) { #nav.picker .brand .dv { display: none; } }
+@media (max-width: 359px) { #nav select { max-width: 19vw; } #nav .brand { font-size: 16px; } }
 `;
 /** A wallet glyph (16 x 16, currentColor): the chip signed out, and the lobby's Connect wallet. */
 export const WALLET = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M13 5.5V4a1.5 1.5 0 0 0-1.5-1.5h-8A1.5 1.5 0 0 0 2 4v8a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 14 12V7a1.5 1.5 0 0 0-1.5-1.5H2.5"/><circle cx="11" cy="9.5" r="1" fill="currentColor" stroke="none"/></svg>';

@@ -94,6 +94,7 @@ export function onSession(cb: (s: Session | null) => void): () => void {
 export async function checkSession(http: string): Promise<'ok' | 'bad' | 'none' | 'unknown'> {
   const s = loadSession();
   if (!s) return 'none';
+  if (!http) return 'unknown'; // (no game server here)
   try {
     const r = await fetch(`${http}/auth/session`, { headers: { authorization: `Bearer ${s.token}` }, cache: 'no-store' });
     const j = r.ok ? ((await r.json()) as { wallet?: string | null }) : null;

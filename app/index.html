@@ -5,7 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0d0e12" />
     <meta name="description" content="Race Hot Wheels Rip Cars online. Two tracks, a weekly leaderboard, your garage." />
-    <link rel="icon" href="data:," />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="racecars" />
+    <meta property="og:title" content="RACECARS" />
+    <meta property="og:description" content="Race Hot Wheels Rip Cars online. Two tracks, a weekly leaderboard, your garage." />
+    <meta property="og:url" content="https://racecars.fun/" />
+    <meta property="og:image" content="https://racecars.fun/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RACECARS" />
+    <meta name="twitter:description" content="Race Hot Wheels Rip Cars online. Two tracks, a weekly leaderboard, your garage." />
+    <meta name="twitter:image" content="https://racecars.fun/og.jpg" />
+    <link rel="canonical" href="https://racecars.fun/" />
     <title>RACECARS</title>
     <script>
       // old links to the pack-rip reveal (it was this page): / with its knobs goes to rip.html, the query kept
@@ -13,7 +30,9 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+    <!-- the fonts don't hold up the first paint (the text shows in the fallback, then swaps) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" /></noscript>
     <link rel="stylesheet" href="/src/home/style.css" />
   </head>
   <body>
@@ -27,25 +46,41 @@
               <a class="btn primary big" id="h-race" href="/online.html?car=skyline-hck01">Race online</a>
               <a class="btn big" id="h-drive" href="/drive.html?car=skyline-hck01">Drive</a>
             </div>
-            <p class="live" id="h-live" hidden></p>
+            <p class="live" id="h-live" hidden>&nbsp;</p>
           </div>
           <div class="hero-car" id="h-car">
             <div class="hero-make" id="h-make" aria-hidden="true">Nissan</div>
             <img id="h-img" src="/src/home/img/car-skyline-hck01-1440.webp"
               srcset="/src/home/img/car-skyline-hck01-640.webp 640w, /src/home/img/car-skyline-hck01-1440.webp 1440w"
-              sizes="(max-width: 760px) 100vw, 60vw" width="1440" height="900" alt="" fetchpriority="high" />
+              sizes="(max-width: 760px) 100vw, 60vw" width="1440" height="900" alt="Nissan LB-ER34 Skyline" fetchpriority="high" />
             <canvas id="h-3d" aria-label="The car in 3D: drag to turn it"></canvas>
           </div>
         </div>
       </section>
       <section class="sec wrap" id="week" aria-labelledby="week-h">
         <div class="sec-head"><h2 id="week-h">This week</h2><span class="aside" id="reset"></span></div>
-        <div class="tracks" id="tracks"></div>
+        <div class="tracks" id="tracks">
+          <article class="trk" data-track="meadow" style="--c:#6fd35a">
+            <div class="trk-pic"><img src="/src/home/img/track-meadow-1600.webp" srcset="/src/home/img/track-meadow-800.webp 800w, /src/home/img/track-meadow-1600.webp 1600w"
+              sizes="(max-width: 980px) 100vw, 50vw" alt="Meadow: a car in the air" loading="lazy" decoding="async" /><h3><i></i>Meadow</h3></div>
+            <div class="trk-go"><button type="button" class="btn primary sm" data-tt="meadow">Time trial</button>
+              <a class="btn ghost sm" data-race href="/online.html?track=meadow">Race</a><a class="btn ghost sm" data-drive href="/drive.html?car=skyline-hck01">Drive</a></div>
+            <ol class="board"></ol>
+          </article>
+          <article class="trk" data-track="sky" style="--c:#ff6b00">
+            <div class="trk-pic"><img src="/src/home/img/track-sky-1600.webp" srcset="/src/home/img/track-sky-800.webp 800w, /src/home/img/track-sky-1600.webp 1600w"
+              sizes="(max-width: 980px) 100vw, 50vw" alt="Sky Tower: a car in the air" loading="lazy" decoding="async" /><h3><i></i>Sky Tower</h3></div>
+            <div class="trk-go"><button type="button" class="btn primary sm" data-tt="sky">Time trial</button>
+              <a class="btn ghost sm" data-race href="/online.html?track=sky">Race</a><a class="btn ghost sm" data-drive href="/drive.html?car=skyline-hck01&amp;track=sky">Drive</a></div>
+            <ol class="board"></ol>
+          </article>
+        </div>
       </section>
       <section class="sec wrap" id="rooms" aria-labelledby="rooms-h">
         <div class="sec-head"><h2 id="rooms-h">Open rooms<small id="r-count"></small></h2>
           <div class="sec-act"><a class="more" href="/online.html" id="r-all">All rooms</a><button type="button" class="btn primary sm" id="r-create" disabled>Create room</button></div></div>
         <div id="r-list" aria-live="polite"></div>
+        <a class="more under" href="/online.html" id="r-all2">All rooms</a>
       </section>
       <section class="sec wrap" id="garage" aria-labelledby="garage-h">
         <div class="sec-head"><h2 id="garage-h">Garage</h2><div class="sec-act" id="g-act"></div></div>
