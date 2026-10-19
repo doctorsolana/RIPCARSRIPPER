@@ -33,7 +33,7 @@ export interface Hud {
   toast(text: string, color?: string, kind?: 'max'): void;
   /** The WRONG WAY sign (shown while on; only touches the DOM when it changes). */
   wrongWay(on: boolean): void;
-  /** `rip`: Rip a pack's link (ripcars.io, a new tab); `other`: a link to try another track (a full-width button under
+  /** `rip`: Rip a pack's link (app.ripcars.io, a new tab); `other`: a link to try another track (a full-width button under
    *  Again / Rip a pack, in the track's colour). */
   results(r: RaceResult, onAgain: () => void, rip: string, other?: { name: string; href: string; color?: string }): void;
   hideResults(): void;

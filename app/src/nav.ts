@@ -4,7 +4,7 @@ import { WORDMARK } from './brand';
 import { isDev, onDev, setDev } from './dev';
 
 // The top bar shared by every page: the wordmark (home: the landing), Drive, Race online (the way into multiplayer:
-// online.html, the room browser), Rip a pack (ripcars.io, where the Rip Cars come from: a new tab), and in dev mode
+// online.html, the room browser), Rip a pack (app.ripcars.io, where the Rip Cars come from: a new tab), and in dev mode
 // (dev.ts) the tools - Reveal (the pack-rip prototype, rip.html) and Inspect - with a DEV badge by the logo. On the
 // reveal and the drive page a car picker plus "random" (the drive page adds its track switch; in an online room the
 // picker swaps the car in place: onCar), and at the right end the wallet chip: "Connect wallet" signed out (the wallet
@@ -29,7 +29,7 @@ export interface Nav {
 }
 
 /** Where the Rip Cars come from (the top bar's Rip a pack, the landing's). */
-export const RIPCARS_URL = 'https://ripcars.io';
+export const RIPCARS_URL = 'https://app.ripcars.io/';
 
 const CSS = `
 #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 20; height: 48px; display: flex; align-items: center; gap: 14px;
