@@ -1,0 +1,110 @@
+{
+  "car": "jaguar-e-type-jcp68",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      1.0129,
+      1.0051,
+      1.0223
+    ],
+    "offset_xy": [
+      -0.0021,
+      0.0519
+    ],
+    "side+top_iou": 1.8458,
+    "by_hand": {
+      "height": 0.94
+    }
+  },
+  "glass_source": {
+    "front": "traced",
+    "rear": "traced",
+    "top": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": false,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": false,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": false
+  },
+  "passed": false,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.0517,
+    "height": 1.1786,
+    "width": 1.578
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.1805,
+        0.3577,
+        0.5685
+      ],
+      "r": 0.3068,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.1805,
+        0.3577,
+        -0.5629
+      ],
+      "r": 0.3068,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.071,
+        0.3605,
+        0.5516
+      ],
+      "r": 0.3087,
+      "pieces": 1
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.071,
+        0.3605,
+        -0.5648
+      ],
+      "r": 0.3087,
+      "pieces": 1
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.8564,
+    "top": 0.9603,
+    "left": 0.874,
+    "front": 0.8271,
+    "rear": 0.8776
+  },
+  "proportions_vs_sheet": {
+    "length": 1.029,
+    "width": 1.013,
+    "height": 0.913
+  },
+  "glb": {
+    "bytes": 1274288,
+    "triangles": 16476
+  }
+}

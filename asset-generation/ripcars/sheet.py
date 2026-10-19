@@ -4,6 +4,10 @@ Layouts (reference-collector skill), white background with white gutters between
   four-view: right profile (nose right) / overhead (nose right) / front + rear side by side
   five-view: right profile (nose right) / left profile (nose left) / overhead / front + rear
 Panel names: side (the car's right side), left, top, front, rear.
+Every panel comes out in that canonical orientation: a manifest layout whose overhead entry says
+`"nose_direction": "left"` gets its top crop turned 180 deg (nose right, the car's left side at the top).
+Sheet-px coordinates for that view (hints polygons, `outline`, trace-top.png) then refer to the turned
+drawing, laid back into the same box: x' = ox + (w - 1 - (x - ox)), likewise y.
 """
 from dataclasses import dataclass
 from functools import lru_cache
@@ -30,6 +34,7 @@ class Panel:
     bbox: tuple[int, int, int, int]  # tight car box in crop px: x0, y0, x1, y1 (exclusive)
     holes: np.ndarray | None = None  # side views: see-through windows the matte left open (bool)
     glass: np.ndarray | None = None  # set by glass.find(): window pixels (bool)
+    turned: bool = False  # crop turned 180 deg to nose right (a nose-left overhead, turned_views)
 
     @property
     def size(self):
@@ -158,6 +163,14 @@ def silhouette(alpha: np.ndarray, max_hole_frac: float = 0.004) -> np.ndarray:
     return m.astype(bool)
 
 
+def turned_views(layout) -> set[str]:
+    """Views drawn the other way round from the canonical one: the overhead with its nose LEFT (manifest
+    layout `nose_direction`). Side views keep their own convention (right nose right, left nose left)."""
+    if not layout or not isinstance(layout[0], dict):
+        return set()
+    return {"top" for e in layout if LAYOUT_NAMES.get(e.get("id")) == "top" and e.get("nose_direction") == "left"}
+
+
 def load(path, margin: int = 16, model: str = "birefnet-general", cache_dir=None, layout=None) -> dict[str, Panel]:
     """Panels with mattes. Mattes are cached per sheet hash in cache_dir (segmentation is ~10 s each)."""
     import hashlib
@@ -166,12 +179,15 @@ def load(path, margin: int = 16, model: str = "birefnet-general", cache_dir=None
     raw = Path(path).read_bytes()
     key = hashlib.sha256(raw).hexdigest()[:16]
     rgb = np.asarray(Image.open(path).convert("RGB"))
+    turned = turned_views(layout)
     panels = {}
     for name, (x0, y0, x1, y1) in panel_boxes(rgb, layout).items():
         cx0, cy0 = max(0, x0 - margin), max(0, y0 - margin)
         cx1, cy1 = min(rgb.shape[1], x1 + margin), min(rgb.shape[0], y1 + margin)
-        crop = np.ascontiguousarray(rgb[cy0:cy1, cx0:cx1])
-        cached = Path(cache_dir) / f"matte-{MATTE_VERSION}-{model}-{name}-{key}-{cx0}-{cy0}-{cx1}-{cy1}.png" if cache_dir else None
+        crop = rgb[cy0:cy1, cx0:cx1]
+        crop = np.ascontiguousarray(crop[::-1, ::-1] if name in turned else crop)  # 180 deg: nose right
+        rot = "-r180" if name in turned else ""
+        cached = Path(cache_dir) / f"matte-{MATTE_VERSION}-{model}-{name}-{key}-{cx0}-{cy0}-{cx1}-{cy1}{rot}.png" if cache_dir else None
         if cached and cached.is_file():
             a = np.asarray(Image.open(cached), np.float32) / 255
         else:
@@ -190,8 +206,20 @@ def load(path, margin: int = 16, model: str = "birefnet-general", cache_dir=None
             a = np.where(holes, 1.0, a).astype(np.float32)
         ys, xs = np.nonzero(m)
         panels[name] = Panel(name, crop, a, m, (cx0, cy0), (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1),
-                             holes)
+                             holes, turned=name in turned)
     return panels
+
+
+def read_canonical(path, panels: dict[str, Panel]) -> np.ndarray:
+    """The sheet image (RGB) with every turned view (turned_views) laid back in its box nose-right, so
+    sheet-px overlays (qa panels.jpg, glass.jpg) line up with the panels."""
+    rgb = np.asarray(Image.open(path).convert("RGB")).copy()
+    for p in panels.values():
+        if p.turned:
+            ox, oy = p.origin
+            h, w = p.rgb.shape[:2]
+            rgb[oy:oy + h, ox:ox + w] = p.rgb
+    return rgb
 
 
 def debug_image(panels: dict[str, Panel], sheet_rgb: np.ndarray) -> np.ndarray:

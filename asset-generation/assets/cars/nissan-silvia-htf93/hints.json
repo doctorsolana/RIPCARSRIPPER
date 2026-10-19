@@ -1,0 +1,244 @@
+{
+  "photo": "../../../../reference-collector/cars/nissan-silvia-htf93/reference/pack-photo.png",
+  "carBox": [
+    372,
+    2928,
+    1512,
+    470
+  ],
+  "segModel": "birefnet-general",
+  "notes": [
+    "carBox: measured on 2x ruler crops of the pack photo (2317x3629): tail/rear bumper x 372, front bumper chrome x ~1884, roof top y ~2930, tyre bottoms y ~3396; segModel birefnet-general (the lite model followed the blister on other cars)",
+    "mask.add / wheels (photo px, 2x ruler crops): birefnet cut the roof ~25 px low (the roof seen through the blister bubble reads as haze); the added polygon follows the red roof edge at y ~2934 from the C-pillar (812,2958) to the A-pillar top (1140,2935) and the A-pillar down to the cowl (1215,3020). Wheel circles are the tyres (rims x 612-752 and 1588-1728, tyre bottoms y ~3394); auto-detect found the rims only (r ~83)",
+    "model.rebake.glass: all views traced on the mesh (trace-<view>.png). side/left: the sheet masks also took the roof highlight band and the A-pillar/windscreen edge for glass (magenta on the pillar top); traced the door-glass panel only - Tripo left the rear quarter windows and front vent triangles as open holes (nothing to paint). front/rear: the panel inside Tripo's painted frame (the sheet mask rose onto the dark header in the middle). top: traced on the mesh (Tripo never saw the top): rear window, curved windscreen and the door glass tumblehome, one set mirrored about the centre line",
+    "model.rebake.glass front (2nd pass): bottom edge lowered to the cowl (y ~1243, corners 112/394) - with glass=0 a white fringe of Tripo's window paint was left along the bottom of the windscreen",
+    "top drawing: the accepted sheet draws the overhead nose LEFT (manifest layout top nose_direction 'left'). ripcars sheet.load now turns such a top crop 180 deg, so clean's fit, rebake, promote's IoU and outline all see it nose right; the earlier whole-top model.rebake.skip workaround was removed. After the fix: top IoU 0.966 -> 0.976, top alignment median shift 20 -> 9 px, hood stripes + '1' now paint from the top drawing onto the hood, roof plain red, trunk roundel at the tail (compare view=0,1.5,7). The traced top glass polygons were drawn on the nose-right mesh render, so they stay valid",
+    "wheels: Tripo joined the two rear tyres through their axle into one piece, so rebake found no rear tyres and nothing spun. parts.find_wheels now splits such an axle piece at the centre line (only when a corner has no tyre of its own, so other cars are unchanged): all four wheels spin (qa wheels.jpg), r 0.317-0.325"
+  ],
+  "wheels": [
+    {
+      "cx": 681,
+      "cy": 3301,
+      "r": 93
+    },
+    {
+      "cx": 1657,
+      "cy": 3301,
+      "r": 93
+    }
+  ],
+  "mask": {
+    "add": [
+      [
+        [
+          600,
+          3070
+        ],
+        [
+          700,
+          3012
+        ],
+        [
+          812,
+          2958
+        ],
+        [
+          880,
+          2938
+        ],
+        [
+          1000,
+          2933
+        ],
+        [
+          1140,
+          2935
+        ],
+        [
+          1165,
+          2952
+        ],
+        [
+          1215,
+          3020
+        ],
+        [
+          1250,
+          3075
+        ],
+        [
+          1250,
+          3100
+        ],
+        [
+          600,
+          3100
+        ]
+      ]
+    ]
+  },
+  "model": {
+    "rebake": {
+      "glass": {
+        "side": [
+          [
+            [
+              403,
+              80
+            ],
+            [
+              547,
+              80
+            ],
+            [
+              575,
+              146
+            ],
+            [
+              398,
+              148
+            ]
+          ]
+        ],
+        "left": [
+          [
+            [
+              481,
+              434
+            ],
+            [
+              627,
+              434
+            ],
+            [
+              637,
+              499
+            ],
+            [
+              459,
+              499
+            ]
+          ]
+        ],
+        "front": [
+          [
+            [
+              134,
+              1172
+            ],
+            [
+              372,
+              1172
+            ],
+            [
+              394,
+              1243
+            ],
+            [
+              112,
+              1245
+            ]
+          ]
+        ],
+        "rear": [
+          [
+            [
+              662,
+              1166
+            ],
+            [
+              880,
+              1166
+            ],
+            [
+              905,
+              1238
+            ],
+            [
+              632,
+              1238
+            ]
+          ]
+        ],
+        "top": [
+          [
+            [
+              238,
+              826
+            ],
+            [
+              316,
+              850
+            ],
+            [
+              316,
+              1028
+            ],
+            [
+              238,
+              1034
+            ]
+          ],
+          [
+            [
+              532,
+              833
+            ],
+            [
+              580,
+              815
+            ],
+            [
+              595,
+              850
+            ],
+            [
+              603,
+              900
+            ],
+            [
+              603,
+              960
+            ],
+            [
+              595,
+              1010
+            ],
+            [
+              580,
+              1040
+            ],
+            [
+              532,
+              1021
+            ]
+          ],
+          [
+            [
+              368,
+              797
+            ],
+            [
+              528,
+              797
+            ],
+            [
+              512,
+              822
+            ],
+            [
+              385,
+              822
+            ]
+          ]
+        ]
+      },
+      "glass_mirror": [
+        "top"
+      ],
+      "unseen": [
+        "top"
+      ]
+    }
+  }
+}

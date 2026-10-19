@@ -1,0 +1,112 @@
+{
+  "car": "skyline-jbk59",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      1.0105,
+      1.009,
+      1.0024
+    ],
+    "offset_xy": [
+      0.0261,
+      0.0002
+    ],
+    "side+top_iou": 1.8507,
+    "by_hand": {
+      "height": 0.965
+    }
+  },
+  "glass_source": {
+    "side": "traced",
+    "left": "traced",
+    "top": "traced",
+    "front": "traced",
+    "rear": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": false,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": false,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 4.0419,
+    "height": 1.2421,
+    "width": 1.5491
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.1027,
+        0.2951,
+        0.6385
+      ],
+      "r": 0.2949,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.1177,
+        0.2982,
+        -0.659
+      ],
+      "r": 0.2979,
+      "pieces": 3
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.0954,
+        0.3122,
+        0.7439
+      ],
+      "r": 0.312,
+      "pieces": 5
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.0834,
+        0.3082,
+        -0.7077
+      ],
+      "r": 0.3079,
+      "pieces": 4
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.9184,
+    "top": 0.9388,
+    "left": 0.9182,
+    "front": 0.8827,
+    "rear": 0.9339
+  },
+  "proportions_vs_sheet": {
+    "length": 1.006,
+    "width": 0.97,
+    "height": 0.963
+  },
+  "glb": {
+    "bytes": 1292564,
+    "triangles": 16530
+  }
+}

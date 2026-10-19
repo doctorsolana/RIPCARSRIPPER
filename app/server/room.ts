@@ -28,8 +28,11 @@ const RATE = 126; // new input steps per s a client may send (real time and a li
 const BURST = 60; // ... in bursts of up to this many (a stalled tab catching up)
 // the race logs: server/logs/, or DATA_DIR/logs/ when DATA_DIR is set (a host's volume: they survive deploys)
 const LOG_DIR = process.env.DATA_DIR ? `${DATA_DIR}/logs/` : new URL('./logs/', import.meta.url).pathname;
-const BOT_CARS = ['chevy-impala-jkb99', 'roxy-porsche-hrv96', 'porsche-964-gdf88', 'pontiac-firebird-htf40', 'civic-type-r-hcy12',
-  'mustang-cobra-r-hgk61', 'porsche-911-gt3-rs', 'beach-bomb-too-k3370', 'skyline-fyg14'];
+// the bots' cars, in the order they fill a room: one of each kind early on (the newer cars interleaved, so a small
+// room shows them too); the LB-ER34s, the default car's look-alikes, stay out
+const BOT_CARS = ['chevy-impala-jkb99', 'nissan-silvia-htf93', 'roxy-porsche-hrv96', 'splittin-image-b3575', 'porsche-964-gdf88',
+  'jaguar-e-type-jcp68', 'pontiac-firebird-htf40', 'volvo-142-gl-hck20', 'civic-type-r-hcy12', 'mustang-cobra-r-hgk61',
+  'porsche-911-gt3-rs', 'beach-bomb-too-k3370', 'skyline-fyg14'];
 
 export interface Player {
   id: number;

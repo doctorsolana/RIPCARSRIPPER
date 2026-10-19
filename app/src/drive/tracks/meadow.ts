@@ -156,5 +156,5 @@ export const meadow: Course<'meadow'> = {
   world: 'meadow', hoop: false,
   props,
   // medal pace (u/s) per car: see Course.pars
-  pars: { skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26, civic: 42.64, mustang: 43.18, '*': 42.1 },
+  pars: { skyline: 44.05, impala: 42.03, roxy: 43.38, gt3: 43.34, '964': 42.78, firebird: 42.73, beach: 41.26, civic: 42.64, mustang: 43.18, silvia: 42.68, volvo: 41.95, jaguar: 43.27, splittin: 43.1, '*': 42.1 },
 };

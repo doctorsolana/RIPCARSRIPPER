@@ -18,6 +18,8 @@ The review pages need the app's dev server on port 5199. Check `lsof -i :5199` b
 ## 0. Inputs
 
 - The sheet must be accepted: `reference-collector/cars/<id>/generated/reference-sheet.png` exists, and `selected` in its `manifest.json` is set. Draft sheets go back to the reference stage. Use one for a Tripo test only if the user says so explicitly.
+- A draft the user approved for a car is named in its `hints.json`: `"sheet": "generated/draft-sheet.png"` (relative to `reference-collector/cars/<id>/`), with a note saying who approved it. Every `ripcars` command then uses it, laid out by the manifest's `preview.layout`, and `status` shows the sheet as `draft*`. Once an accepted `reference-sheet.png` exists, it wins automatically; drop the key then.
+- An overhead drawn nose LEFT (manifest layout `top` `nose_direction: "left"`) is turned 180 deg when the sheet is loaded, so everything sees it nose right. Sheet-px polygons for `top` refer to the turned drawing, as `trace-top.png`, `glass.jpg` and `outline` show it, not to the raw sheet image.
 - `assets/cars/<id>/hints.json` (pack-photo `photo` + `carBox`) and `meta.json`. For a new car, follow step 1 of the `retouch-car` skill.
 
 ## 1. Tripo request: costs credits, so ask first

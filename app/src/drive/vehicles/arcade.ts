@@ -324,6 +324,30 @@ const PROFILES: Record<string, Partial<Profile>> = {
     top: 0.93, pull: 0.9, rev: 1.8, brake: 0.8, grip: 0.92, turn: 0.96, steer: 1.25,
     slide: 0.9, unstick: 1.15, float: 1.35, angle: 1.15, aero: 0.85, heft: 1.3, dirt: 1.1,
   },
+  // 1965 Nissan Silvia (CSP311): a small, light hand-built coupe with a 1.6 four - not much shove and a lower top
+  // speed, but the quickest to turn in, nimble and easy to place; light, so the knocks throw it about
+  silvia: {
+    top: 0.97, pull: 0.96, rev: 2.4, brake: 1.04, grip: 1.04, turn: 1.07, steer: 0.82,
+    slide: 1, unstick: 1.05, float: 0.92, angle: 1, charge: 1.02, aero: 1.05, heft: 0.82, dirt: 1,
+  },
+  // '73 Volvo 142 GL: a heavy, boxy sedan with the B20 four - slow to get going and to turn, soft and roll-y, but a
+  // tank: it shrugs off the knocks, carries a hill's speed, and the rally-bred Volvo likes the dirt
+  volvo: {
+    top: 0.95, pull: 0.95, rev: 1.9, brake: 0.95, grip: 0.95, turn: 0.97, steer: 1.15,
+    slide: 0.95, unstick: 0.95, float: 1.12, angle: 1.06, aero: 0.85, heft: 1.3, dirt: 1.08,
+  },
+  // 1964 Jaguar E-Type: a long, low GT with the XK straight-six - a high top speed that it holds on to, stable and
+  // long-legged, but a long nose that turns in lazily and period brakes; a long, smooth slide
+  jaguar: {
+    top: 1.02, pull: 0.98, rev: 2.3, brake: 0.92, grip: 0.98, turn: 0.96, steer: 1.1,
+    slide: 1, unstick: 0.92, float: 1.05, angle: 1.06, aero: 0.92, heft: 1.05, dirt: 0.95,
+  },
+  // Splittin' Image (a Hot Wheels original): a light fantasy racer - twin canopies, a big blown V8 out in the open.
+  // Explosive pull, a loose and lively tail, quick steering; light, so hits knock it about, and it's no dirt car
+  splittin: {
+    top: 1.01, pull: 1.07, rev: 1.9, brake: 1, grip: 1.01, turn: 1.03, steer: 0.88,
+    slide: 0.95, unstick: 1.15, float: 0.95, angle: 1.08, charge: 1.05, aero: 1, heft: 0.85, dirt: 0.95,
+  },
 };
 /** The car's profile: the first word of its id that has one (skyline-..., chevy-impala-..., roxy-porsche-...). */
 export function profileOf(id: string): Profile {

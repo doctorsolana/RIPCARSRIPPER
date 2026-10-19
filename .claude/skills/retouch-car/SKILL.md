@@ -11,7 +11,7 @@ The scripts get each car most of the way automatically. You finish it, and you o
 
 ## 1. Inputs
 
-- The sheet must exist and be accepted: `reference-collector/cars/<id>/generated/reference-sheet.png`, with `selected.layout` in its manifest. If it's missing or not accepted, the reference stage isn't done; don't model from drafts.
+- The sheet must exist and be accepted: `reference-collector/cars/<id>/generated/reference-sheet.png`, with `selected.layout` in its manifest. If it's missing or not accepted, the reference stage isn't done; don't model from drafts. The one exception is a draft the user explicitly approved for this car: name it in `hints.json` as `"sheet": "generated/draft-sheet.png"` (path in the car's reference folder) with a note; the scripts then use it with the manifest's `preview.layout` until an accepted sheet exists, which always wins.
 - **New car:** create `asset-generation/assets/cars/<id>/`:
   - `hints.json`: `photo` (relative path to `reference-collector/cars/<id>/reference/pack-photo.webp`) and `carBox` `[x, y, w, h]`, the car in the blister. Look at the photo with a pixel ruler. Add `wheels` circles if the photo is small or the tyres are dark on a dark card.
   - `meta.json`: make, model, year (+ `yearSource`), line, series, collection, `toy` (the reference manifest's `product_code`: the NFT's 'Toy #', which the game maps a wallet's Rip Cars by), rarity. RIPCARS tiers are still placeholders: common, rare, epic, legendary, chase.

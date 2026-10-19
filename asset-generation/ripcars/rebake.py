@@ -474,7 +474,7 @@ def rebake(car: str, src: str | None = None, texture: int = 1536) -> dict:
     rb = tune.get("rebake", {})
     write_review_crops(car, cal)
     # the sheet's own window masks (model.glass): they decide where the drawings show glass and cabin
-    sheet_rgb = cv2.cvtColor(cv2.imread(str(paths.sheet(car))), cv2.COLOR_BGR2RGB)
+    sheet_rgb = sheet.read_canonical(paths.sheet(car), panels)
     cv2.imwrite(str(qadir / "glass.jpg"), glass.debug_image(cal, sheet_rgb))
     traced = _traced_masks(cal, rb.get("glass"), mirror=tuple(rb.get("glass_mirror", ())))
     # super-tinted windows (model.rebake.tinted): "all", or per view "sheet" / sheet-px polygons like the glass
@@ -573,11 +573,14 @@ def _export(mesh: Textured, tex: np.ndarray, mr: np.ndarray, dst, glass_uv: np.n
 
     old = mesh.trimesh.visual.material
     normal = getattr(old, "normalTexture", None)
-    if normal is not None and glass_uv is not None and glass_uv.any():
+    if normal is not None:
         nm = np.asarray(normal.convert("RGB")).copy()
-        g = cv2.resize(glass_uv, (nm.shape[1], nm.shape[0]), interpolation=cv2.INTER_NEAREST)
-        g = cv2.dilate(g, np.ones((5, 5), np.uint8)).astype(bool)
-        nm[g] = (128, 128, 255)  # flat tangent-space normal
+        if glass_uv is not None and glass_uv.any():
+            g = cv2.resize(glass_uv, (nm.shape[1], nm.shape[0]), interpolation=cv2.INTER_NEAREST)
+            g = cv2.dilate(g, np.ones((5, 5), np.uint8)).astype(bool)
+            nm[g] = (128, 128, 255)  # flat tangent-space normal
+        # always JPEG: passed through as-is, the decoded map would be written as PNG (a car with no glass
+        # and nothing flattened, e.g. the Splittin' Image: 644 KB instead of ~50-70 KB)
         normal = jpeg(nm, 92)
     mat = PBRMaterial(name="paint", baseColorTexture=jpeg(tex), metallicRoughnessTexture=jpeg(mr, 92),
                       normalTexture=normal, metallicFactor=1.0, roughnessFactor=1.0)

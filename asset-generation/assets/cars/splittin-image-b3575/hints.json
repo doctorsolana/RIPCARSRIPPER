@@ -1,0 +1,156 @@
+{
+  "photo": "../../../../reference-collector/cars/splittin-image-b3575/reference/pack-photo.png",
+  "sheet": "generated/draft-sheet.png",
+  "segModel": "birefnet-general",
+  "carBox": [
+    330,
+    2805,
+    1670,
+    460
+  ],
+  "wheels": [
+    {
+      "cx": 532,
+      "cy": 3130,
+      "r": 135
+    },
+    {
+      "cx": 1598,
+      "cy": 3132,
+      "r": 138
+    }
+  ],
+  "notes": [
+    "carBox/wheels read off the 2322x3542 pack photo with a pixel ruler: the black tyres sit on the dark bare-metal base, so the wheel circles are given rather than detected",
+    "sheet: only a DRAFT exists (reference-collector .../generated/draft-sheet.png, no accepted reference-sheet.png); the founder explicitly approved using it for this Tripo test. hints.json \"sheet\" points the ripcars commands at it (layout from the manifest's preview entry) while no accepted sheet exists; an accepted reference-sheet.png wins automatically once there is one",
+    "model.fit width 0.938: clean's per-axis fit left the body 1.066x the top drawing's width (Tripo never sees the top); this brings it to the sheet",
+    "model.glass replace all five views, no glass at all: the sheet's window finder took the white body/engine for glass and missed the canopies (qa glass.jpg). The canopies stay OPAQUE purple paint on purpose: on the toy they are purple-tinted clear plastic, but the app's glass (app/src/glass.ts) only draws a neutral dark-grey or near-black tint, so either glass mode would turn the car's signature magenta bubbles grey/black; Tripo's bubbles are also closed shells with no cockpit under them to see into",
+    "model.rebake.noalign top: the top drawing's alignment was weak (match 0.19, ~20 px median shift; Tripo never saw the top) and the warped paint came out washed out and ghosted on the engine, roundel and flames; projected straight instead",
+    "model.rebake.skip top (two circles): the draft's top drawing puts the flame roundel on the centre plank (866,925), but its front drawing and Tripo's mesh have it embossed on the vehicle-left nose pod (840,825 in tripo-sheet px); the top projection left a faint ghost ring on the plank and painted the embossed roundel plain white. Top no longer paints either spot, so the front view / Tripo's own roundel paint wins there",
+    "side_iou 0.896 / left_iou 0.893 gates (0.93 / 0.90) accepted: the misses are the same on both sides - the draft sheet's elevated side cameras show the engine deck and nose-pod tops above the true profile (Codex's review flags exactly this), so the drawn nose sits ~2% of length higher than Tripo's. The pack photo (real toy, level) agrees with Tripo's nose: landing IoU 0.91 with no doubled edges. Not a size problem, so no model.fit for it; an accepted level-camera sheet would settle it",
+    "model.glb 1.34 MB: it was 1.92 MB because rebake passed Tripo's normal map through untouched when a car has no glass to flatten (this one has none), and the export re-encoded it as a 644 KB PNG (not the metal/roughness map, which is 143 KB JPEG like the others). rebake now always writes the normal map as JPEG q92 (64 KB); mean change 1.2/255 per channel, no visible difference"
+  ],
+  "model": {
+    "fit": {
+      "width": 0.938
+    },
+    "glass": {
+      "replace": [
+        "side",
+        "left",
+        "top",
+        "front",
+        "rear"
+      ]
+    },
+    "rebake": {
+      "noalign": [
+        "top"
+      ],
+      "skip": {
+        "top": [
+          [
+            [
+              908,
+              925
+            ],
+            [
+              902,
+              946
+            ],
+            [
+              887,
+              961
+            ],
+            [
+              866,
+              967
+            ],
+            [
+              845,
+              961
+            ],
+            [
+              830,
+              946
+            ],
+            [
+              824,
+              925
+            ],
+            [
+              830,
+              904
+            ],
+            [
+              845,
+              889
+            ],
+            [
+              866,
+              883
+            ],
+            [
+              887,
+              889
+            ],
+            [
+              902,
+              904
+            ]
+          ],
+          [
+            [
+              884,
+              825
+            ],
+            [
+              878,
+              847
+            ],
+            [
+              862,
+              863
+            ],
+            [
+              840,
+              869
+            ],
+            [
+              818,
+              863
+            ],
+            [
+              802,
+              847
+            ],
+            [
+              796,
+              825
+            ],
+            [
+              802,
+              803
+            ],
+            [
+              818,
+              787
+            ],
+            [
+              840,
+              781
+            ],
+            [
+              862,
+              787
+            ],
+            [
+              878,
+              803
+            ]
+          ]
+        ]
+      }
+    }
+  }
+}

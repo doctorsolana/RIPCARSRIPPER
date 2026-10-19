@@ -47,16 +47,36 @@ def find_wheels(V: np.ndarray, F: np.ndarray) -> tuple[list[dict], str]:
                 and lo[1] < 0.2 * d[1])                # standing on the ground
 
     tyres = [(k, faces, lo, hi) for k, faces, lo, hi in parts if tyre_like(lo, hi)]
+    corner = lambda t, axle, side: (((t[2][0] + t[3][0]) / 2 > xmid) == (axle == "front")
+                                    and ((t[2][2] + t[3][2]) / 2 > 0) == (side == "right"))
+    if any(not any(corner(t, a, s) for t in tyres) for a in ("front", "rear") for s in ("right", "left")):
+        # A corner has no tyre of its own: the generator may have joined an axle's two tyres through the axle into
+        # one piece (the Silvia's rear). Split such a piece at the centre line, leaving the axle's middle in the body.
+        # Only then, so cars whose four tyres are found as before come out unchanged.
+        for k, faces, lo, hi in list(parts):
+            d = hi - lo
+            if not (0.75 < d[0] / max(d[1], 1e-9) < 1.33 and 0.06 * L < d[1] < 0.3 * L and lo[1] < 0.2 * d[1]
+                    and lo[2] < -0.2 * width and hi[2] > 0.2 * width):
+                continue
+            zc = V[F[faces]].mean(axis=1)[:, 2]
+            for sign in (1, -1):
+                half = faces[sign * zc > 0.2 * width]
+                if len(half):
+                    P = V[F[half]].reshape(-1, 3)
+                    if tyre_like(P.min(0), P.max(0)):
+                        tyres.append((k, half, P.min(0), P.max(0)))
     wheels = []
     for axle in ("front", "rear"):
         for side in ("right", "left"):
-            here = [t for t in tyres if ((t[2][0] + t[3][0]) / 2 > xmid) == (axle == "front")
-                    and ((t[2][2] + t[3][2]) / 2 > 0) == (side == "right")]
+            here = [t for t in tyres if corner(t, axle, side)]
             if not here:
                 return [], f"no tyre-shaped piece at the {axle} {side}: wheels left in the body"
             k, faces, lo, hi = max(here, key=lambda t: len(t[1]))  # the biggest one there
-            wheels.append({"name": f"wheel_{axle}_{side}", "piece": k, "faces": faces,
-                           "centre": (lo + hi) / 2, "r": float(max(hi[0] - lo[0], hi[1] - lo[1]) / 2)})
+            r = float(max(hi[0] - lo[0], hi[1] - lo[1]) / 2)
+            if lo[1] - V[:, 1].min() > 0.25 * r:  # a rim off the ground taken for the tyre (the LB-ER34 JBK59): r is
+                r = float((lo[1] + hi[1]) / 2 - V[:, 1].min())  # the hub's height, so the tyre around it joins below
+                # and the app seats the car on the tyre, not the rim (it put the tyres 0.08 into the road)
+            wheels.append({"name": f"wheel_{axle}_{side}", "piece": k, "faces": faces, "centre": (lo + hi) / 2, "r": r})
     radii = np.array([w["r"] for w in wheels])
     if radii.max() > 1.35 * radii.min():
         return [], f"tyres of very different sizes ({np.round(radii, 3).tolist()}): wheels left in the body"

@@ -44,6 +44,9 @@ def _layout(car: str):
     if not m.is_file():
         return None
     data = json.loads(m.read_text())
+    preview = (data.get("preview") or {}).get("layout")
+    if preview and not paths.accepted_sheet(car).is_file() and paths.draft_sheet(car):
+        return preview  # hints.json "sheet": the draft in use is described by the manifest's preview entry
     return data.get("layout") or (data.get("selected") or {}).get("layout")
 
 
@@ -163,7 +166,7 @@ def build_model(car: str, target_faces: int | None = None, texture: int | None =
     shots = [qa.shaded([surf] + tyres, y, p, colours=cols) for y, p in ((0, 0.15), (0.7, 0.3), (-0.8, 0.25), (2.6, 0.3))]
     cv2.imwrite(str(qadir / "shape.jpg"), np.vstack([np.hstack(shots[:2]), np.hstack(shots[2:])]))
     cv2.imwrite(str(qadir / "texture.jpg"), cv2.cvtColor(tex, cv2.COLOR_RGB2BGR)[::2, ::2])
-    sheet_rgb = cv2.cvtColor(cv2.imread(str(paths.sheet(car))), cv2.COLOR_BGR2RGB)
+    sheet_rgb = sheet.read_canonical(paths.sheet(car), panels)
     cv2.imwrite(str(qadir / "panels.jpg"), sheet.debug_image(panels, sheet_rgb))
     cv2.imwrite(str(qadir / "glass.jpg"), glass.debug_image(cal, sheet_rgb))
 
@@ -274,7 +277,8 @@ def status(only: list[str] | None = None) -> list[dict]:
         snap = lambda n: (a / "snapshots" / n).is_file()
         row = {
             "car": car,
-            "sheet": "accepted" if man.get("selected") and paths.sheet(car).is_file() else ("draft" if man else "-"),
+            "sheet": "accepted" if man.get("selected") and paths.accepted_sheet(car).is_file() else
+                     ("draft*" if paths.draft_sheet(car) else ("draft" if man else "-")),
             "hints": "yes" if (a / "hints.json").is_file() and (a / "meta.json").is_file() else "-",
             "tripo": ("multiview" if (a / "tripo/multiview/model_url.fbx").is_file() else "") or
                      ("dry run" if any((a / "tripo").glob("*/request.json")) else "-"),
@@ -286,7 +290,7 @@ def status(only: list[str] | None = None) -> list[dict]:
             "checks": "-" if not model else ("pass" if model.get("passed") else "FAIL"),
             "landing": f"{landing['iou']:.3f}" if landing else "-",
         }
-        if row["sheet"] != "accepted":
+        if row["sheet"] not in ("accepted", "draft*"):  # draft*: a draft approved for this car in hints.json "sheet"
             nxt = "reference-collector: sheet not accepted yet"
         elif row["hints"] == "-":
             nxt = "add hints.json + meta.json (retouch-car skill, step 1)"

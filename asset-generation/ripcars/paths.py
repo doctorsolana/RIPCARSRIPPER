@@ -8,7 +8,27 @@ ASSETS = STAGE / "assets" / "cars"  # what the app serves: one folder per car
 
 
 def sheet(car: str) -> Path:
+    """The accepted sheet. A car whose hints.json names `"sheet"` (a path in its reference folder, e.g. a draft
+    sheet the founder approved for this car) uses that instead while no accepted sheet exists."""
+    accepted = accepted_sheet(car)
+    if not accepted.is_file():
+        override = draft_sheet(car)
+        if override:
+            return override
+    return accepted
+
+
+def accepted_sheet(car: str) -> Path:
     return REFERENCES / car / "generated" / "reference-sheet.png"
+
+
+def draft_sheet(car: str) -> Path | None:
+    """hints.json `"sheet"`: an approved draft sheet (relative to reference-collector/cars/<id>/), or None."""
+    import json
+
+    h = ASSETS / car / "hints.json"
+    name = json.loads(h.read_text()).get("sheet") if h.is_file() else None
+    return REFERENCES / car / name if name and (REFERENCES / car / name).is_file() else None
 
 
 def manifest(car: str) -> Path:

@@ -1,0 +1,106 @@
+{
+  "car": "volvo-142-gl-hck20",
+  "source": "snapshots/tripo-multiview-guided.glb",
+  "made_from": "snapshots/tripo-multiview-clean.glb",
+  "sheet_fit": {
+    "scale_xyz": [
+      0.9978,
+      0.9949,
+      0.9945
+    ],
+    "offset_xy": [
+      0.0001,
+      0.0167
+    ],
+    "side+top_iou": 1.8416
+  },
+  "glass_source": {
+    "front": "traced",
+    "top": "traced"
+  },
+  "checks": {
+    "side_iou>=0.93": true,
+    "top_iou>=0.9": true,
+    "left_iou>=0.9": true,
+    "front_iou>=0.8": true,
+    "rear_iou>=0.8": true,
+    "length_within_5%_of_sheet": true,
+    "width_within_5%_of_sheet": true,
+    "height_within_5%_of_sheet": true
+  },
+  "passed": true,
+  "model": "model.glb",
+  "frame": "nose +x, up +y, right side +z, ground y=0, length 4.0",
+  "dimensions": {
+    "length": 3.9912,
+    "height": 1.2751,
+    "width": 1.6056
+  },
+  "wheels": [
+    {
+      "name": "wheel_front_right",
+      "centre": [
+        1.3435,
+        0.3054,
+        0.6344
+      ],
+      "r": 0.2887,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_front_left",
+      "centre": [
+        1.3435,
+        0.3054,
+        -0.6344
+      ],
+      "r": 0.2887,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_rear_right",
+      "centre": [
+        -1.004,
+        0.3054,
+        0.6354
+      ],
+      "r": 0.2887,
+      "pieces": 4
+    },
+    {
+      "name": "wheel_rear_left",
+      "centre": [
+        -1.004,
+        0.3054,
+        -0.6354
+      ],
+      "r": 0.2887,
+      "pieces": 5
+    }
+  ],
+  "wing": null,
+  "cabin_from_glass": null,
+  "views": [
+    "front",
+    "left",
+    "rear",
+    "side",
+    "top"
+  ],
+  "silhouette_iou": {
+    "side": 0.962,
+    "top": 0.9769,
+    "left": 0.9531,
+    "front": 0.954,
+    "rear": 0.9527
+  },
+  "proportions_vs_sheet": {
+    "length": 0.997,
+    "width": 1.011,
+    "height": 1.004
+  },
+  "glb": {
+    "bytes": 1204488,
+    "triangles": 16718
+  }
+}

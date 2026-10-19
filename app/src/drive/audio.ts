@@ -458,6 +458,39 @@ const ENGINES: Record<string, Engine> = {
     inertia: 0.09, drop: 0.12, blip: 0, body: [[130, 0.8, 6], [420, 1.6, 4], [1100, 2.4, 2.5]], lp: [500, 2000],
     noise: [900, 0.7, 1.1], rumble: [180, 2], vary: 0.26, jitter: 40, lope: 0.02, turbo: 0, pops: 1, popFade: 0.4, pop: 1, shiftPop: 0, level: 0.16,
   },
+  // Nissan Silvia CSP311's 1.6 R-series four on twin SUs: even 180-degree pulses, a busy, nasal little rasp that
+  // revs to 6600 - not the Civic's scream; a 4-speed with tidy shifts, a pop now and then on a lift
+  'nissan-silvia-htf93': {
+    cyl: 4, fire: [0, 180, 360, 540], load: [1, 0.88, 0.98, 0.86], lift: [0.6, 0.48, 0.58, 0.46], width: [0.024, 0.047],
+    idle: 900, redline: 6600, launch: 3600, gears: [14, 22, 32, 46], up: 0.94, down: 0.42, shift: 0.2, cut: 0,
+    inertia: 0.05, drop: 0.07, blip: 0.35, body: [[180, 0.9, 5], [560, 1.5, 4.5], [1500, 2.2, 3.6]], lp: [680, 2700],
+    noise: [1150, 0.7, 1], rumble: [220, 2], vary: 0.22, jitter: 34, lope: 0.012, turbo: 0, pops: 2.5, popFade: 0.5, pop: 1, shiftPop: 0, level: 0.135,
+  },
+  // Volvo B20 two-litre pushrod four: a low, even thrum with a deep body for a four (long stroke, heavy flywheel),
+  // runs out of breath by 5800; a long-throw 4-speed with slow shifts; barely pops
+  'volvo-142-gl-hck20': {
+    cyl: 4, fire: [0, 180, 360, 540], load: [1, 0.9, 0.97, 0.88], lift: [0.62, 0.52, 0.6, 0.5], width: [0.028, 0.052],
+    idle: 800, redline: 5800, launch: 2800, gears: [14, 23, 34, 50], up: 0.92, down: 0.38, shift: 0.3, cut: 0,
+    inertia: 0.09, drop: 0.11, blip: 0, body: [[120, 0.9, 6.5], [380, 1.4, 4.5], [1050, 2.2, 2.6]], lp: [480, 2000],
+    noise: [800, 0.7, 0.9], rumble: [170, 1.8], vary: 0.24, jitter: 38, lope: 0.015, turbo: 0, pops: 0.8, popFade: 0.4, pop: 1, shiftPop: 0, level: 0.16,
+  },
+  // Jaguar XK straight-six (E-Type): even pulses with a long, open exhaust - a smooth, rising howl, more song than
+  // rasp, to 6000; a 4-speed with a slow, deliberate change and a blip down; a soft crackle on the overrun
+  'jaguar-e-type-jcp68': {
+    cyl: 6, fire: [0, 120, 240, 360, 480, 600], load: [1, 0.9, 1.02, 0.92, 0.98, 0.9], lift: [0.56, 0.5, 0.58, 0.48, 0.56, 0.5], width: [0.022, 0.044],
+    idle: 750, redline: 6000, launch: 3400, gears: [15, 25, 38, 56], up: 0.94, down: 0.4, shift: 0.26, cut: 0,
+    inertia: 0.075, drop: 0.08, blip: 0.4, body: [[140, 0.8, 6], [460, 1.6, 4.5], [1250, 2.6, 3.4]], lp: [620, 2700],
+    noise: [900, 0.6, 0.9], rumble: [190, 2], vary: 0.18, jitter: 30, lope: 0.008, turbo: 0, pops: 2.5, popFade: 0.6, pop: 1, shiftPop: 0, level: 0.13,
+  },
+  // Splittin' Image's blown big V8, open headers: the cross-plane lope with a hot cam - the lumpiest idle in the game,
+  // a hard, loud bark to 6800; a 4-speed with quick, rough shifts, a big burble and pops on every lift
+  'splittin-image-b3575': {
+    cyl: 8, fire: [0, 96, 188, 272, 366, 452, 540, 640], load: [1, 0.7, 0.66, 0.96, 0.72, 1.05, 0.98, 0.68],
+    lift: [0.86, 0.3, 0.26, 0.72, 0.38, 0.94, 0.74, 0.28], width: [0.017, 0.034],
+    idle: 760, redline: 6800, launch: 3300, gears: [15, 25, 37, 56], up: 0.94, down: 0.36, shift: 0.18, cut: 0,
+    inertia: 0.08, drop: 0.12, blip: 0.4, body: [[95, 0.9, 7.5], [310, 1.3, 5], [950, 2.1, 3.4]], lp: [500, 2500],
+    noise: [600, 0.8, 1], rumble: [170, 1.7], vary: 0.36, jitter: 42, lope: 0.08, turbo: 0, pops: 7, popFade: 1.1, pop: 2, shiftPop: 0, level: 0.17,
+  },
 };
 
 /** The car's engine: its own by id, else one like it by make, else the neutral six. */

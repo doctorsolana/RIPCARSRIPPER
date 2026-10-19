@@ -57,11 +57,39 @@
       "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
+      "id": "jaguar-e-type-jcp68",
+      "make": "Jaguar",
+      "model": "E-Type",
+      "year": 1964,
+      "rarity": "epic",
+      "modelled": true,
+      "passed": false,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    },
+    {
       "id": "mustang-cobra-r-hgk61",
       "make": "Ford",
       "model": "Mustang Cobra R",
       "year": 1993,
       "rarity": "chase",
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    },
+    {
+      "id": "nissan-silvia-htf93",
+      "make": "Nissan",
+      "model": "Silvia (CSP311)",
+      "year": 1965,
+      "rarity": "rare",
       "modelled": true,
       "passed": true,
       "versions": [
@@ -155,10 +183,52 @@
       "source": "snapshots/tripo-multiview-guided.glb"
     },
     {
+      "id": "skyline-jbk59",
+      "make": "Nissan",
+      "model": "LB-ER34 Super Silhouette Skyline",
+      "year": 1998,
+      "rarity": "rare",
+      "modelled": true,
+      "passed": false,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    },
+    {
       "id": "skyline-jkf36",
       "make": "Nissan",
       "model": "LB-ER34 Super Silhouette Skyline",
       "year": 1998,
+      "rarity": "chase",
+      "modelled": true,
+      "passed": true,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    },
+    {
+      "id": "splittin-image-b3575",
+      "make": "Hot Wheels",
+      "model": "Splittin' Image",
+      "year": 2004,
+      "rarity": "chase",
+      "modelled": true,
+      "passed": false,
+      "versions": [
+        "tripo-multiview-clean",
+        "tripo-multiview-guided"
+      ],
+      "source": "snapshots/tripo-multiview-guided.glb"
+    },
+    {
+      "id": "volvo-142-gl-hck20",
+      "make": "Volvo",
+      "model": "142 GL",
+      "year": 1973,
       "rarity": "chase",
       "modelled": true,
       "passed": true,
