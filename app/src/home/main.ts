@@ -151,7 +151,7 @@ function renderLive() {
   if (open.length) el.innerHTML = `<span><b>${plural(open.length, 'room')}</b> open · <b>${plural(people, 'player')}</b></span>`;
 }
 
-// ---- this week: a card per track (index.html has the two courses' cards, for the first paint; a course it doesn't
+// ---- this week: a card per track (index.html has the three courses' cards, for the first paint; a course it doesn't
 // know gets one made here)
 const tracksEl = $('tracks');
 function renderTracks() {
@@ -167,7 +167,7 @@ function renderTracks() {
       card.className = 'trk';
       card.dataset.track = t.id;
       card.style.setProperty('--c', t.color);
-      card.innerHTML = `<div class="trk-pic">${pic ? `<img src="${pic.big}" srcset="${pic.small} 800w, ${pic.big} 1600w" sizes="(max-width: 980px) 100vw, 50vw" alt="${esc(t.name)}: a car in the air" loading="lazy" decoding="async">` : ''}
+      card.innerHTML = `<div class="trk-pic">${pic ? `<img src="${pic.big}" srcset="${pic.small} 800w, ${pic.big} 1600w" sizes="(max-width: 980px) 100vw, 33vw" alt="${esc(t.name)}" loading="lazy" decoding="async">` : ''}
           <h3><i></i>${esc(t.name)}</h3></div>
         <div class="trk-go"><button type="button" class="btn primary sm" data-tt="${esc(t.id)}">Time trial</button>
           <a class="btn ghost sm" data-race>Race</a><a class="btn ghost sm" data-drive>Drive</a></div>

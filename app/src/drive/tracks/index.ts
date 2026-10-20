@@ -4,15 +4,17 @@ import type { Course } from './course.ts';
 import { framesOf } from './frames.ts';
 import { meadow } from './meadow.ts';
 import { sky } from './sky.ts';
+import { touge } from './touge.ts';
 
-// The courses (?track=<id>), one file each in this folder: the meadow lap, and track 2 - the Sky Tower. The page's
-// track switch, the results card's "Try <the next one>", the bests' keys and the medals all read this list. To add a
-// course: write tracks/<id>.ts exporting a Course (course.ts; meadow.ts and sky.ts are the examples) and add it below.
+// The courses (?track=<id>), one file each in this folder: the meadow lap, track 2 - the Sky Tower - and track 3, the
+// Touge (the drift course). The page's track switch, the results card's "Try <the next one>", the bests' keys and the
+// medals all read this list. To add a course: write tracks/<id>.ts exporting a Course (course.ts; meadow.ts, sky.ts and
+// touge.ts are the examples) and add it below.
 // The rest of the folder is the shared builder: path.ts (the pieces a layout is written in), frames.ts (closure,
 // clearance, the frame table), build.ts (the meshes and the queries) with kit.ts, geo.ts, channel.ts, road.ts,
 // supports.ts and props.ts.
 
-export const COURSES = [meadow, sky] as const satisfies readonly Course[];
+export const COURSES = [meadow, sky, touge] as const satisfies readonly Course[];
 export type CourseId = (typeof COURSES)[number]['id'];
 /** The course with no ?track= (and the bests' unprefixed key, from before track 2): the meadow. */
 export const DEFAULT_COURSE: CourseId = 'meadow';

@@ -44,6 +44,10 @@ import type { Track, TrackFrame, TrackLook, VehicleState } from './types';
 // of the meadow at once): fewer trees, the ground cover gathered where the lap runs low, 6 chunks - and dressed like
 // Trackmania's stadium in a toy's meadow: grandstands (a crowd, ad boards, a roof with pennants) beside the booster
 // stadium, beside the double jump and across the spiral facing the tower, and the sign on the tower's crown (the boards print the FUTARD TRADE ad).
+// Track 3's (the Touge) is the Riviera (`coast`): the sea beyond its seafront, out to the horizon - a strip of beach,
+// the water's own mesh - the hills only inland, dry and Mediterranean (cypresses, umbrella pines, olives, oleander,
+// the maquis, pale limestone), and a warm, golden late-afternoon sun over the water. No pond (its mountain, built by
+// the course - tracks/mountain.ts - takes the ground round the jump) and none of the meadow's jump dressing.
 
 export interface World {
   update(state: VehicleState, dt: number): void;
@@ -87,6 +91,25 @@ const LOOK_SKY: typeof LOOK = {
   fogNear: 200,
   fogFar: 1100,
 };
+// Track 3, the Touge: the Riviera late in the afternoon - a deep blue sky, a warm gold haze on the horizon, the sun low
+// over the sea (same bearing as the others: the camera's ad shot picks its side by it).
+const LOOK_TOUGE: typeof LOOK = {
+  zenith: '#2a5fb8',
+  sky: '#5b9be0',
+  horizon: '#f1dcbb',
+  warm: '#f7cf98',
+  glow: '#ffd99c',
+  sun: '#ffe2b4',
+  sunIntensity: 2.75,
+  sunElevation: 28,
+  sunFrom: [-90, 130],
+  hemiSky: '#bcd3f2',
+  hemiGround: '#a39a62',
+  hemiIntensity: 0.64,
+  envIntensity: 0.34,
+  fogNear: 260,
+  fogFar: 1180,
+};
 const KEEP = 4; // u: props keep this far beyond the course's footprint
 const RAIL = 0.3; // u the plastic's rails reach beyond its driving surface (footprint fallback)
 const BARRIER = 1.6; // u a barrier (tyre wall, hay bales) may reach beyond the surface edge (footprint fallback)
@@ -103,10 +126,13 @@ const CHUNKS = 8; // the scenery's area chunks (draw calls at most; the ones out
  *  stadium-like meadow on a smaller budget (its own track is heavier than the meadow's): fewer trees, the flowers and
  *  grass tufts gathered where the lap runs low (`low`: up on a deck nobody sees them), fewer chunks; and the dressing -
  *  grandstands beside the booster stadium, the double jump and facing the tower, the sign on the tower's crown (FUTARD TRADE). */
-interface Style { look: typeof LOOK; cap: typeof CAP; chunks: number; low: boolean; dressing: boolean }
+interface Style { look: typeof LOOK; cap: typeof CAP; chunks: number; low: boolean; dressing: boolean; coast?: boolean }
 const STYLES: Record<TrackLook['world'], Style> = {
   meadow: { look: LOOK, cap: CAP, chunks: CHUNKS, low: false, dressing: false },
   sky: { look: LOOK_SKY, cap: { trees: [90, 100, 150], bushes: 45, rocks: 55, flowers: 260, tufts: 560 }, chunks: 6, low: true, dressing: true },
+  // the Touge's: the Riviera (`coast`: the sea, the hills inland, the Mediterranean scatter) on a smaller budget (its
+  // mountain is heavy and takes most of the ground the scatter would)
+  touge: { look: LOOK_TOUGE, cap: { trees: [120, 150, 200], bushes: 70, rocks: 60, flowers: 360, tufts: 900 }, chunks: CHUNKS, low: false, dressing: false, coast: true },
 };
 const LOW = 3.5; // u: the course runs low (ground cover gathers beside it, on a `low` course) up to this far over the meadow
 /** u/px of the structures' plan mask (what the track builds, seen from above), and the height over the meadow up to
@@ -612,8 +638,8 @@ function blobTexture() {
 }
 
 // ---- scenery records ----------------------------------------------------------------------------
-type Kind = 0 | 1 | 2 | 3; // round, pine, poplar, blossom
-const ROUND = 0, PINE = 1, POPLAR = 2, BLOSSOM = 3;
+type Kind = 0 | 1 | 2 | 3 | 4; // round, pine, poplar, blossom, umbrella (the Riviera's stone pine)
+const ROUND = 0, PINE = 1, POPLAR = 2, BLOSSOM = 3, UMBRELLA = 4;
 /** tier: 0 near (full detail), 1 mid, 2 far (cheapest) */
 interface Tree { x: number; z: number; kind: Kind; tier: number; trunkH: number; trunkR: number; cr: number; ch: number; rot: number; seed: number; leaf: THREE.Color; bark: THREE.Color }
 interface Rock { x: number; z: number; r: number; sy: number; sz: number; rot: number; seed: number; fine: boolean; col: THREE.Color }
@@ -634,11 +660,30 @@ const LEAF = [
   ['#2c6435', '#336f3a', '#285b33', '#3b7a3c'], // pine
   ['#5b9a34', '#69a83a', '#4f8d33'], // poplar
   ['#f28bb8', '#f5a3c7', '#ee7fae', '#f7c35c'], // blossom
+  ['#2c6435'], // (umbrella: the coast's alone)
 ];
 const BARK = ['#6b4a2f', '#5e4029', '#7a5636'];
 const ROCK = ['#9b968e', '#8b8780', '#a59f94', '#8f8a84'];
 const BUSH = ['#3f7d2c', '#4a8a30', '#356f28', '#5a9634'];
 const FLOWER = ['#ffffff', '#ffd23f', '#ff6fae', '#a36cf0', '#ff4f4f', '#ff9d3a', '#6aa8ff'];
+// The Riviera's (Style.coast): olives (round), cypresses (poplar), oleander and bougainvillea (blossom), umbrella pines;
+// the maquis, pale limestone, lavender and broom, dry grass.
+const COAST = {
+  leaf: [
+    ['#8f9a68', '#9aa574', '#86915f', '#a3ab7c'],
+    ['#2c6435', '#336f3a'],
+    ['#2f4b2c', '#35532f', '#2a4428', '#3b5a33'],
+    ['#e0457f', '#ea5f96', '#f07fb0', '#f4f1ec', '#d93a6e'],
+    ['#4d6a33', '#567438', '#46602f', '#5f7c3c'],
+  ],
+  bark: ['#6e5a45', '#7a6650', '#5f4d3b'],
+  rock: ['#d6cfbf', '#c7bfad', '#e0d9c9', '#bcb39f'],
+  bush: ['#5b6b35', '#4e5e2f', '#6a783e', '#77804a'],
+  flower: ['#f4f1ec', '#f2d03b', '#9b7fd1', '#d93a6e', '#f07fb0', '#e8a33a', '#b48be0'],
+  tuftBase: '#6a6833', tufts: ['#c9b968', '#b8aa58', '#d4c47c', '#a9a24f'],
+  sand: '#dcc496', sea: { shallow: '#3aa6b0', deep: '#1a4f86' },
+};
+const SEA_GAP = 24; // u: the coast's shore beyond the course's southernmost centre line (its road, the promenade, a beach)
 // Pine tiers per detail tier: [base, height, radius] as fractions of the crown height / radius, bottom tier first.
 const PINE_TIERS = [
   [[0, 0.42, 1], [0.26, 0.42, 0.73], [0.52, 0.42, 0.46]],
@@ -675,6 +720,12 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
   const span = Math.max(maxX - minX, maxZ - minZ, 100);
   const worldR = span / 2 + 300; // scenery radius round the course's centre
+  // The Riviera's coast (Style.coast): the shore SEA_GAP u beyond the course's southern edge (+z), wavering a little;
+  // the sea beyond it. Nothing grows there.
+  const shoreZ = maxZ + SEA_GAP;
+  const shore = (x: number) => shoreZ + 5 * (vnoise(x / 60, 0.5, 131) - 0.5) + 3 * (vnoise(x / 23, 2.5, 137) - 0.5);
+  const wet = (x: number, z: number, grow = 0) => !!ST.coast && z > shore(x) - grow;
+  const PAL = ST.coast ? COAST : { leaf: LEAF, bark: BARK, rock: ROCK, bush: BUSH, flower: FLOWER, tuftBase: '#356a22', tufts: ['#8cc455', '#9fce5a', '#7db84a', '#b4d468'], sand: '#c8975c' };
 
   // Samples ~1 u apart: centre (x, y, z), the footprint's half-width (horizontal u), horizontal tangent (right =
   // (-tz, tx)), signed curvature, the clear margin a raised section keeps below it (open views from up there), and the
@@ -1017,7 +1068,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     return l < r * Math.hypot(P.a * Math.cos(th), P.b * Math.sin(th)) + grow;
   };
   const flight = flights.length ? flights.reduce((a, b) => (b.s1 - b.s0 > a.s1 - a.s0 ? b : a)) : null; // the longest
-  if (flight) {
+  if (flight && !ST.coast) {
     const prnd = rngOf(SEED ^ 0x7f4a7c15); // its own stream: the pond's shape never shifts the meadow's dice
     const h = POND_HARM.flatMap((_, i) => [(0.1 - 0.025 * i) * (0.6 + 0.4 * prnd()), prnd() * Math.PI * 2]);
     const bend = (prnd() < 0.5 ? -1 : 1) * (0.1 + 0.1 * prnd());
@@ -1157,7 +1208,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   // off to the side past the landing's start, facing the flight.
   const flags: number[] = []; // x, z, pole height, colour index
   let banner: { x: number; z: number; ux: number; uz: number; w: number; y0: number; h: number } | null = null;
-  if (flight && jump) {
+  if (flight && jump && !ST.coast) {
     const g = flight, L = track.length, fr = track.frameAt(jump.s0);
     let wide = 0; // the flight's footprint half-width
     for (let k = 0; k < M; k++) if (SF[k]) wide = Math.max(wide, SE[k]);
@@ -1325,7 +1376,12 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   function tryTree(x: number, z: number, kind: Kind, scale: number, nearOk = true) {
     const s = scale * R(0.85, 1.15);
     // [trunk height, trunk radius, canopy radius, canopy height (0 = from the radius)] per kind
-    const dims = kind === PINE ? [R(1.2, 2.2), R(0.35, 0.5), R(2.8, 4.2), R(10, 16)]
+    const dims = ST.coast // (olive, -, cypress, oleander, umbrella pine)
+      ? kind === UMBRELLA ? [R(5, 8), R(0.4, 0.55), R(4, 6), R(1.8, 2.6)]
+        : kind === POPLAR ? [R(0.8, 1.4), 0.3, R(1, 1.5), R(8, 13)]
+        : kind === BLOSSOM ? [R(0.5, 0.9), R(0.2, 0.3), R(1.6, 2.4), R(2, 2.8)]
+        : [R(1.4, 2.2), R(0.4, 0.6), R(2.4, 3.4), R(2.6, 3.6)]
+      : kind === PINE ? [R(1.2, 2.2), R(0.35, 0.5), R(2.8, 4.2), R(10, 16)]
       : kind === POPLAR ? [R(1.3, 2.2), 0.38, R(1.9, 2.6), R(9, 13)]
       : kind === BLOSSOM ? [R(2.2, 3.2), R(0.32, 0.45), R(2.8, 4), 0]
       : [R(2.5, 4.2), R(0.38, 0.58), R(3.2, 5.4), 0];
@@ -1333,12 +1389,12 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     const ch = dims[3] ? dims[3] * s : cr * R(1.45, 1.9);
     const reach = kind === ROUND || kind === BLOSSOM ? cr * 1.2 : cr;
     const ed = edgeDist(x, z, true);
-    if (ed < KEEP + 3 + reach || sightDist(x, z) < reach + 2.5 || inPond(x, z, reach + 3) || struct(x, z, reach + 1)) return -1;
+    if (ed < KEEP + 3 + reach || sightDist(x, z) < reach + 2.5 || inPond(x, z, reach + 3) || wet(x, z, reach + 4) || struct(x, z, reach + 1)) return -1;
     const tier = ed < NEAR ? 0 : ed < MID ? 1 : 2;
     if ((!tier && !nearOk) || tierN[tier] >= CAP.trees[tier] || !isFree(x, z, cr * 0.7)) return -1;
     tierN[tier]++;
-    const leaf = col(pick(LEAF[kind])).offsetHSL(R(-0.015, 0.015), R(-0.05, 0.05), R(-0.04, 0.04));
-    trees.push({ x, z, kind, tier, trunkH, trunkR, cr, ch, rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), leaf, bark: col(pick(BARK)) });
+    const leaf = col(pick(PAL.leaf[kind])).offsetHSL(R(-0.015, 0.015), R(-0.05, 0.05), R(-0.04, 0.04));
+    trees.push({ x, z, kind, tier, trunkH, trunkR, cr, ch, rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), leaf, bark: col(pick(PAL.bark)) });
     occupy(x, z, cr * 0.7);
     return tier;
   }
@@ -1367,7 +1423,9 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     let placed = 0, near = 0;
     for (let k = 0; k < n * 4 && placed < n; k++) {
       const q = rnd();
-      const kind: Kind = mood < 0.38 ? (q < 0.88 ? PINE : ROUND)
+      const kind: Kind = ST.coast // (the Riviera's: cypress stands, umbrella pines, olive groves with oleander)
+        ? mood < 0.3 ? (q < 0.85 ? POPLAR : ROUND) : mood < 0.6 ? (q < 0.8 ? UMBRELLA : POPLAR) : (q < 0.78 ? ROUND : q < 0.9 ? BLOSSOM : POPLAR)
+        : mood < 0.38 ? (q < 0.88 ? PINE : ROUND)
         : mood < 0.8 ? (q < 0.72 ? ROUND : q < 0.88 ? POPLAR : q < 0.95 ? PINE : BLOSSOM)
         : (q < 0.4 ? ROUND : q < 0.65 ? POPLAR : q < 0.8 ? BLOSSOM : PINE);
       const tier = tryTree(gx + gauss() * spread, gz + gauss() * spread, kind, far ? 1.25 : 1, near < nearEach);
@@ -1379,19 +1437,19 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   for (let k = 0; k < 70; k++) {
     inDisc(0, worldR);
     const q = rnd();
-    tryTree(pt[0], pt[1], q < 0.55 ? ROUND : q < 0.75 ? POPLAR : q < 0.88 ? BLOSSOM : PINE, 1);
+    tryTree(pt[0], pt[1], q < 0.55 ? ROUND : q < 0.75 ? POPLAR : q < 0.88 ? BLOSSOM : ST.coast ? UMBRELLA : PINE, 1);
   }
   // a looser tree line framing the far meadow
   for (let k = 0; k < 170; k++) {
     inDisc(span / 2 + 110, worldR + 60);
     const q = rnd();
-    tryTree(pt[0], pt[1], q < 0.5 ? PINE : q < 0.85 ? ROUND : POPLAR, 1.3);
+    tryTree(pt[0], pt[1], q < 0.5 ? (ST.coast ? UMBRELLA : PINE) : q < 0.85 ? ROUND : POPLAR, 1.3);
   }
 
   function tryBush(x: number, z: number) {
     const r = R(1.1, 2.1);
-    if (bushes.length >= CAP.bushes || edgeDist(x, z) < KEEP + r || onDirt(x, z) || inPond(x, z, r + 1.5) || !isFree(x, z, r * 0.8) || struct(x, z, r + 0.5)) return;
-    bushes.push({ x, z, r, rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), leaf: col(pick(BUSH)).offsetHSL(0, 0, R(-0.03, 0.03)) });
+    if (bushes.length >= CAP.bushes || edgeDist(x, z) < KEEP + r || onDirt(x, z) || inPond(x, z, r + 1.5) || wet(x, z, r + 3) || !isFree(x, z, r * 0.8) || struct(x, z, r + 0.5)) return;
+    bushes.push({ x, z, r, rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), leaf: col(pick(PAL.bush)).offsetHSL(0, 0, R(-0.03, 0.03)) });
     occupy(x, z, r * 0.8);
   }
   for (let g = 0; g < groves.length; g += 3) {
@@ -1411,10 +1469,10 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   function tryRock(x: number, z: number, r: number, big: boolean) {
     if (rocks.length >= CAP.rocks) return false;
     const ed = edgeDist(x, z);
-    if (ed < KEEP + r * 1.2 + (big ? 4 : 0) || (big && sightDist(x, z) < r + 1) || onDirt(x, z) || inPond(x, z, r + 1.5) || !isFree(x, z, r) || struct(x, z, r + 0.5)) return false;
+    if (ed < KEEP + r * 1.2 + (big ? 4 : 0) || (big && sightDist(x, z) < r + 1) || onDirt(x, z) || inPond(x, z, r + 1.5) || wet(x, z, r + 2) || !isFree(x, z, r) || struct(x, z, r + 0.5)) return false;
     const f = big && ed < NEAR && fine < 6;
     if (f) fine++;
-    rocks.push({ x, z, r, sy: R(0.5, 0.85), sz: R(0.75, 1.15), rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), fine: f, col: col(pick(ROCK)).offsetHSL(R(-0.02, 0.02), 0, R(-0.04, 0.04)) });
+    rocks.push({ x, z, r, sy: R(0.5, 0.85), sz: R(0.75, 1.15), rot: R(0, Math.PI * 2), seed: Math.floor(rnd() * 1e9), fine: f, col: col(pick(PAL.rock)).offsetHSL(R(-0.02, 0.02), 0, R(-0.04, 0.04)) });
     occupy(x, z, r);
     return true;
   }
@@ -1447,12 +1505,12 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
     for (let i = 0; i < n && flowers.length < CAP.flowers * 4; i++) {
       const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * pr, x = px + Math.cos(a) * r, z = pz + Math.sin(a) * r;
       const sz = R(0.8, 1.2), c = rnd() < 0.72 ? main : Math.floor(rnd() * 2);
-      if (edgeDist(x, z) < 2.5 || onDirt(x, z) || inPond(x, z, 1.5) || struct(x, z, 0.6)) continue;
+      if (edgeDist(x, z) < 2.5 || onDirt(x, z) || inPond(x, z, 1.5) || wet(x, z, 3) || struct(x, z, 0.6)) continue;
       flowers.push(x, z, c, sz);
     }
   }
   const tuft = (x: number, z: number, s: number, minEdge: number) => {
-    if (tufts.length < CAP.tufts * 3 && edgeDist(x, z) > minEdge && !onDirt(x, z) && !inPond(x, z, 1) && !struct(x, z, 0.6)) tufts.push(x, z, s);
+    if (tufts.length < CAP.tufts * 3 && edgeDist(x, z) > minEdge && !onDirt(x, z) && !inPond(x, z, 1) && !wet(x, z, 2) && !struct(x, z, 0.6)) tufts.push(x, z, s);
   };
   for (let c = 0; c < 190 && M; c++) {
     beside(kCover((c + rnd()) / 190), 1.5 + expo(9));
@@ -1512,6 +1570,10 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
   // meadow. The inner parts of the bands lie under the track's own meshes.
   gm.globalCompositeOperation = 'lighter';
   for (let i = 0; i < dirt.length; i += 3) blob(gm, dirt[i], dirt[i + 1], dirt[i + 2] * 1.25, DIRT, dirt[i + 2] > 6 ? 0.55 : 0.3);
+  if (ST.coast) for (let x = mx0; x < mx0 + MS; x += 3) { // the coast's beach: sand down to the water
+    blob(gm, x, shore(x) - 2, 6.5, DIRT, 1);
+    blob(gm, x + 1.5, shore(x) - 8.5, 6, DIRT, 0.5);
+  }
   /** The pond's rim as a closed canvas path (map pixels). */
   const rimPath = (g: CanvasRenderingContext2D) => {
     g.beginPath();
@@ -1640,9 +1702,10 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
       uNoise: { value: noiseTex },
       uMacro: { value: macroTex },
       uMacroXf: { value: new THREE.Vector4(mx0, mz0, 1 / MS, 1 / MS) },
-      uLush: { value: new THREE.Color(0.95, 1.08, 0.82) }, // multipliers on the grass texture
-      uDry: { value: new THREE.Color(1.3, 1.12, 0.62) },
-      uDirt: { value: col('#c8975c') },
+      uLush: { value: ST.coast ? new THREE.Color(1.34, 1.1, 0.58) : new THREE.Color(0.95, 1.08, 0.82) }, // multipliers on the grass texture (the coast's drier)
+      uDry: { value: ST.coast ? new THREE.Color(1.66, 1.32, 0.62) : new THREE.Color(1.3, 1.12, 0.62) },
+      uDirt: { value: col(PAL.sand) },
+      uStraw: { value: ST.coast ? new THREE.Vector4(1.22, 1.04, 0.62, 0.6) : new THREE.Vector4(1, 1, 1, 0) }, // (the coast's grass bleached to straw)
     });
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
@@ -1652,6 +1715,7 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tr
 uniform sampler2D uGrass, uNoise, uMacro;
 uniform vec4 uMacroXf;
 uniform vec3 uLush, uDry, uDirt;
+uniform vec4 uStraw;
 varying vec3 vWPos;`)
       .replace('#include <map_fragment>', /* glsl */ `
 vec2 wp = vWPos.xz;
@@ -1665,7 +1729,9 @@ tint *= 1.0 - 0.14 * smoothstep( 0.5, 0.15, n1.g ); // darker, lusher hollows
 float grain = texture2D( uNoise, wp * 0.29 ).b;
 float worn = mac.b * ( 0.55 + 0.9 * texture2D( uNoise, wp * 0.047 ).r ); // worn in patches, not a smooth smear
 vec3 dirt = uDirt * ( 0.78 + 0.44 * grain );
-diffuseColor.rgb *= mix( grass * tint, dirt, smoothstep( 0.08, 0.8, worn ) );`)
+vec3 lawn = grass * tint;
+lawn = mix( lawn, uStraw.rgb * dot( lawn, vec3( 0.36, 0.42, 0.22 ) ) * 1.15, uStraw.a );
+diffuseColor.rgb *= mix( lawn, dirt, smoothstep( 0.08, 0.8, worn ) );`)
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
 reflectedLight.directDiffuse *= mac.r;
 reflectedLight.indirectDiffuse *= mac.g * ( 0.7 + 0.3 * mac.r ); // a caster hides some sky too: shadows read on a sunny day`)
@@ -1674,7 +1740,12 @@ reflectedLight.indirectDiffuse *= mac.g * ( 0.7 + 0.3 * mac.r ); // a caster hid
   groundMat.customProgramCacheKey = () => 'world-outdoor-ground';
   const GS = Math.max(3200, span + 1400); // past the hills' foot (430 u) wherever the car goes
   // One square, with the pond cut out where there is one (its rim is the banks' top edge: no seam, no sliver).
-  const groundShape = new THREE.Shape([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new THREE.Vector2((a * GS) / 2, (b * GS) / 2)));
+  const groundShape = new THREE.Shape(ST.coast
+    ? [ // (shape y = -z: the shore west to east along the bottom, then the far corners inland)
+      ...Array.from({ length: Math.ceil(GS / 8) + 1 }, (_, i) => new THREE.Vector2(-GS / 2 + i * 8, cz - shore(cx - GS / 2 + i * 8))),
+      new THREE.Vector2(GS / 2, GS / 2), new THREE.Vector2(-GS / 2, GS / 2),
+    ]
+    : [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new THREE.Vector2((a * GS) / 2, (b * GS) / 2)));
   const hole: THREE.Vector2[] = [];
   for (let i = 0; i < rim.length; i += 2) hole.push(new THREE.Vector2(rim[i] - cx, cz - rim[i + 1])); // shape y = -z
   if (hole.length) groundShape.holes.push(new THREE.Path(hole));
@@ -1682,6 +1753,84 @@ reflectedLight.indirectDiffuse *= mac.g * ( 0.7 + 0.3 * mac.r ); // a caster hid
   ground.position.set(cx, groundY, cz);
   ground.name = 'ground';
   root.add(ground);
+
+  // ---- the Riviera's sea (Style.coast): from under the shore's edge out past the far plane, its own mesh - depth 0 at
+  // the shore to 1 two hundred u out (the shallows' turquoise to the deep blue), the sky in its swell, the low sun's
+  // glitter, a slow surf along the beach
+  let sea: THREE.Mesh | null = null;
+  if (ST.coast) {
+    const rows = [-3, 2, 8, 20, 45, 90, 180, 380, 760, 1500], dep = [0, 0.04, 0.12, 0.3, 0.55, 0.8, 1, 1, 1, 1];
+    const sp: number[] = [], sd: number[] = [], si: number[] = [], nx = Math.ceil(GS / 16) + 1;
+    for (const r of rows) for (let i = 0; i < nx; i++) {
+      const x = cx - GS / 2 + i * 16;
+      sp.push(x, groundY - 0.35, shore(x) + r);
+    }
+    for (const d of dep) for (let i = 0; i < nx; i++) sd.push(d);
+    for (let j = 0; j < rows.length - 1; j++) for (let i = 0; i < nx - 1; i++) {
+      const a = j * nx + i, b = a + 1, c = a + nx + 1, e = a + nx;
+      si.push(a, e, c, a, c, b); // (facing up)
+    }
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+    sg.setAttribute('aDepth', new THREE.Float32BufferAttribute(sd, 1));
+    sg.setIndex(si);
+    sg.computeBoundingSphere();
+    const seaMat = new THREE.ShaderMaterial({
+      uniforms: {
+        ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
+        uTime, uNoise: { value: noiseTex }, uSunDir: { value: sunDir },
+        uShallow: { value: col(COAST.sea.shallow) }, uDeep: { value: col(COAST.sea.deep) },
+        uSkyLo: { value: col(LOOK.horizon) }, uSkyHi: { value: col(LOOK.sky) }, uSun: { value: col(LOOK.glow) },
+      },
+      vertexShader: /* glsl */ `
+attribute float aDepth;
+varying float vDepth;
+varying vec3 vWPos, vViewPosition;
+void main() {
+  vec4 wp = modelMatrix * vec4( position, 1.0 );
+  vWPos = wp.xyz;
+  vDepth = aDepth;
+  vec4 mv = viewMatrix * wp;
+  vViewPosition = -mv.xyz;
+  gl_Position = projectionMatrix * mv;
+}`,
+      fragmentShader: /* glsl */ `
+uniform float uTime;
+uniform sampler2D uNoise;
+uniform vec3 uSunDir, uShallow, uDeep, uSkyLo, uSkyHi, uSun;
+uniform vec3 fogColor;
+uniform float fogNear, fogFar;
+varying float vDepth;
+varying vec3 vWPos, vViewPosition;
+// the swell: three drifting layers of the meadow's soft noise, broad to fine
+float swell( vec2 p ) {
+  return texture2D( uNoise, p * 0.019 + uTime * vec2( 0.004, 0.0025 ) ).r
+    + 0.55 * texture2D( uNoise, p * 0.053 + uTime * vec2( -0.0035, 0.006 ) ).g
+    + 0.3 * texture2D( uNoise, p * 0.14 + uTime * vec2( 0.009, -0.005 ) ).b;
+}
+void main() {
+  vec2 p = vWPos.xz;
+  const float e = 1.1;
+  vec3 n = normalize( vec3( swell( p - vec2( e, 0.0 ) ) - swell( p + vec2( e, 0.0 ) ), 9.0 * e, swell( p - vec2( 0.0, e ) ) - swell( p + vec2( 0.0, e ) ) ) );
+  vec3 v = normalize( cameraPosition - vWPos ), r = reflect( -v, n );
+  float fres = 0.04 + 0.96 * pow( 1.0 - max( dot( n, v ), 0.0 ), 5.0 );
+  vec3 body = mix( uShallow, uDeep, smoothstep( 0.0, 0.85, vDepth ) );
+  vec3 c = mix( body, mix( uSkyLo, uSkyHi, smoothstep( 0.0, 0.45, r.y ) ), fres * 0.85 );
+  c += uSun * 1.4 * pow( max( dot( r, uSunDir ), 0.0 ), 180.0 ); // the low sun's glitter
+  float surf = ( 1.0 - smoothstep( 0.0, 0.05, vDepth ) ) * ( 0.55 + 0.45 * sin( uTime * 0.9 + p.x * 0.11 + 3.0 * texture2D( uNoise, p * 0.05 ).r ) );
+  c = mix( c, vec3( 0.93, 0.95, 0.93 ), 0.55 * surf ); // a slow surf along the beach
+  gl_FragColor = vec4( c, 1.0 );
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, smoothstep( fogNear, fogFar, length( vViewPosition ) ) );
+}`,
+      fog: true,
+    });
+    sea = new THREE.Mesh(sg, seaMat);
+    sea.name = 'sea';
+    sea.frustumCulled = false;
+    root.add(sea);
+  }
 
   // ---- scenery: one merged, flat-shaded mesh ---------------------------------------------------
   // Detail by distance from the course: canopies ICO1 near, ICO0 (+ a lump) further; pines lose tiers, trunks sides.
@@ -1713,6 +1862,13 @@ reflectedLight.indirectDiffuse *= mac.g * ( 0.7 + 0.3 * mac.r ); // a caster hid
       });
     } else if (t.kind === POPLAR) {
       m.add(t.tier ? ICO0 : ICO1, t.x, top + t.ch * 0.5, t.z, t.cr, t.ch * 0.5, t.cr, t.rot, 0.12, t.seed, leaf(0.55, 0.55, 0.3));
+    } else if (t.kind === UMBRELLA) { // a tall bare trunk under a broad, flat crown (two lumps on its rim)
+      const cy = top + t.ch * 0.35, paint = leaf(0.5, 0.55, 0.3);
+      m.add(t.tier ? ICO0 : ICO1, t.x, cy, t.z, t.cr, t.ch * 0.5, t.cr, t.rot, 0.14, t.seed, paint);
+      if (t.tier < 2) for (const e of [0.4, 2.6]) {
+        const a = t.rot + e, rr = t.cr * 0.55;
+        m.add(ICO0, t.x + Math.cos(a) * t.cr * 0.7, cy - t.ch * 0.12, t.z + Math.sin(a) * t.cr * 0.7, rr, t.ch * 0.38, rr, a, 0.2, t.seed + 7, paint);
+      }
     } else {
       const cy = top + t.ch * 0.5, paint = leaf(0.58, 0.55, 0.35);
       m.add(t.tier ? ICO0 : ICO1, t.x, cy, t.z, t.cr, t.ch * 0.5, t.cr, t.rot, 0.15, t.seed, paint);
@@ -1722,7 +1878,7 @@ reflectedLight.indirectDiffuse *= mac.g * ( 0.7 + 0.3 * mac.r ); // a caster hid
       }
     }
   }
-  const MOSS = col('#6f8f3a');
+  const MOSS = col(ST.coast ? '#a3a064' : '#6f8f3a'); // (the coast's limestone: lichen)
   for (const r of rocks) {
     m.item(r.x, r.z);
     m.add(r.fine ? ICO1 : ICO0, r.x, groundY - r.r * r.sy * 0.3, r.z, r.r, r.r * r.sy, r.r * r.sz, r.rot, r.fine ? 0.22 : 0.3, r.seed, (_x, ly, _z, k) => {
@@ -1743,7 +1899,7 @@ reflectedLight.indirectDiffuse *= mac.g * ( 0.7 + 0.3 * mac.r ); // a caster hid
     m.add(ICO0, b.x + Math.cos(a) * b.r * 0.75, groundY + rr * 0.25, b.z + Math.sin(a) * b.r * 0.75, rr, rr * 0.75, rr, a, 0.22, b.seed + 1, paint);
   }
   const stemC = col('#4f8a2e'), stemTip = col('#5f9a36');
-  const flowerC = FLOWER.map(col);
+  const flowerC = PAL.flower.map(col);
   for (let i = 0; i < flowers.length; i += 4) {
     const x = flowers[i], z = flowers[i + 1], s = flowers[i + 3], h = 0.32 + 0.22 * s, y = groundY;
     const fc = flowerC[flowers[i + 2]];
@@ -1754,7 +1910,7 @@ reflectedLight.indirectDiffuse *= mac.g * ( 0.7 + 0.3 * mac.r ); // a caster hid
       return 0.5;
     });
   }
-  const tuftBase = col('#356a22'), tuftTips = ['#8cc455', '#9fce5a', '#7db84a', '#b4d468'].map(col);
+  const tuftBase = col(PAL.tuftBase), tuftTips = PAL.tufts.map(col);
   for (let i = 0; i < tufts.length; i += 3) {
     const x = tufts[i], z = tufts[i + 1], s = tufts[i + 2], y = groundY;
     const tip = tuftTips[Math.floor(hash3(i, 3, 1) * tuftTips.length) % tuftTips.length];
@@ -2200,18 +2356,22 @@ void main() {
     }
   };
   const circ = (a: number, k: number, s: number, oct: number) => fbm(Math.cos(a) * k + 50, Math.sin(a) * k + 50, s, oct);
-  const hillGreen = [col('#5f9440'), col('#6fa246'), col('#7aa94c')], hillForest = col('#3f7234'), hillDry = col('#a3ad5c');
-  ring([430, 470, 520, 585, 650, 715, 780], [0, 0.22, 0.52, 0.84, 1, 0.82, 0.5], 128, (a) => 16 + 70 * Math.pow(circ(a, 3.2, 101, 4), 1.6), 7, (h, _H, i, j) => {
+  // (on the coast only inland - north of the camera, the sea to its south: the rings' heights sink below the water
+  // there, the coast's last hills its capes going into the sea)
+  const land = (a: number, H: number) => (ST.coast ? -12 + (H + 12) * smooth(0.12, -0.32, Math.sin(a)) : H);
+  const hillGreen = ST.coast ? [col('#8b9452'), col('#9aa05a'), col('#a6a465')] : [col('#5f9440'), col('#6fa246'), col('#7aa94c')];
+  const hillForest = col(ST.coast ? '#56683a' : '#3f7234'), hillDry = col(ST.coast ? '#c4ad72' : '#a3ad5c');
+  ring([430, 470, 520, 585, 650, 715, 780], [0, 0.22, 0.52, 0.84, 1, 0.82, 0.5], 128, (a) => land(a, 16 + 70 * Math.pow(circ(a, 3.2, 101, 4), 1.6)), 7, (h, _H, i, j) => {
     const n = fbm(i * 0.17, j * 0.6, 202, 3);
     C.copy(hillGreen[(i + j) % 3]);
     if (n > 0.56) C.lerp(hillForest, 0.85);
     else if (n < 0.3) C.lerp(hillDry, 0.35);
     C.multiplyScalar(0.9 + 0.2 * hash3(i, j, 9) + h * 0.0015);
   });
-  const mtnGrass = col('#628a5e'), rock = col('#6f84a8'), snow = col('#eef3fa');
+  const mtnGrass = col(ST.coast ? '#7f8a62' : '#628a5e'), rock = col(ST.coast ? '#9aa2b4' : '#6f84a8'), snow = col(ST.coast ? '#d9d6d0' : '#eef3fa');
   ring([810, 860, 915, 975, 1035, 1080], [0, 0.42, 0.8, 1, 0.74, 0.4], 168, (a) => {
     const r = 1 - Math.abs(2 * circ(a, 4.5, 303, 5) - 1);
-    return 25 + 95 * r * r * r;
+    return land(a, 25 + 95 * r * r * r);
   }, 11, (h, _H, i, j) => {
     const t = h / 120 + 0.1 * (hash3(i, j, 13) - 0.5);
     C.copy(t > 0.8 ? snow : t > 0.22 ? rock : mtnGrass);
@@ -2293,6 +2453,7 @@ void main() {
       ground: tris(ground.geometry), hills: tris(hillGeo), sky: tris(sky.geometry), clouds: tris(cloudGeo),
       scenery: scenery.children.map((c) => tris((c as THREE.Mesh).geometry)), // per chunk
       pond: water ? tris(water.geometry) : 0,
+      sea: sea ? tris(sea.geometry) : 0,
     },
     pond: pond && { x: +pond.x.toFixed(1), z: +pond.z.toFixed(1), ux: +pond.ux.toFixed(3), uz: +pond.uz.toFixed(3), a: +pond.a.toFixed(1), b: +pond.b.toFixed(1), bend: +pond.bend.toFixed(2), clear: +pondClear.toFixed(1) },
     flags: flags.length / 4, banner: !!banner, ads: ads.map((B) => ({ x: +B.x.toFixed(1), z: +B.z.toFixed(1), nx: +(-B.uz).toFixed(3), nz: +B.ux.toFixed(3), y0: +B.y0.toFixed(1) })),

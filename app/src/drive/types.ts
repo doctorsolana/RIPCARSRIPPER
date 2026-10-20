@@ -50,7 +50,7 @@ export type TrackTag = 'gate' | 'drop' | 'booster' | 'kicker' | 'gap' | 'loop' |
 /** How the page dresses a course (its tracks/<course>.ts sets it; a track without one gets the meadow's): `world`
  *  picks world-outdoor.ts's style (STYLES), `hoop` - a hoop over the big jump's flight, which the camera's jump shot
  *  holds back for - and `wide` - plastic wider than the channel, with connectors (the audio's joint ticks) across it. */
-export interface TrackLook { world: 'meadow' | 'sky'; hoop: boolean; wide: boolean }
+export interface TrackLook { world: 'meadow' | 'sky' | 'touge'; hoop: boolean; wide: boolean }
 
 export interface Track {
   readonly length: number; // closed lap length (s wraps)
@@ -59,7 +59,7 @@ export interface Track {
   readonly collider: { positions: Float32Array; indices: Uint32Array }; // channel surface + rails (for a physics engine)
   // tagged ranges along s; a booster with d0..d1 (lateral, + right) is a narrow pad: only a car over it boosts (none:
   // the pad spans the track); one with a `lane` belongs to that lane of a split (track.split) alone
-  readonly tags: { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number; lane?: -1 | 1 }[];
+  readonly tags: { tag: TrackTag; s0: number; s1: number; d0?: number; d1?: number; lane?: -1 | 1; floor?: number }[];
   readonly start: number; // s of the start line (in the gate)
   frameAt(s: number, out?: TrackFrame): TrackFrame; // interpolated frame at s (wraps)
   nearest(p: THREE.Vector3, hintS: number, window?: number): { s: number; frame: TrackFrame; offset: THREE.Vector3 }; // search near hintS
@@ -88,6 +88,9 @@ export interface TrackSplit {
   centre(s: number): number;
   /** The lane's rise off the deck at s (h u, pitch th, dth/ds); false where it lies flat on the deck. */
   lift(lane: number, s: number, out: { h: number; th: number; dth: number }): boolean;
+  /** A row of islands (tracks/split.ts makeSplits): true between two of them, where the lanes rejoin and a car is in
+   *  neither (it takes one again at the next point). None: one island. */
+  gap?(s: number): boolean;
 }
 
 export interface VehicleEvents {

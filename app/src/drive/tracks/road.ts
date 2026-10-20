@@ -6,6 +6,8 @@ import { Geo, runs, stations } from './geo.ts';
 // The road: asphalt, dirt, mown verges, embankments and curbs under one shader, with its painted textures.
 
 export const GROUND = -0.3; // embankments run just under the meadow (y = 0), so no seam shows
+/** A bridge's deck (roadGeometry's `bridge`): how deep its concrete fascia hangs under the road, its colours. */
+export const BRIDGE = { depth: 1.4, face: col('#c8ba9a'), dark: col('#978a6e') }; // (dressed stone: the Touge's decks and cut roads)
 const ROAD_TILE = 16; // u of road per texture repeat
 
 /** A tileable value noise lattice (period p cells) sampled at (x, y) in cell units, 0..1. */
@@ -123,8 +125,10 @@ diffuseColor.rgb *= vSurf < 1.5 ? road : vSurf < 2.5 ? verge : vSurf < 3.5 ? ban
 
 /** The road ribbons over each non-plastic run (reaching 0.6 u under the plastic where they meet): per station, from
  *  the left: bank foot, bank top, the strip the bales or tyres stand on, the mown verge, the road, and the same mirrored.
- *  Plus red/white curbs on the inside of the asphalt's corners. */
-export function roadGeometry(frames: TrackFrame[], frameAt: FrameAt, ds: number, road: [number, number][]) {
+ *  Plus red/white curbs on the inside of the asphalt's corners. Where `bridge(s)` holds the road is a deck on piers, not
+ *  an embankment: in place of the bank a concrete fascia BRIDGE.depth deep, and a soffit under the deck (the road below
+ *  it stays open). */
+export function roadGeometry(frames: TrackFrame[], frameAt: FrameAt, ds: number, road: [number, number][], bridge?: (s: number) => boolean, shade?: (s: number) => number) {
   const G = new Geo(), f = newFrame(), p = v3(), q = v3(), n = v3(), h = v3(), a = v3(), N = frames.length;
   // dirt weight per frame, smoothed over +-6 u of road (not plastic) so the textures blend where asphalt and dirt meet
   const dirt = new Float32Array(N), K = Math.round(6 / ds);
@@ -148,24 +152,32 @@ export function roadGeometry(frames: TrackFrame[], frameAt: FrameAt, ds: number,
         // bank: from the strip's outer edge down and out to just under the meadow
         p.copy(f.p).addScaledVector(f.right, sg * (hard + strip));
         h.set(f.right.x * sg, 0, f.right.z * sg).normalize();
+        const deck = bridge?.(s) ?? false;
         const drop = p.y - GROUND, run = Math.max(0.8, drop * 1.8);
-        q.copy(p).addScaledVector(h, run);
-        q.y = GROUND;
+        if (deck) q.copy(p).addScaledVector(f.up, -BRIDGE.depth); // (a bridge: the fascia straight down)
+        else {
+          q.copy(p).addScaledVector(h, run);
+          q.y = GROUND;
+        }
         a.subVectors(q, p);
-        n.crossVectors(a, f.t).multiplyScalar(sg).normalize();
-        if (n.y < 0) n.negate();
-        const verts: [THREE.Vector3, THREE.Vector3, number, number, number, number][] = [
-          [q.clone(), n.clone(), 0.62, 0, 0, 3],
-          [p.clone(), n.clone(), 0.86, 0, 0, 3],
+        if (deck) n.copy(h);
+        else {
+          n.crossVectors(a, f.t).multiplyScalar(sg).normalize();
+          if (n.y < 0) n.negate();
+        }
+        const verts: [THREE.Vector3, THREE.Vector3, number | THREE.Color, number, number, number][] = [
+          deck ? [q.clone(), n.clone(), BRIDGE.dark, 0, 0, 4] : [q.clone(), n.clone(), 0.62, 0, 0, 3],
+          deck ? [p.clone(), n.clone(), BRIDGE.face, 0, 0, 4] : [p.clone(), n.clone(), 0.86, 0, 0, 3],
           [v3().copy(f.p).addScaledVector(f.right, sg * hard), f.up, 0.9, 0, 0, 3],
           [v3().copy(f.p).addScaledVector(f.right, sg * hard), f.up, 0.92, hard - e, s, 2],
           [v3().copy(f.p).addScaledVector(f.right, sg * e), f.up, 0.98, 0, s, 2],
           [v3().copy(f.p).addScaledVector(f.right, sg * e), f.up, 1, sg > 0 ? 1 : 0, v, dw],
         ];
         // the strip shares the bank-top vertex's position but faces up: re-emit it flat
-        verts.splice(2, 0, [p.clone(), f.up, 0.86, 0, 0, 3]);
+        verts.splice(2, 0, deck ? [p.clone(), f.up, BRIDGE.face, 0, 0, 4] : [p.clone(), f.up, 0.86, 0, 0, 3]);
         if (sg > 0) verts.reverse();
-        for (const [pos, nor, ao, u, w, k] of verts) G.v(pos, nor, ao, u, w, k);
+        const sh = shade?.(s) ?? 1; // (in a tunnel: the daylight's out of it)
+        for (const [pos, nor, ao, u, w, k] of verts) G.v(pos, nor, sh === 1 ? ao : typeof ao === 'number' ? ao * sh : ao.clone().multiplyScalar(sh), u, w, k);
       }
     }
     // per station (left to right): 0 foot, 1 bank top, 2 strip outer, 3 hard (bank), 4 hard (verge), 5 edge (verge),
@@ -177,9 +189,32 @@ export function roadGeometry(frames: TrackFrame[], frameAt: FrameAt, ds: number,
       const sh0 = f.edge === 'grass' && f.shoulder > 0.02;
       frameAt(st[r + 1], f);
       const sh1 = f.edge === 'grass' && f.shoulder > 0.02;
-      const pairs = [[0, 1], [2, 3], [6, 7], [10, 11], [12, 13]];
+      // (where a bridge meets the embankment the bank stops at its abutment, below: no bank face between the two)
+      const cut = !!bridge && bridge(st[r]) !== bridge(st[r + 1]);
+      const pairs = cut ? [[2, 3], [6, 7], [10, 11]] : [[0, 1], [2, 3], [6, 7], [10, 11], [12, 13]];
       if (sh0 || sh1) pairs.push([4, 5], [8, 9]);
       for (const [i, j] of pairs) G.idx.push(A + i, A + j, B + j, A + i, B + j, B + i);
+      // a bridge's soffit: the fascias' feet joined under the deck (both faces: seen from the road below)
+      if (bridge && bridge(st[r]) && bridge(st[r + 1])) G.idx.push(A, A + 13, B + 13, A, B + 13, B, A, B + 13, A + 13, A, B, B + 13);
+    }
+    // ... and where a bridge meets the embankment, its abutment: the embankment's cross-section closed in concrete
+    if (bridge) for (let r = 0; r < st.length - 1; r++) {
+      const d0 = bridge(st[r]), d1 = bridge(st[r + 1]);
+      if (d0 === d1) continue;
+      frameAt(d0 ? st[r + 1] : st[r], f);
+      const hard = hardOf(f), strip = STRIP[f.edge], out: THREE.Vector3[] = [];
+      for (const sg of [-1, 1]) {
+        p.copy(f.p).addScaledVector(f.right, sg * (hard + strip));
+        h.set(f.right.x * sg, 0, f.right.z * sg).normalize();
+        q.copy(p).addScaledVector(h, Math.max(0.8, (p.y - GROUND) * 1.8));
+        q.y = GROUND;
+        const side = [q.clone(), p.clone(), v3().copy(f.p).addScaledVector(f.right, sg * hard)];
+        out.push(...(sg < 0 ? side : side.reverse()));
+      }
+      const i0 = G.n;
+      G.v(v3(f.p.x, GROUND, f.p.z), f.t, BRIDGE.face, 0, 0, 4);
+      for (const o of out) G.v(o, f.t, BRIDGE.face, 0, 0, 4);
+      for (let k = 1; k < out.length; k++) G.idx.push(i0, i0 + k, i0 + k + 1, i0, i0 + k + 1, i0 + k);
     }
   }
   // Curbs: red and white blocks on the inside of the asphalt's corners (radius under 70 u), sloping up to the edge.

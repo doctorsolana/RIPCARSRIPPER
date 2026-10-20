@@ -49,8 +49,10 @@ if (want('cars')) {
 }
 
 // Each course's moment: the car and the race time to freeze at (s from the drop; the autopilot drives, the camera frames
-// it): the meadow's big jump in its side-on "ad" shot, the Sky Tower's sky jump by its hoop. MEADOW_AT / SKY_AT to try others.
-const SHOTS = { meadow: { car: 'skyline-hck01', at: Number(process.env.MEADOW_AT ?? 43.2) }, sky: { car: 'skyline-hck01', at: Number(process.env.SKY_AT ?? 57.3) } };
+// it): the meadow's big jump in its side-on "ad" shot, the Sky Tower's sky jump by its hoop, the Touge's tunnel jump out
+// over its switchbacks. MEADOW_AT / SKY_AT / TOUGE_AT to try others (0 skips that course).
+const SHOTS = { meadow: { car: 'skyline-hck01', at: Number(process.env.MEADOW_AT ?? 43.2) }, sky: { car: 'skyline-hck01', at: Number(process.env.SKY_AT ?? 57.3) },
+  touge: { car: 'skyline-hck01', at: Number(process.env.TOUGE_AT ?? 22.9) } };
 if (want('tracks')) {
   for (const [id, s] of Object.entries(SHOTS)) {
     if (!s.at) continue;

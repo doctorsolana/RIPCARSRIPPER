@@ -113,6 +113,26 @@ export function makeSplit(def: SplitDef, frameAt: FrameAt): TrackSplit {
   };
 }
 
+/** A row of splits along the lap - a braid: islands one after another, the lanes rejoining between them (the Touge's
+ *  village) - as one TrackSplit over the lot. Between two islands (`gap`) a car is in no lane, and it takes one again at
+ *  the next point by the side it's on. One def: makeSplit's own split. */
+export function makeSplits(defs: SplitDef[], frameAt: FrameAt): TrackSplit {
+  if (defs.length === 1) return makeSplit(defs[0], frameAt);
+  const parts = [...defs].sort((a, b) => a.s0 - b.s0).map((d) => makeSplit(d, frameAt)), f = newFrame();
+  const at = (s: number) => parts.find((p) => s >= p.s0 && s <= p.s1);
+  return {
+    s0: parts[0].s0,
+    s1: parts[parts.length - 1].s1,
+    nose: parts[0].nose,
+    tail: parts[parts.length - 1].tail,
+    island: (s) => at(s)?.island(s) ?? -Infinity,
+    slope: (s) => at(s)?.slope(s) ?? 0,
+    centre: (s) => at(s)?.centre(s) ?? frameAt(s, f).width / 4,
+    lift: (lane, s, out) => at(s)?.lift(lane, s, out) ?? false,
+    gap: (s) => s >= parts[0].s0 && s <= parts[parts.length - 1].s1 && !at(s),
+  };
+}
+
 /** A lane's own frames (for its channel and supports): centred on the lane, as wide as it is, lifted onto its jump. */
 export function laneFrames(frameAt: FrameAt, sp: TrackSplit, lane: -1 | 1): FrameAt {
   const q = { h: 0, th: 0, dth: 0 }, t = v3();

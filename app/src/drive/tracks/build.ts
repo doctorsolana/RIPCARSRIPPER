@@ -4,10 +4,10 @@ import { channelGeometry, boosterGeometry, PAD_W } from './channel.ts';
 import type { Course } from './course.ts';
 import { framesOf } from './frames.ts';
 import { Geo, PROP_CHUNKS, basis, chunked, mr, runs } from './geo.ts';
-import { LIP, STRIP, hardOf, newFrame, v3, type Span } from './kit.ts';
+import { LIP, STRIP, hardOf, newFrame, smooth, v3, type Span } from './kit.ts';
 import { barriers } from './props.ts';
 import { GROUND, roadGeometry, roadMaterial } from './road.ts';
-import { islandNoses, laneFrames, makeSplit } from './split.ts';
+import { islandNoses, laneFrames, makeSplits } from './split.ts';
 import { supports, stilts, type Stack } from './supports.ts';
 
 // A course definition (tracks/course.ts) -> a Track: the frame table (tracks/frames.ts), the queries along it
@@ -73,25 +73,30 @@ export function buildTrack(course: Course): Track {
     return best;
   }
 
-  // A lane split (tracks/split.ts; track 2's sky bridge): two channels either side of an island, in place of the one
-  const split = F.splits.length ? makeSplit(F.splits[0], frameAt) : undefined;
-  if (F.splits.length > 1) console.warn('track: one split per lap (the rest are ignored)');
+  // A lane split (tracks/split.ts; track 2's sky bridge, the Touge's village): two lanes either side of an island - or a
+  // row of islands, the lanes rejoining between them (makeSplits). On plastic its lanes are channels of their own, with the
+  // island's noses (track 2's); on a road the road runs on under the islands (the course dresses them: the Touge's houses)
+  const split = F.splits.length ? makeSplits(F.splits, frameAt) : undefined;
+  const plasticSplit = split && frameAt((split.nose + split.tail) / 2).surface === 'plastic' ? split : undefined;
 
   const object = new THREE.Group();
   object.name = 'track';
   let plasticRuns = runs(frames, ds, (f) => f.surface === 'plastic');
   // (a split's stretch from point to point is its lanes' channels, not the track's: the run is cut there, flush)
-  if (split) plasticRuns = plasticRuns.flatMap(([a, b]): [number, number][] => (a < split.nose && b > split.tail ? [[a, split.nose], [split.tail, b]] : [[a, b]]));
-  const roadRuns = runs(frames, ds, (f) => f.surface !== 'plastic');
+  if (plasticSplit) plasticRuns = plasticRuns.flatMap(([a, b]): [number, number][] => (a < plasticSplit.nose && b > plasticSplit.tail ? [[a, plasticSplit.nose], [plasticSplit.tail, b]] : [[a, b]]));
+  // (a road's jump - the Touge's - leaves no road over its gap: the flight is open air down to the landing)
+  const roadGaps = tags.filter((g) => g.tag === 'gap' && g.lane === undefined);
+  const roadRuns = runs(frames, ds, (f) => f.surface !== 'plastic' && !roadGaps.some((g) => f.s > g.s0 && f.s < g.s1));
 
   // The orange channel (and its tabs). AgX insets saturated primaries, which turns #ff6b00 salmon under the lights: the
   // plastic skips tone mapping (with a darker albedo to match the scene's exposure) so it stays Hot Wheels orange.
   const gaps = tags.filter((g) => g.tag === 'gap' && g.lane === undefined);
-  const lanes = split ? ([-1, 1] as const).map((lane) => ({
-    lane, frameAt: laneFrames(frameAt, split, lane), runs: [[split.nose, split.tail]] as [number, number][],
-    gaps: tags.filter((g) => g.tag === 'gap' && g.lane === lane), bare: [split.nose, split.tail],
+  const ps = plasticSplit;
+  const lanes = ps ? ([-1, 1] as const).map((lane) => ({
+    lane, frameAt: laneFrames(frameAt, ps, lane), runs: [[ps.nose, ps.tail]] as [number, number][],
+    gaps: tags.filter((g) => g.tag === 'gap' && g.lane === lane), bare: [ps.nose, ps.tail],
   })) : [];
-  const ch = channelGeometry(frameAt, plasticRuns, L, ds, gaps, course.wide, split ? { bare: [split.nose, split.tail], more: lanes, extra: (G) => islandNoses(G, frameAt, split) } : {});
+  const ch = channelGeometry(frameAt, plasticRuns, L, ds, gaps, course.wide, ps ? { bare: [ps.nose, ps.tail], more: lanes, extra: (G) => islandNoses(G, frameAt, ps) } : {});
   const trackMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.5, 0.5, 0.5), roughness: 0.6, metalness: 0, vertexColors: true, envMapIntensity: 0.25, toneMapped: false });
   const channel = new THREE.Mesh(ch.geo, trackMat);
   channel.name = 'channel';
@@ -133,19 +138,27 @@ export function buildTrack(course: Course): Track {
   boosters.name = 'boosters';
 
   // The road: asphalt, dirt, verges, banks and curbs.
-  const rd = roadGeometry(frames, frameAt, ds, roadRuns);
+  // (a course's bridges - support 'bridge', decks on piers - its tunnels and the roads it cuts into its own landform -
+  // 'tunnel', 'cut' - have no embankment under them)
+  const decks = F.sup.filter((r) => r.kind === 'bridge' || r.kind === 'cut' || r.kind === 'tunnel');
+  // (in a tunnel - support 'tunnel' - the road's in the dark, its own light strips aside: shaded down from its mouths in)
+  const tubes = F.sup.filter((r) => r.kind === 'tunnel');
+  const dark = (x: number) => Math.max(0, ...tubes.map((r) => Math.min(1, (x - r.s0) / 10, (r.s1 - x) / 10)));
+  // (a road run's stations may pass L where it wraps: the ranges are asked at the lap's own s)
+  const rd = roadGeometry(frames, frameAt, ds, roadRuns, decks.length ? (x) => decks.some((r) => wrap(x) >= r.s0 && wrap(x) <= r.s1) : undefined,
+    tubes.length ? (x) => 1 - 0.7 * smooth(Math.min(1, dark(wrap(x)))) : undefined);
   const road = new THREE.Mesh(rd.geo, roadMaterial());
   road.name = 'road';
 
   // The props: supports, the start gate, the course's set pieces (Course.props), tyre walls and hay bales - in
   // PROP_CHUNKS area chunks, each its own mesh, so the ones off screen are frustum-culled.
   const PG = new Geo();
-  const sp = supports(PG, frameAt, F.sup, tags.filter((g) => g.lane === undefined), course.metal, frames, course.start, course.supports, split);
-  if (split) {
+  const sp = supports(PG, frameAt, F.sup, tags.filter((g) => g.lane === undefined), course.metal, frames, course.start, course.supports, ps);
+  if (ps) {
     // the lanes' own stilts, wherever the track's stand under the split (they stand clear of the island's stretch)
     for (const r of F.sup) {
-      if (r.kind !== 'stilts' || r.s1 <= split.nose || r.s0 >= split.tail) continue;
-      const s0 = Math.max(r.s0, split.nose), s1 = Math.min(r.s1, split.tail);
+      if (r.kind !== 'stilts' || r.s1 <= ps.nose || r.s0 >= ps.tail) continue;
+      const s0 = Math.max(r.s0, ps.nose), s1 = Math.min(r.s1, ps.tail);
       for (const ln of lanes) stilts(PG, ln.frameAt, { kind: 'stilts', s0, s1 }, (s, pad) => ln.gaps.some((g) => s > g.s0 - pad && s < g.s1 + pad), sp.posts, frames);
     }
   }

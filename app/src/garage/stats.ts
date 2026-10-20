@@ -20,7 +20,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 6.1,
     "laps": {
       "meadow": 197.308,
-      "sky": 234.033
+      "sky": 234.033,
+      "touge": 238.942
     },
     "bars": {
       "top": 0.22,
@@ -38,7 +39,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 6.1,
     "laps": {
       "meadow": 195.883,
-      "sky": 230.342
+      "sky": 230.342,
+      "touge": 234.4
     },
     "bars": {
       "top": 0.4,
@@ -56,7 +58,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.7,
     "laps": {
       "meadow": 193.142,
-      "sky": 229.308
+      "sky": 229.308,
+      "touge": 226.725
     },
     "bars": {
       "top": 0.46,
@@ -74,7 +77,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.6,
     "laps": {
       "meadow": 185.817,
-      "sky": 222.658
+      "sky": 222.658,
+      "touge": 219.683
     },
     "bars": {
       "top": 0.76,
@@ -92,7 +96,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 5.4,
     "laps": {
       "meadow": 190.742,
-      "sky": 224.117
+      "sky": 224.117,
+      "touge": 224.092
     },
     "bars": {
       "top": 0.7,
@@ -110,7 +115,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.8,
     "laps": {
       "meadow": 190.383,
-      "sky": 225.233
+      "sky": 225.233,
+      "touge": 224.875
     },
     "bars": {
       "top": 0.7,
@@ -128,7 +134,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.9,
     "laps": {
       "meadow": 195.617,
-      "sky": 231.975
+      "sky": 231.975,
+      "touge": 231.367
     },
     "bars": {
       "top": 0.28,
@@ -146,7 +153,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 5.6,
     "laps": {
       "meadow": 194.725,
-      "sky": 229.35
+      "sky": 229.35,
+      "touge": 231.5
     },
     "bars": {
       "top": 0.46,
@@ -164,7 +172,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.4,
     "laps": {
       "meadow": 186.792,
-      "sky": 220.508
+      "sky": 220.508,
+      "touge": 217.242
     },
     "bars": {
       "top": 0.94,
@@ -182,7 +191,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.7,
     "laps": {
       "meadow": 189.583,
-      "sky": 225.033
+      "sky": 225.033,
+      "touge": 224.292
     },
     "bars": {
       "top": 0.7,
@@ -200,7 +210,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.3,
     "laps": {
       "meadow": 185.45,
-      "sky": 220.55
+      "sky": 220.55,
+      "touge": 216.692
     },
     "bars": {
       "top": 1,
@@ -218,7 +229,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.6,
     "laps": {
       "meadow": 185.792,
-      "sky": 222.633
+      "sky": 222.633,
+      "touge": 219.617
     },
     "bars": {
       "top": 0.76,
@@ -236,7 +248,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.7,
     "laps": {
       "meadow": 187.092,
-      "sky": 222.642
+      "sky": 222.642,
+      "touge": 218.817
     },
     "bars": {
       "top": 0.76,
@@ -254,7 +267,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.7,
     "laps": {
       "meadow": 187.083,
-      "sky": 222.617
+      "sky": 222.617,
+      "touge": 218.8
     },
     "bars": {
       "top": 0.76,
@@ -272,7 +286,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 4.7,
     "laps": {
       "meadow": 187.075,
-      "sky": 222.625
+      "sky": 222.625,
+      "touge": 218.8
     },
     "bars": {
       "top": 0.76,
@@ -289,8 +304,9 @@ export const STATS: Record<string, CarStats> = {
     "zero100": 0.89,
     "brakeM": 5,
     "laps": {
-      "meadow": 188.15,
-      "sky": 221.617
+      "meadow": 188.167,
+      "sky": 221.608,
+      "touge": 221.042
     },
     "bars": {
       "top": 0.88,
@@ -308,7 +324,8 @@ export const STATS: Record<string, CarStats> = {
     "brakeM": 5.2,
     "laps": {
       "meadow": 195.692,
-      "sky": 231.258
+      "sky": 231.258,
+      "touge": 232.808
     },
     "bars": {
       "top": 0.34,

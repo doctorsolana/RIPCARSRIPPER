@@ -78,7 +78,7 @@ button { font: inherit; }
 .note .btn { margin-left: 14px; vertical-align: middle; }
 
 /* ---- this week: a card per track - its still, the actions, the board */
-.tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.tracks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .trk { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 .trk-pic { position: relative; aspect-ratio: 16 / 8; background: #15171d; overflow: hidden; }
 .trk-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }

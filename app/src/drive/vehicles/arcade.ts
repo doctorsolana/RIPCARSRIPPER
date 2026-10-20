@@ -518,7 +518,7 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
    *  is over it (past the island); off the split, none. */
   function laneAt() {
     if (!SP) return;
-    if (s < SP.s0 || s > SP.s1) lane = 0;
+    if (s < SP.s0 || s > SP.s1 || SP.gap?.(s)) lane = 0; // (between a braid's islands: none, until the next point)
     else if (lane === 0) lane = d < 0 ? -1 : 1;
     else if (!grounded && d * lane < -Math.max(0, SP.island(s))) lane = -lane;
   }
@@ -528,14 +528,18 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
 
   // ---- Big jumps (tag 'bigjump': the launch lip to the end of the landing ramp), read off the track once for the
   // respawn: the lip, the landing ramp (from the end of the jump's 'gap') and its end. That's all the car knows of them.
-  interface Jump { lip: number; land: number; end: number }
+  // A jump whose gap has a `floor` (the Touge's, over the roads below its flight): a car more than that far under the
+  // surface it should be over - short of the landing, or off the side of it - is lost at once, before it falls through
+  // what lies below.
+  interface Jump { lip: number; land: number; end: number; floor: number }
   const jumps: Jump[] = [];
   for (const b of track.tags) {
     if (b.tag !== 'bigjump') continue;
     const lip = b.s0, span = ahead(lip, b.s1);
     const gap = track.tags.find((g) => g.tag === 'gap' && (ahead(lip, g.s0) < span || ahead(g.s0, lip) < 4));
-    if (gap) jumps.push({ lip, land: gap.s1, end: b.s1 });
+    if (gap) jumps.push({ lip, land: gap.s1, end: b.s1, floor: gap.floor ?? 0 });
   }
+  const lostBelow = (ss: number, hb: number) => jumps.some((J) => J.floor > 0 && hb < -J.floor && ahead(J.lip, ss) < ahead(J.lip, J.end));
 
   // ---- Booster pads: any number of 'booster' tags. One with a lateral extent (d0..d1, track 2's narrow pad before the
   // wall ride) boosts only a car whose centre is over it; the rest span the track. A big jump's in-run (tag 'inrun':
@@ -1018,9 +1022,10 @@ export const create: VehicleFactory = async (track: Track, car: CarSpec): Promis
         return;
       }
       // missed the track: the ground, under a surface (short of a landing ramp: it would fall through it), or lost
-      if (airP.y < floorY || airTime > K.airMax || (tag !== 'gap' && hb <= -0.75 && Math.abs(d) <= lim && deck)) {
+      const lost = lostBelow(s, hb);
+      if (airP.y < floorY || airTime > K.airMax || (tag !== 'gap' && hb <= -0.75 && Math.abs(d) <= lim && deck) || lost) {
         falling = true;
-        respawnIn = 0.6;
+        respawnIn = lost ? 0.25 : 0.6;
       }
     }
     if (airP.y < floorY) {

@@ -24,4 +24,5 @@ export const carImg = (id: string) => pic(`car-${id}`, 1440, 640);
 export const TRACKS = [
   { id: 'meadow', name: 'Meadow', color: '#6fd35a' },
   { id: 'sky', name: 'Sky Tower', color: '#ff6b00' },
+  { id: 'touge', name: 'Touge', color: '#9d6bff' },
 ];
