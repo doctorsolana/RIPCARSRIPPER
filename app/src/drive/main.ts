@@ -292,7 +292,9 @@ async function main() {
   addEventListener('resize', resize);
   resize();
   reset(AUTO);
+  fx.warm(true); // (the hidden effects too: their shaders would build mid-race, on first use)
   await renderer.compileAsync(scene, cam.camera).catch(() => {}); // no shader hitch on the first frame
+  fx.warm(false);
   document.getElementById('boot')?.remove();
 
   let frames = 0, ftAvg = 1 / 60, cooldown = 3;
@@ -422,7 +424,10 @@ async function main() {
         // keep 60 fps on mid phones: drop the resolution a notch while frames run long
         ftAvg += (dt - ftAvg) * 0.05;
         cooldown -= dt;
-        if (cooldown <= 0 && ftAvg > 0.018 && dpr > 0.75) {
+        // (never in the thick of it - a boost, a drift, a flight: the switch itself costs a frame, and the slow frames
+        // that ask for it come exactly then. It waits for calm driving)
+        const calm = !st.boosting && !st.drifting && st.grounded;
+        if (cooldown <= 0 && calm && ftAvg > 0.018 && dpr > 0.75) {
           dpr = Math.max(0.75, dpr - 0.25);
           renderer.setPixelRatio(dpr);
           resize();

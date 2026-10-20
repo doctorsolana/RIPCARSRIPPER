@@ -54,6 +54,8 @@ export interface Fx {
    *  sparks out of the seam (hot and many when hard), a scuff of paint dust, chips off a big one. (This car's own hits -
    *  events.carHit / carScrape at state.contact - play by themselves in update.) */
   carBurst(at: THREE.Vector3, normal: THREE.Vector3, n: number, v: THREE.Vector3): void;
+  /** Every effect shown for a shader compile before the race (true), hidden again after (false). */
+  warm(on: boolean): void;
 }
 
 const VTOP = 44;
@@ -215,10 +217,13 @@ const STREAK_VS = /* glsl */ `
   #else
     float w = abs(aC.w) * (1.0 - 0.5 * t);
     p.xy += vec2(-dir.y, dir.x) * position.y * w + dir * (position.x - 0.5) * w;
-    // negative width = symmetric envelope (speed lines: brightest mid-life, as they pass the camera); anything about
-    // to cross the lens fades out first (a spark 1 u from it would be a stick across the screen)
-    vA = (aC.w < 0.0 ? sin(3.14159 * t) : smoothstep(0.0, 0.06, t) * (1.0 - t)) * smoothstep(0.6, 1.6, min(-h.z, -tl.z));
+    // negative width = symmetric envelope (speed lines: brightest mid-life, as they whip past the camera); anything
+    // else heading for the lens fades out well before it (a spark 2 u from it is a stick across the screen: drawn
+    // there, even faint, it costs a big share of the screen's pixels - the hidden tier's sprays fly back at the camera)
+    float near = min(-h.z, -tl.z);
+    vA = aC.w < 0.0 ? sin(3.14159 * t) * smoothstep(0.6, 1.6, near) : smoothstep(0.0, 0.06, t) * (1.0 - t) * smoothstep(1.4, 3.2, near);
   #endif
+    if (vA < 0.004) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; } // (faded out: not drawn at all, no pixels spent)
     gl_Position = projectionMatrix * p;
     vColor = aC.rgb;
     vQ = position.xy;
@@ -1466,6 +1471,12 @@ export function createFx(scene: THREE.Scene, car: CarSpec, topTierColor: THREE.C
 
   return {
     update, reset, carBurst,
+    /** Show every effect for a shader compile (renderer.compileAsync, before the race; off again after): the flames,
+     *  the grass marks, the trail and the confetti start hidden, and a hidden mesh isn't compiled - its shader would
+     *  build on its first use, mid-race (the first boost, the first big jump, the hidden tier's confetti: a hitch). */
+    warm(on: boolean) {
+      flameRig.visible = marksMesh.visible = trailMesh.visible = confettiMesh.visible = on;
+    },
     confetti(at: THREE.Vector3, count = 120) {
       confettiBurst(at, null, 0, count);
     },

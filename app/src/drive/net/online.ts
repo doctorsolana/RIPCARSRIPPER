@@ -912,6 +912,9 @@ export async function runOnline() {
       fxScene = new THREE.Scene();
       scene.add(fxScene);
       fx = createFx(fxScene, rig.spec, new THREE.Color(tier.color));
+      fx.warm(true); // (its shaders before the race, not on first use)
+      void renderer.compileAsync(fxScene, cam.camera, scene).catch(() => {});
+      fx.warm(false);
       fx.setTrack(track);
       audio.setCar(rig.spec);
       placeOnGrid();
@@ -945,7 +948,9 @@ export async function runOnline() {
   addEventListener('resize', resize);
   resize();
   placeOnGrid();
+  fx.warm(true); // (the hidden effects too: their shaders would build mid-race, on first use)
   await renderer.compileAsync(scene, cam.camera).catch(() => {});
+  fx.warm(false);
   document.getElementById('boot')?.remove();
   renderCard();
 
@@ -1089,7 +1094,10 @@ export async function runOnline() {
       if (adaptive && frames > 90) {
         ftAvg += (dt - ftAvg) * 0.05;
         cooldown -= dt;
-        if (cooldown <= 0 && ftAvg > 0.018 && dpr > 0.75) {
+        // (never in the thick of it - a boost, a drift, a flight: the switch itself costs a frame, and the slow frames
+        // that ask for it come exactly then. It waits for calm driving)
+        const calm = !st.boosting && !st.drifting && st.grounded;
+        if (cooldown <= 0 && calm && ftAvg > 0.018 && dpr > 0.75) {
           dpr = Math.max(0.75, dpr - 0.25);
           renderer.setPixelRatio(dpr);
           resize();

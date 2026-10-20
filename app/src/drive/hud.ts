@@ -88,14 +88,17 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .toast.on { opacity: 1; transform: scale(1); }
 /* the hidden drift tier (MAX DRIFT!, its boost): bigger, rainbow running through it, a wobbly pop. The outline is a
    copy of the text behind it (a text-shadow would paint over text clipped from its background) */
-#hud .toast.max { font-size: clamp(40px, 8.6vw, 86px); text-shadow: none; }
+#hud .toast.max { font-size: clamp(40px, 8.6vw, 86px); text-shadow: none; will-change: transform; }
 #hud .toast.max::before { content: attr(data-t); position: absolute; left: 0; right: 0; top: 0; color: transparent;
   text-shadow: var(--outline), 0 0.07em 0 rgba(9, 13, 28, 0.55), 0 0 0.45em rgba(255, 255, 255, 0.45); }
 #hud .toast.max span { position: relative; color: transparent; -webkit-background-clip: text; background-clip: text;
   background-image: linear-gradient(100deg, #ff4f7b, #ffb02e, #ffef5c, #4be38a, #3fc8ff, #8f7bff, #ff5ce1, #ff4f7b);
-  background-size: 200% 100%; animation: hud-rainbow 0.9s linear infinite; }
+  background-size: 100% 100%; will-change: filter; animation: hud-rainbow 0.9s linear infinite; }
+/* (the rainbow runs by turning its hues - a filter on the word's own layer, done by the compositor - not by sliding its
+   gradient, which repainted the big word and its outline every frame: frame drops on a laptop through MAX DRIFT and
+   its HYPER BOOST) */
 #hud .toast.max.on { animation: hud-max 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
-@keyframes hud-rainbow { to { background-position: -200% 0; } }
+@keyframes hud-rainbow { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(-360deg); } }
 @keyframes hud-max { 0% { transform: scale(0.35) rotate(-9deg); } 50% { transform: scale(1.16) rotate(3deg); } 75% { transform: scale(0.97) rotate(-1deg); }
   100% { transform: scale(1) rotate(0deg); } }
 #hud .split { position: absolute; left: 0; right: 0; top: calc(24% + clamp(44px, 9vw, 84px)); text-align: center;
