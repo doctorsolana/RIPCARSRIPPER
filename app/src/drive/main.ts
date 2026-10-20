@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import '../style.css';
 import { mountNav, RIPCARS_URL } from '../nav';
+import { TRACK_IMG } from '../home/tracks';
 import { raceableCars } from '../owned';
 import { STARTER_CAR } from './net/protocol';
 import { tierOf } from '../rarity';
@@ -93,7 +94,7 @@ async function main() {
   const hud = createHud(document.getElementById('hud')!);
   hud.setCourse(COURSE_DEF.name, COURSE_DEF.color);
   // the top bar: a track switch before the car picker (both reload the page, keeping the other's pick and the knobs)
-  const options = COURSES.map((c) => ({ name: c.name, href: courseHref(c.id), on: c.id === COURSE, title: c.blurb, color: c.color }));
+  const options = COURSES.map((c) => ({ name: c.name, href: courseHref(c.id), on: c.id === COURSE, title: c.blurb, color: c.color, img: TRACK_IMG[c.id]?.small }));
   mountNav('drive', { switch: { label: 'Track', options } }).then((n) => n.setCar(CAR));
   const canvas = document.getElementById('c') as HTMLCanvasElement;
 

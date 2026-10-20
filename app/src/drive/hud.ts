@@ -62,7 +62,10 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
 #hud .spd b { display: block; font: 400 64px/0.9 Anton, Impact, sans-serif; font-variant-numeric: tabular-nums; }
 #hud .spd span { font-size: 10px; letter-spacing: 0.32em; opacity: 0.7; }
 #hud .car { position: absolute; left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom));
+  max-width: calc(100% - 150px); /* (clear of the speedometer: a long name ends in an ellipsis) */
   font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.75; display: flex; align-items: center; gap: 10px; }
+#hud .car .cn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#hud .car::before, #hud .car .tag, #hud .car .mute { flex: none; }
 #hud .car .tag { padding: 4px 6px 3px; border-radius: 5px; font: 800 9px/1 Inter, system-ui, sans-serif; letter-spacing: 0.16em;
   text-transform: uppercase; color: #0b0c10; background: rgba(255, 255, 255, 0.85); text-shadow: none; }
 #hud .car .tag[hidden] { display: none; }
@@ -166,10 +169,10 @@ body.nav-on #hud .tl { top: calc(max(0px, env(safe-area-inset-top)) + 62px); }
   #hud .card a.try, #hud .card .hint { margin-top: 8px; }
 }
 @media (max-height: 400px) { #hud .card .hint { display: none; } } /* the smallest phones on their side: keys hint out */
-/* ... and with the card up there's no room round it: the bar's track tab (the card has its own Try button) and the
+/* ... and with the card up there's no room round it: the bar's track dropdown (the card has its own Try button) and the
    car-name row with the mute button (M still mutes) step aside while it shows */
 @media (max-height: 520px) {
-  body.results-on #nav .seg, body.results-on #hud .car { visibility: hidden; opacity: 0; }
+  body.results-on #nav .dd.trk, body.results-on #hud .car { visibility: hidden; opacity: 0; }
 }
 `;
 

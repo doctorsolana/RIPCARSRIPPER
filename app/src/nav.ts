@@ -2,25 +2,26 @@ import { shortWallet } from './auth/address';
 import { clearSession, loadSession, onSession, type Session } from './auth/session';
 import { WORDMARK } from './brand';
 import { isDev, onDev, setDev } from './dev';
+import { carImg } from './home/tracks';
+import { tierOf } from './rarity';
 
 // The top bar shared by every page: the wordmark (home: the landing), Garage (garage.html: your cars in 3D, their
 // stats, Drive / Test drive - the way to the drive page), Race online (the way into multiplayer: online.html, the room
 // browser), Rip a pack (app.ripcars.io, where the Rip Cars come from: a new tab), and in dev mode
 // (dev.ts) the tools - Reveal (the pack-rip prototype, rip.html) and Inspect - with a DEV badge by the logo. On the
-// reveal and the drive page a car picker plus "random" (the drive page adds its track switch; in an online room the
-// picker swaps the car in place: onCar), and at the right end the wallet chip: "Connect wallet" signed out (the wallet
+// reveal and the drive page a car dropdown (every car's picture, its make, year and rarity; signed in, your Rip Cars
+// marked Yours) plus "random" - the drive page adds its track dropdown (each track's still and a few words); in an online
+// room the car dropdown swaps the car in place (onCar), offering only the cars you may race - and at the right end the wallet chip: "Connect wallet" signed out (the wallet
 // picker: auth/wallets.ts, loaded only then), the wallet's icon and short address signed in, with a menu - copy the
 // address, dev mode, disconnect. Your wallet is your name in online races (auth/session.ts). Self-contained (its own
 // styles), so it drops into any page.
-interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean }
+interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean; rarity?: string }
 
-/** A segmented switch of links in the bar, before the car picker (the drive page's tracks); the current option is lit
- *  and inert. Where the bar has no room for it in its row (under 1200 px: in the row it would squeeze the car picker to
- *  nothing), it hangs below the bar's right end as a tab, out of the row: the bar stays one 48 px row laid out exactly
- *  as on the other pages, and nothing under it moves. */
+/** A dropdown of links in the bar, before the car dropdown (the drive page's tracks): the button shows the current
+ *  option's dot and name, the panel each option's picture, name and a few words (title); picking one follows its link. */
 export interface NavSwitch {
   label: string; // what it picks (for screen readers)
-  options: { name: string; href: string; on: boolean; title?: string; color?: string }[]; // color: the option's dot
+  options: { name: string; href: string; on: boolean; title?: string; color?: string; img?: string }[]; // color: its dot
 }
 
 export interface Nav {
@@ -54,27 +55,48 @@ const CSS = `
 #nav .links a.dev.on { color: #ffc04d; box-shadow: inset 0 -2px 0 #ffb020; }
 #nav.dev .links a.dev { display: inline-flex; }
 #nav .spacer { flex: 1; }
-#nav a:focus-visible, #nav button:focus-visible, #nav select:focus-visible { outline: 2px solid #3dff8b; outline-offset: 2px; }
+#nav a:focus-visible, #nav button:focus-visible { outline: 2px solid #3dff8b; outline-offset: 2px; }
 #nav .narrow { display: none; }
-#nav select, #nav button { font: inherit; color: #eef0f3; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
+#nav button { font: inherit; color: #eef0f3; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px; padding: 7px 10px; cursor: pointer; max-width: 46vw; min-width: 0; }
 #nav button { display: inline-flex; align-items: center; gap: 6px; flex: none; }
-#nav select option { color: #111; }
-#nav button:hover, #nav select:hover { border-color: rgba(61, 255, 139, 0.6); }
-#nav .seg { display: flex; flex: none; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12); }
-#nav .seg a { display: flex; align-items: center; gap: 7px; padding: 8px 11px; border-radius: 6px; color: rgba(238, 240, 243, 0.7);
-  text-decoration: none; white-space: nowrap; }
-#nav .seg a::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dot, currentColor); opacity: 0.6; }
-#nav .seg a:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
-#nav .seg a.on { color: #fff; background: rgba(255, 255, 255, 0.15); cursor: default; }
-#nav .seg a.on::before { opacity: 1; box-shadow: 0 0 8px var(--dot, currentColor); }
-@media (max-width: 1199px) {
-  #nav .seg { position: absolute; top: 100%; right: max(16px, env(safe-area-inset-right)); padding: 0 3px 3px; border-top: 0;
-    border-radius: 0 0 11px 11px; background: rgba(10, 11, 15, 0.72); border-color: rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-  #nav .seg a { padding: 7px 10px; font-size: 12px; }
-}
+#nav button:hover { border-color: rgba(61, 255, 139, 0.6); }
+/* the track and car dropdowns: a button showing the pick, a panel of pictures under it */
+#nav .dd { position: relative; flex: none; min-width: 0; }
+#nav .dd.car { flex: 0 1 auto; }
+#nav .dd-b { gap: 8px; max-width: 280px; height: 34px; }
+#nav .dd-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#nav .dd-b .chev { width: 10px; height: 10px; flex: none; opacity: 0.55; transition: transform 0.15s; }
+#nav .dd-b[aria-expanded="true"] { border-color: rgba(61, 255, 139, 0.6); }
+#nav .dd-b[aria-expanded="true"] .chev { transform: rotate(180deg); }
+#nav .dd-b .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dot); box-shadow: 0 0 8px var(--dot); }
+#nav .dd-b .thumb { width: 38px; height: 24px; margin: -4px -2px -4px -4px; object-fit: contain; flex: none; }
+#nav .dd-p { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; padding: 6px; border-radius: 14px; background: #14151b;
+  border: 1px solid #33353f; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); max-height: min(72vh, 640px); overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin; }
+#nav .dd-p[hidden] { display: none !important; } /* (over the panels' own display: grid) */
+#nav .dd-p.tracks { display: grid; gap: 4px; width: 360px; }
+#nav .tr { display: grid; grid-template-columns: 120px 1fr; gap: 14px; align-items: center; padding: 6px; border-radius: 10px;
+  color: #eef0f3; text-decoration: none; border: 1px solid transparent; }
+#nav .tr img, #nav .tr .ph { width: 120px; height: 68px; border-radius: 7px; object-fit: cover; display: block; background: #1d1f27; }
+#nav .tr b { display: flex; align-items: center; gap: 8px; font: 600 14px/1.2 Inter, system-ui, sans-serif; }
+#nav .tr b::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dot); }
+#nav .tr small { display: block; margin-top: 6px; font-size: 12px; line-height: 1.35; color: rgba(238, 240, 243, 0.55); }
+#nav .tr:hover, #nav .tr:focus-visible { background: rgba(255, 255, 255, 0.06); outline: none; }
+#nav .tr[aria-current] { border-color: var(--dot); background: rgba(255, 255, 255, 0.04); }
+#nav .dd-p.cars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: min(600px, calc(100vw - 32px)); }
+#nav .dd-p .cc { position: relative; display: grid; gap: 3px; align-content: start; max-width: none; padding: 6px 8px 10px; text-align: left;
+  border-radius: 10px; border: 1px solid transparent; background: none; }
+#nav .dd-p .cc:hover, #nav .dd-p .cc:focus-visible { background: rgba(255, 255, 255, 0.06); border-color: transparent; outline: none; }
+#nav .dd-p .cc[aria-selected="true"] { border-color: #3dff8b; background: rgba(61, 255, 139, 0.06); }
+#nav .cc img, #nav .cc .ph { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; display: block; }
+#nav .cc .ph { border-radius: 8px; background: #1d1f27; }
+#nav .cc b { font: 600 12.5px/1.25 Inter, system-ui, sans-serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#nav .cc small { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(238, 240, 243, 0.5); white-space: nowrap; }
+#nav .cc small i { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--r); }
+#nav .cc em { position: absolute; top: 6px; left: 6px; padding: 3px 6px 2px; border-radius: 5px; font: 700 9px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase; font-style: normal; color: #0b0c10; background: #3dff8b; }
+#nav .cc em.st { color: #eef0f3; background: rgba(255, 255, 255, 0.16); }
 /* the wallet chip and its menu */
 #nav .wal { position: relative; flex: none; }
 #nav .wal .w-chip { position: relative; max-width: none; font-variant-numeric: tabular-nums; }
@@ -118,9 +140,29 @@ const CSS = `
   #nav .links a { padding: 8px 6px; }
   #nav .links a.race { gap: 5px; }
   #nav .links a.ext svg { margin-left: 3px; }
-  #nav select { max-width: 24vw; }
   #nav .w-t { display: none; }
   #nav .wal.in .w-dot { display: block; }
+  /* phones: the buttons show the pick's dot / picture only; the panels open full width under the bar */
+  #nav .dd-b .dd-t { display: none; }
+  #nav .dd-b { gap: 6px; padding: 7px 8px; }
+  #nav .dd-p { position: fixed; top: 54px; left: 8px; right: 8px; width: auto !important; max-height: calc(100vh - 70px); }
+  #nav .dd-p.cars { grid-template-columns: repeat(2, 1fr); }
+  #nav .tr { grid-template-columns: 104px 1fr; gap: 12px; }
+  #nav .tr img, #nav .tr .ph { width: 104px; height: 59px; }
+}
+/* a phone's drive bar: Random car steps out (the panel has every car), the dropdowns go to their dot / picture alone */
+@media (max-width: 440px) {
+  #nav.picker > button { display: none; }
+  #nav.picker { gap: 4px; }
+  #nav.picker .brand { --wm: 10px; }
+  #nav .dd-b .chev { display: none; }
+  #nav .dd-b { padding: 6px 7px; min-width: 34px; justify-content: center; }
+  #nav .dd-b .thumb { margin: -4px -3px; }
+}
+@media (max-width: 379px) {
+  #nav.picker { padding: 0 10px; }
+  #nav.picker .brand { --wm: 9px; gap: 5px; }
+  #nav.picker .links a { padding: 8px 4px; }
 }
 /* a phone's bar with the car picker has no room for every link: the dev tools step out for it, and Rip a pack (the
    bar's links stay on every other page) */
@@ -130,7 +172,7 @@ const CSS = `
 @media (max-width: 900px) { #nav.dev .links a.ext { display: none; } }
 @media (max-width: 640px) { #nav.dev .links a.dev { display: none; } }
 @media (max-width: 374px) { #nav.picker .brand .dv { display: none; } }
-@media (max-width: 359px) { #nav select { max-width: 19vw; } #nav .brand { --wm: 10px; } #nav.picker { gap: 4px; } #nav.picker .brand { --wm: 8.5px; gap: 5px; } }
+@media (max-width: 359px) { #nav .brand { --wm: 10px; } #nav.picker { gap: 4px; } #nav.picker .brand { --wm: 8.5px; gap: 5px; } }
 `;
 /** A wallet glyph (16 x 16, currentColor): the chip signed out, and the lobby's Connect wallet. */
 export const WALLET = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M13 5.5V4a1.5 1.5 0 0 0-1.5-1.5h-8A1.5 1.5 0 0 0 2 4v8a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 14 12V7a1.5 1.5 0 0 0-1.5-1.5H2.5"/><circle cx="11" cy="9.5" r="1" fill="currentColor" stroke="none"/></svg>';
@@ -216,6 +258,102 @@ async function copy(text: string) {
   }
 }
 
+const CHEV = '<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg>';
+
+/** A dropdown's open/close and keys: the button toggles the panel; in it the arrows move between the items (a grid:
+ *  up/down by a row), Home/End, Escape closes back to the button, a click outside closes. Opening focuses the pick. */
+function dropdown(box: HTMLElement, btn: HTMLButtonElement, panel: HTMLElement, onOpen?: () => void) {
+  const items = () => [...panel.querySelectorAll<HTMLElement>('a, button')];
+  const open = (on: boolean, refocus = true) => {
+    if (on === !panel.hidden) return;
+    panel.hidden = !on;
+    btn.setAttribute('aria-expanded', String(on));
+    if (on) {
+      onOpen?.();
+      const cur = panel.querySelector<HTMLElement>('[aria-current], [aria-selected="true"]') ?? items()[0];
+      cur?.focus({ preventScroll: true });
+      cur?.scrollIntoView({ block: 'nearest' });
+    } else if (refocus) btn.focus();
+  };
+  btn.addEventListener('click', () => open(panel.hidden === true));
+  addEventListener('pointerdown', (e) => !box.contains(e.target as Node) && open(false, false));
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) return e.preventDefault(), open(false);
+    if (panel.hidden || !panel.contains(e.target as Node)) return;
+    const all = items(), i = all.indexOf(e.target as HTMLElement);
+    const cols = getComputedStyle(panel).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+    const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols, Home: -all.length, End: all.length }[e.key];
+    if (step === undefined || i < 0) return;
+    e.preventDefault();
+    all[Math.max(0, Math.min(all.length - 1, i + step))].focus();
+  });
+  return open;
+}
+
+/** The track dropdown (the drive page): the current track's dot and name; the panel, every track's still. */
+function trackDropdown(sw: NavSwitch) {
+  const box = document.createElement('div');
+  box.className = 'dd trk';
+  const cur = sw.options.find((o) => o.on) ?? sw.options[0];
+  box.innerHTML = `<button type="button" class="dd-b" aria-haspopup="true" aria-expanded="false" aria-label="${esc(sw.label)}: ${esc(cur.name)}"
+      style="--dot:${cur.color ?? '#fff'}"><i class="dot"></i><span class="dd-t">${esc(cur.name)}</span>${CHEV}</button>
+    <nav class="dd-p tracks" aria-label="${esc(sw.label)}" hidden>${sw.options.map((o) => `<a class="tr" href="${o.href}" style="--dot:${o.color ?? '#fff'}"${o.on ? ' aria-current="page"' : ''}>
+      ${o.img ? `<img src="${o.img}" alt="" loading="lazy" decoding="async">` : '<i class="ph"></i>'}<span><b>${esc(o.name)}</b>${o.title ? `<small>${esc(o.title)}</small>` : ''}</span></a>`).join('')}</nav>`;
+  const panel = box.querySelector<HTMLElement>('.dd-p')!;
+  const open = dropdown(box, box.querySelector('button')!, panel);
+  panel.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest('a');
+    if (a?.hasAttribute('aria-current')) e.preventDefault(), open(false); // (the one you're on: just close)
+  });
+  return box;
+}
+
+/** The car dropdown: the current car's picture and name; the panel, every car's picture, model, make, year and rarity.
+ *  `mine`: mark the signed-in wallet's own Rip Cars (Yours) and the starter (the drive page: any car is a test drive). */
+function carDropdown(cars: NavCar[], title: string, pick: (id: string) => void, mine: boolean) {
+  const box = document.createElement('div');
+  box.className = 'dd car';
+  const name = (c: NavCar) => `${c.make} ${c.model}`;
+  box.innerHTML = `<button type="button" class="dd-b" aria-haspopup="listbox" aria-expanded="false" title="${esc(title)}"><span class="pick"></span>${CHEV}</button>
+    <div class="dd-p cars" role="listbox" aria-label="${esc(title)}" hidden>${cars.map((c) => {
+      const img = carImg(c.id), t = tierOf(c.rarity ?? 'common');
+      return `<button type="button" class="cc" role="option" aria-selected="false" data-id="${c.id}" style="--r:${t.color}" title="${esc(name(c))}">
+        ${img ? `<img src="${img.small}" alt="" loading="lazy" decoding="async">` : '<i class="ph"></i>'}<b>${esc(c.model)}</b><small><i></i>${esc(c.make)}${c.year ? ` · ${c.year}` : ''}</small></button>`;
+    }).join('')}</div>`;
+  const btn = box.querySelector<HTMLButtonElement>('.dd-b')!, panel = box.querySelector<HTMLElement>('.dd-p')!;
+  let marked = false;
+  const open = dropdown(box, btn, panel, () => {
+    if (marked || !mine || !loadSession()) return;
+    marked = true;
+    void import('./owned').then(async ({ raceableCars }) => {
+      const own = await raceableCars();
+      const { STARTER_CAR } = await import('./drive/net/protocol');
+      for (const el of panel.querySelectorAll<HTMLElement>('.cc')) {
+        const id = el.dataset.id!;
+        if (!own.has(id)) continue;
+        el.insertAdjacentHTML('beforeend', id === STARTER_CAR ? '<em class="st">Starter</em>' : '<em>Yours</em>');
+      }
+    }).catch(() => {});
+  });
+  panel.addEventListener('click', (e) => {
+    const c = (e.target as HTMLElement).closest<HTMLElement>('.cc');
+    if (!c) return;
+    open(false);
+    if (c.getAttribute('aria-selected') !== 'true') pick(c.dataset.id!);
+  });
+  return {
+    box,
+    set(id: string) {
+      const c = cars.find((x) => x.id === id);
+      if (!c) return;
+      const img = carImg(id);
+      box.querySelector('.pick')!.outerHTML = `<span class="pick" style="display:contents">${img ? `<img class="thumb" src="${img.small}" alt="">` : ''}<span class="dd-t">${esc(name(c))}</span></span>`;
+      btn.setAttribute('aria-label', `${title}: ${name(c)}`);
+      for (const el of panel.querySelectorAll('.cc')) el.setAttribute('aria-selected', String((el as HTMLElement).dataset.id === id));
+    },
+  };
+}
+
 /** `onCar`: the car picker and Random car call this instead of reloading the page with ?car= (an online room swaps
  *  the car in place); it also puts the picker on a page that has none. */
 export async function mountNav(
@@ -243,25 +381,7 @@ export async function mountNav(
   el.querySelector(`[data-page="${page}"]`)?.classList.add('on');
   el.classList.toggle('dev', isDev());
   onDev((on) => el.classList.toggle('dev', on));
-  if (opts.switch) {
-    // links (a switch reloads the page): the current one has no href, so it's inert. It goes in after the spacer, so
-    // the car picker and Random car (appended once the car list is in) land after it
-    const seg = document.createElement('nav');
-    seg.className = 'seg';
-    seg.setAttribute('aria-label', opts.switch.label);
-    for (const o of opts.switch.options) {
-      const a = document.createElement('a');
-      a.textContent = o.name;
-      if (o.title) a.title = o.title;
-      if (o.color) a.style.setProperty('--dot', o.color);
-      if (o.on) {
-        a.className = 'on';
-        a.setAttribute('aria-current', 'page');
-      } else a.href = o.href;
-      seg.append(a);
-    }
-    el.append(seg);
-  }
+  if (opts.switch) el.append(trackDropdown(opts.switch));
   mountWallet(el);
   document.body.prepend(el);
 
@@ -272,23 +392,23 @@ export async function mountNav(
   const inspect = el.querySelector<HTMLAnchorElement>('[data-page="inspect"]')!;
   const garage = el.querySelector<HTMLAnchorElement>('[data-page="garage"]')!;
   const online = el.querySelector<HTMLAnchorElement>('[data-page="online"]')!;
-  let select: HTMLSelectElement | null = null;
+  let picker: { box: HTMLElement; set(id: string): void } | null = null;
 
   if ((page === 'rip' || page === 'drive' || opts.onCar) && modelled.length) {
-    // pick a car, or rip a random one; both reload the page with ?car=
-    select = document.createElement('select');
-    select.title = page !== 'rip' ? 'Which car to drive' : 'Which car to reveal';
-    select.innerHTML = modelled.map((c) => `<option value="${c.id}">${c.make} ${c.model}${c.year ? ` · ${c.year}` : ''}</option>`).join('');
-    select.addEventListener('change', () => go(select!.value));
+    // pick a car (the dropdown), or a random one; both reload the page with ?car= (online: swap in place)
+    let current = '';
+    picker = carDropdown(modelled, page === 'rip' ? 'Which car to reveal' : 'Which car to drive', (id) => go(id), !allowed);
     const random = document.createElement('button');
     random.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.2" cy="5.2" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.8" cy="10.8" r="1.2" fill="currentColor"/></svg><span class="wide">${page !== 'rip' ? 'Random car' : 'Random pack'}</span>`;
     random.setAttribute('aria-label', page !== 'rip' ? 'Drive a random car' : 'Rip a random car');
     random.title = page !== 'rip' ? 'Drive a random car' : 'Rip a random car';
     random.addEventListener('click', () => {
-      const others = modelled.filter((c) => c.id !== select!.value);
+      const others = modelled.filter((c) => c.id !== current);
       go((others.length ? others : modelled)[Math.floor(Math.random() * (others.length || modelled.length))].id);
     });
-    el.querySelector('.wal')!.before(select, random); // (the wallet chip stays at the right end)
+    const set = picker.set;
+    picker.set = (id) => ((current = id), set(id));
+    el.querySelector('.wal')!.before(picker.box, random); // (the wallet chip stays at the right end)
     el.classList.add('picker');
   }
 
@@ -302,7 +422,7 @@ export async function mountNav(
   return {
     el,
     setCar(id: string) {
-      if (select && [...select.options].some((o) => o.value === id)) select.value = id;
+      picker?.set(id);
       // the links carry the car across: inspect what you just ripped, rip what you're inspecting, see it in the garage
       if (cars.some((c) => c.id === id && c.modelled)) {
         rip.href = `/rip.html?car=${id}`;

@@ -100,17 +100,31 @@ export function riviera(G: Geo, frameAt: FrameAt, frames: TrackFrame[], land: La
     }
   }
 
-  // ---- the village street: both sides, a row of houses (alleys between, a garden wall now and then)
+  // ---- the village street: both sides, a row of houses (alleys between, a garden wall now and then). Each stands back
+  // from the road's widest point along its whole length (the street widens into the braid and narrows out of it), and
+  // none of its corners comes within a pavement's width of its own street (its bougainvillea stays off the road too).
+  const g = newFrame();
+  const kerbClear = (cx: number, cz: number, s0: number, s1: number) => {
+    for (let u = s0; u <= s1; u += 1) {
+      frameAt(u, g);
+      if (Math.hypot(cx - g.p.x, cz - g.p.z) - g.width / 2 < 1.6) return false;
+    }
+    return true;
+  };
   for (const rg of kind('village')) {
     for (const sg of [-1, 1]) {
       let s = rg.s0 + 2;
       while (s < rg.s1 - 6) {
         const w = rnd(6.5, 10.5), d = rnd(7, 10.5), sc = s + w / 2;
+        let hw = 0;
+        for (let u = -w / 2 - 1; u <= w / 2 + 1; u += 1) hw = Math.max(hw, frameAt(sc + u, g).width / 2);
         frameAt(sc, f);
-        const hw = f.width / 2, off = hw + 1.3 + d / 2;
+        const off = hw + 1.3 + d / 2;
         const x = f.p.x + f.right.x * sg * off, z = f.p.z + f.right.z * sg * off;
-        const yaw = Math.atan2(f.t.z, f.t.x);
-        const ok = clear(x, z, Math.hypot(w, d) / 2 + 1.5, sc, 30) && Math.abs(f.right.y) < 0.1;
+        const yaw = Math.atan2(f.t.z, f.t.x), c = Math.cos(yaw), sn = Math.sin(yaw);
+        const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [x + (a * w) / 2 * c - (b * d) / 2 * sn, z + (a * w) / 2 * sn + (b * d) / 2 * c]);
+        const ok = clear(x, z, Math.hypot(w, d) / 2 + 1.5, sc, 30) && Math.abs(f.right.y) < 0.1
+          && corners.every(([cx, cz]) => kerbClear(cx, cz, sc - w / 2 - 10, sc + w / 2 + 10));
         if (ok) {
           const ground = Math.min(land.hAt(x, z), f.p.y) - 1.5;
           house(x, z, yaw, w, d, f.p.y, ground, 2 + (R() < 0.45 ? 1 : 0), -f.right.x * sg, -f.right.z * sg);

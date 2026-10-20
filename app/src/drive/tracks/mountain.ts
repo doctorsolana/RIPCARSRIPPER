@@ -105,7 +105,7 @@ export function mountain(G: Geo, frameAt: FrameAt, frames: TrackFrame[], ranges:
     for (const p of keep) {
       const d = Math.hypot(x - p.x, z - p.z);
       if (d > 60) continue;
-      h = Math.min(h, p.y - 0.4 + (d <= p.hw + 0.6 ? 0 : 1.4 * (d - p.hw - 0.6)));
+      h = Math.min(h, p.y - 0.4 + (d <= p.hw + 2.4 ? 0 : 1.4 * (d - p.hw - 2.4))); // (a flat verge first: the 4 u grid's blend never laps onto the road's edge)
     }
     // ... but never into the tunnel: over its tube (its mouths aside: the roads outside them have the ground) the rock
     // stays over its crown, whatever road runs near
@@ -163,6 +163,21 @@ export function mountain(G: Geo, frameAt: FrameAt, frames: TrackFrame[], ranges:
   // ---- the cut roads' dry stone: a parapet along each edge, and a retaining wall down to the ground where it drops
   // away - a bridge keeps the parapet alone (its arches are its own: riviera.ts), the village its houses
   const f = newFrame(), m = new THREE.Matrix4(), q = v3();
+  /** The top of the headroom kept over any road passing under (x, z) below height y (a road that crosses under this
+   *  one: the helix's quarter over its first, a leg over a leg) - -Infinity when none does. A wall hung from the road
+   *  above stops over it, like a bridge's fascia, never down through it. */
+  const HEADROOM = 5.4;
+  const under = (x: number, z: number, y: number) => {
+    let lo = -Infinity;
+    const i0 = Math.floor(x / QC), j0 = Math.floor(z / QC);
+    for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) {
+      for (const p of qgrid.get(qkey(i, j)) ?? []) {
+        if (p.y > y - 2 || Math.hypot(x - p.x, z - p.z) > p.hw + 3) continue;
+        lo = Math.max(lo, p.y + HEADROOM);
+      }
+    }
+    return lo;
+  };
   let wi = 0;
   for (const rg of cuts) for (let s = rg.s0 + 1.5; s < rg.s1 - 1; s += 3) {
     if (inR(gaps, s) || inR(tunnels, s) || inR(village, s)) continue;
@@ -172,7 +187,11 @@ export function mountain(G: Geo, frameAt: FrameAt, frames: TrackFrame[], ranges:
       const off = f.width / 2 + 0.45;
       q.copy(f.p).addScaledVector(f.right, sg * (off + 1.5));
       const drop = deck ? 0 : Math.max(0, f.p.y - hAt(q.x, q.z));
-      const bot = deck ? -0.2 : -Math.min(drop + 0.6, 40), top = 0.75;
+      let bot = deck ? -0.2 : -Math.min(drop + 0.6, 40);
+      const top = 0.75;
+      q.copy(f.p).addScaledVector(f.right, sg * off); // (the wall's own line: any road under it?)
+      const lo = under(q.x, q.z, f.p.y);
+      if (f.p.y + bot < lo) bot = Math.min(-0.2, lo - f.p.y);
       box(G, basis(f, m), [0, (top + bot) / 2, sg * off], [3.05, top - bot, 0.9], WALL[wi++ % WALL.length], CAP, 0);
     }
   }
