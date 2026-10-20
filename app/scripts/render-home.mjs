@@ -1,7 +1,8 @@
 // The landing's pictures, rendered from the game itself into src/home/img/ (the dev server must be running):
 //   cars    every modelled car on the landing's turntable at its first frame (stills.html), transparent:
 //           car-<id>-1440.webp and car-<id>-640.webp - the hero's still under the 3D, and the garage's cards
-//   tracks  a frame of the drive page on each course, the autopilot driving, at a moment picked per course (below):
+//   tracks  each course from the air (the drive page, the race held a few seconds in, the camera placed by
+//           __drive.shot over the course's middle - VIEWS below - with the fog pushed back for the distance):
 //           track-<id>-1600.webp and track-<id>-800.webp
 // usage: node scripts/render-home.mjs [cars] [tracks] [only=<car id>]   (BASE=http://localhost:<port>/ for another server)
 import { chromium } from 'playwright';
@@ -48,22 +49,37 @@ if (want('cars')) {
   }
 }
 
-// Each course's moment: the car and the race time to freeze at (s from the drop; the autopilot drives, the camera frames
-// it): the meadow's big jump in its side-on "ad" shot, the Sky Tower's sky jump by its hoop, the Touge's tunnel jump out
-// over its switchbacks. MEADOW_AT / SKY_AT / TOUGE_AT to try others (0 skips that course).
-const SHOTS = { meadow: { car: 'skyline-hck01', at: Number(process.env.MEADOW_AT ?? 43.2) }, sky: { car: 'skyline-hck01', at: Number(process.env.SKY_AT ?? 57.3) },
-  touge: { car: 'skyline-hck01', at: Number(process.env.TOUGE_AT ?? 22.9) } };
+// Each course's view from the air: [azimuth deg (0 = from +z, 180 = from -z), elevation deg, distance u, fov deg,
+// target offset x, z from the course's middle (u)] and the fog's near / far for it (the chase camera's fog would wash
+// the whole course out from up there). The middle is the course's bounds, so a re-laid course stays framed.
+const VIEWS = {
+  meadow: { view: [180, 50, 470, 40, 0, -70], fog: [450, 1800] }, // from the south, steep: the start, the pond, the big jump, the loop, the road north
+  sky: { view: [180, 52, 560, 38, 0, -20], fog: [450, 1900] }, // from the south: the tower, both loops, the bridge, the spiral, the pond
+  touge: { view: [220, 40, 560, 40, 0, 0], fog: [500, 1900] }, // from inland: the switchbacks below, the village, the coast and the sea
+};
+const AT = 4; // s into the race: the field (the car) just off the line
 if (want('tracks')) {
-  for (const [id, s] of Object.entries(SHOTS)) {
-    if (!s.at) continue;
-    console.log(id, s);
+  const { buildTrack } = await import('../src/drive/tracks/index.ts');
+  for (const [id, v] of Object.entries(VIEWS)) {
+    if (only && only in VIEWS && only !== id) continue; // (only=<course id>: that course alone)
+    console.log(id, v);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const f of buildTrack(id).frames) {
+      x0 = Math.min(x0, f.p.x), x1 = Math.max(x1, f.p.x), y0 = Math.min(y0, f.p.y), y1 = Math.max(y1, f.p.y), z0 = Math.min(z0, f.p.z), z1 = Math.max(z1, f.p.z);
+    }
+    const [az, el, dist, fov, dx, dz] = v.view, a = (az * Math.PI) / 180, e = (el * Math.PI) / 180;
+    const t = [(x0 + x1) / 2 + dx, (y0 + y1) / 2, (z0 + z1) / 2 + dz];
+    const p = [t[0] + dist * Math.cos(e) * Math.sin(a), t[1] + dist * Math.sin(e), t[2] + dist * Math.cos(e) * Math.cos(a)];
     await page.setViewportSize({ width: 1600, height: 900 });
-    await open(page, `${base}drive.html?track=${id}&car=${s.car}&auto=1&laps=3`);
+    await open(page, `${base}drive.html?track=${id}&car=skyline-hck01&auto=1&laps=3`);
     await page.addStyleTag({ content: '#nav, #hud, #boot { display: none !important; }' });
-    // run the race on to the moment (the sim at real time, timed by the page's own race clock), then hold the frame
-    await page.waitForFunction((at) => window.__drive.time >= at, s.at, { timeout: 180000, polling: 16 });
-    await page.evaluate(() => ((window.__drive.frozen = true), window.__drive.timeScale(0)));
-    await page.waitForTimeout(300);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction((at) => window.__drive.time >= at, AT, { timeout: 180000, polling: 16 });
+    // hold the race, place the camera, let it render, then hold the frame
+    await page.evaluate(([p, t, fov, fog]) => (window.__drive.timeScale(0), (window.__drive.shot = { p, t, fov, fog })), [p, t, fov, v.fog]);
+    await page.waitForTimeout(400);
+    await page.evaluate(() => (window.__drive.frozen = true));
+    await page.waitForTimeout(100);
     const png = (await page.screenshot({ type: 'png' })).toString('base64');
     const webp = (w, q) => page.evaluate(([png, w, q]) => new Promise((res) => {
       const img = new Image();

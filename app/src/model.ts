@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { type CarData, type CarRig, type CarUniforms, Frame, carMaterial, constAttrs, setLevel } from './car';
+import { carFile } from './catalog';
 import { splitGlass } from './glass';
 
 // ---- a car modelled by asset-generation/ripcars from its reference sheet -------------------------
@@ -30,10 +31,10 @@ export interface Model {
 }
 
 export async function loadModel(car: CarData): Promise<Model | null> {
-  const get = (f: string) => fetch(car.base + f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const get = (f: string) => fetch(carFile(car.id, f)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [info, alignment] = await Promise.all([get('model.json'), get('alignment.json')]);
   if (!info || !alignment) return null;
-  const gltf = await new GLTFLoader().loadAsync(car.base + 'model.glb');
+  const gltf = await new GLTFLoader().loadAsync(carFile(car.id, 'model.glb'));
   return { gltf: gltf.scene, info, alignment };
 }
 

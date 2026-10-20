@@ -203,6 +203,7 @@ async function main() {
     lapTimes,
     timeScale(_x: number) {}, // tests: slow or stop the sim
     frozen: false, // tests: hold the frame exactly as it is (sim, camera and effects) for a screenshot
+    shot: null as null | { p: [number, number, number]; t: [number, number, number]; fov?: number; fog?: [number, number] }, // scripts: hold the camera at p, aimed at t (stills; fog: its near/far for the view from up there)
     stats: { respawn: 0, air: 0, perfect: 0, hardHit: 0, spinOut: 0, wrongWay: 0 }, // tests: event counts (per rendered frame)
     info: renderer.info, // tests: draw calls and triangles of the last frame
   };
@@ -367,6 +368,14 @@ async function main() {
       cam.lookBack = input.lookBack;
       cam.intro = phase === 'gate'; // before the start: the car from the front
       cam.update(rs, dt, track, rig.root);
+      if (drive.shot) { // (a still: scripts/render-home.mjs's view of the course)
+        cam.camera.position.set(...drive.shot.p);
+        cam.camera.up.set(0, 1, 0);
+        cam.camera.lookAt(...drive.shot.t);
+        cam.camera.fov = drive.shot.fov ?? 40;
+        cam.camera.updateProjectionMatrix();
+        if (drive.shot.fog && scene.fog instanceof THREE.Fog) [scene.fog.near, scene.fog.far] = drive.shot.fog;
+      }
       fx.update(rs, dt, rig.root);
       audio.update(rs, input0, dt);
 

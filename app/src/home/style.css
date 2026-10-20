@@ -62,6 +62,11 @@ button { font: inherit; }
 .hero-car canvas:active { cursor: grabbing; }
 .hero-car.live3d canvas { opacity: 1; }
 .hero-car.live3d img { opacity: 0; }
+/* the hero's car and name, hidden while the page works out which car it is (signed in: the wallet's own - index.html's
+   script sets hero-wait, home/main.ts clears it) and while it changes cars; then they fade in. No script: 6 s, shown */
+#h-eyebrow, #h-name, .hero-car { transition: opacity 0.3s ease; }
+.hero-wait #h-eyebrow, .hero-wait #h-name, .hero-wait .hero-car { opacity: 0; animation: hero-unwait 0.3s 6s forwards; }
+@keyframes hero-unwait { to { opacity: 1; } }
 
 /* ---- sections */
 .sec { padding-top: 56px; }

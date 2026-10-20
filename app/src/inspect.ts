@@ -2,17 +2,18 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { CARS, carFile } from './catalog';
 import { splitGlass } from './glass';
 import { mountNav } from './nav';
 import { tierOf } from './rarity';
 
 // /inspect.html[?car=<id>&tab=p3d|pviews|preveal|pinfo] - every car the pipeline built, one place.
-interface Entry { id: string; make: string; model: string; year: number | null; rarity: string; modelled: boolean; passed: boolean | null; versions?: string[]; source?: string | null }
+interface Entry { id: string; make: string; model: string; year: number | null; rarity: string | null; modelled: boolean; passed: boolean | null; versions?: string[]; source?: string | null }
 
 const $ = (id: string) => document.getElementById(id)!;
 const q = new URLSearchParams(location.search);
 const nav = await mountNav('inspect');
-const { cars } = (await fetch('/cars/index.json').then((r) => r.json())) as { cars: Entry[] };
+const cars: Entry[] = CARS;
 
 // ---- 3D viewer ----
 const host = $('p3d');
@@ -51,7 +52,7 @@ async function show3d(id: string, modelled: boolean) {
   root.clear();
   originals = new Map();
   if (!modelled) return;
-  const gltf = await loader.loadAsync(`/cars/${id}/model.glb`);
+  const gltf = await loader.loadAsync(carFile(id, 'model.glb'));
   root.add(gltf.scene);
   const body = gltf.scene.getObjectByName('body');
   if (body instanceof THREE.Mesh) splitGlass(body);
@@ -96,7 +97,7 @@ renderer.setAnimationLoop(() => {
 // ---- report ----
 const fmt = (v: unknown) => (typeof v === 'number' ? (Math.abs(v) < 10 ? v.toFixed(3) : String(Math.round(v))) : String(v));
 async function showInfo(id: string) {
-  const get = (f: string) => fetch(`/cars/${id}/${f}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const get = (f: string) => fetch(carFile(id, f)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [model, align, hints, meta] = await Promise.all([get('model.json'), get('alignment.json'), get('hints.json'), get('meta.json')]);
   const el = $('pinfo');
   if (!model) {
@@ -178,7 +179,7 @@ for (const c of cars) {
   const b = document.createElement('button');
   b.className = 'car';
   b.dataset.id = c.id;
-  const tier = tierOf(c.rarity);
+  const tier = tierOf(c.rarity ?? 'common');
   const status = c.passed === null ? 'no model' : c.passed ? 'checks pass' : 'needs review';
   const colour = c.passed === null ? '#8b90a0' : c.passed ? '#3dff8b' : '#ffb020';
   b.innerHTML = `<b>${c.make} ${c.model}</b><small><span class="dot" style="background:${colour}"></span>${status} · <span style="color:${tier.color}">${tier.label}</span></small>`;

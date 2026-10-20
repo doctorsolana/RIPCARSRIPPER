@@ -1,5 +1,6 @@
 import { shortWallet } from './auth/address';
 import { checkSession, loadSession, onSession, type Session } from './auth/session';
+import { CARS } from './catalog';
 import { openCreateRoom } from './create-room';
 import { isDev } from './dev';
 import { mountNav, RIPCARS_URL, WALLET } from './nav';
@@ -154,8 +155,7 @@ async function main() {
     const { connectWallet } = await import('./auth/wallets');
     return !!(await connectWallet());
   }
-  const { cars } = (await fetch('/cars/index.json').then((r) => r.json()).catch(() => ({ cars: [] }))) as { cars: NavCar[] };
-  const modelled = cars.filter((c) => c.modelled);
+  const modelled: NavCar[] = CARS.filter((c) => c.modelled);
   // the cars this wallet may race: its Rip Cars the game has, and the starter (signed out: the starter); a link's car
   // that isn't one of them gets the starter and one line
   const asked = q.get('car');

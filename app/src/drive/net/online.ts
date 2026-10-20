@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BUILD_ID } from 'virtual:build-id';
 import { shortWallet } from '../../auth/address';
+import { CARS, carFile } from '../../catalog';
 import { clearSession, loadSession, onSession, type Session } from '../../auth/session';
 import { isDev } from '../../dev';
 import { mountNav } from '../../nav';
@@ -268,7 +269,7 @@ export async function runOnline() {
   };
   const send = (m: C2S) => sendRaw(JSON.stringify(m), false);
   const specOf = async (id: string): Promise<CarSpec> => {
-    const json = (f: string) => fetch(`/cars/${id}/${f}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const json = (f: string) => fetch(carFile(id, f)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const [info, meta] = await Promise.all([json('model.json'), json('meta.json')]);
     return carSpecOf(id, info, meta);
   };
@@ -693,7 +694,7 @@ export async function runOnline() {
   const ordinal = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
   const lapsText = `${LAPS} ${LAPS === 1 ? 'lap' : 'laps'}`;
   const courseTag = `<i class="cdot" style="--c:${COURSE_DEF.color}"></i>${esc(COURSE_DEF.name)} · ${lapsText}`;
-  const carList = fetch('/cars/index.json').then((r) => r.json()).then((j: { cars: { id: string; make: string; model: string; year: number | null; modelled: boolean }[] }) => j.cars.filter((c) => c.modelled)).catch(() => []);
+  const carList = Promise.resolve(CARS.filter((c) => c.modelled));
 
   function viewOf(): View {
     if (notice) return 'notice';

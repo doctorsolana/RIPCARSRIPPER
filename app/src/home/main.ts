@@ -1,6 +1,7 @@
 import { isAddress, shortWallet } from '../auth/address';
 import { checkSession, loadSession, onSession, type Session } from '../auth/session';
 import { WORDMARK } from '../brand';
+import { CARS, type CarEntry } from '../catalog';
 import { openCreateRoom } from '../create-room';
 import { isDev, onDev } from '../dev';
 import { BUILD_ID } from 'virtual:build-id';
@@ -8,12 +9,14 @@ import type { GarageListing, Leaderboard, RoomListing } from '../drive/net/proto
 import { roomHref, serverHttp, serverUrl } from '../drive/net/prefs';
 import { STARTER_CAR } from '../drive/net/protocol';
 import { EXT, mountNav, RIPCARS_URL, WALLET } from '../nav';
+import { fetchGarage, lastGarage } from '../owned';
 import { carImg, TRACK_IMG, TRACKS } from './tracks';
 import type { Turntable } from './turntable';
 
 // The landing (index.html): the game's hub. The hero is your car - the signed-in wallet's best drivable Rip Car, else
 // the featured one - big, as a still (first paint, no three.js) that a 3D turntable replaces once the page has loaded
-// (home/turntable.ts), with Race online and Drive. Then this week (a card per track: its still, Time trial / Race /
+// (home/turntable.ts), with Race online and Drive. Signed in, it shows the car the wallet's garage had last time at
+// once (owned.ts keeps it), or waits for the garage a moment: it never shows the featured car and then swaps. Then this week (a card per track: its still, Time trial / Race /
 // Drive, the board - each wallet's best lap without car-to-car contact, the top 10 and yours), the open rooms (live,
 // Join, Create room), and the garage (the wallet's Rip Cars from RIPCARS - the ones the game has a model of drivable -
 // or, signed out, the cars you can drive). Every piece works on its own: no game server, no RIPCARS - one line each.
@@ -23,9 +26,9 @@ const q = new URLSearchParams(location.search);
 const SERVER = serverUrl(q), HTTP = serverHttp(SERVER), serverQ = q.get('server');
 const FEATURED = 'skyline-hck01';
 const BOARD = 10, GARAGE_ROWS = 12;
+const HERO_WAIT = 2500; // ms a wallet's first visit waits for its garage before the hero settles for the featured car
 const RARITY: Record<string, string> = { common: '#98989c', uncommon: '#1fdc85', rare: '#2e7bff', epic: '#b45cff', legendary: '#ffc531' };
 
-interface CarEntry { id: string; make: string; model: string; year: number | null; modelled: boolean }
 type GarageCar = GarageListing['cars'][number];
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -46,7 +49,7 @@ const resetsIn = (ms: number) => {
   return `Resets in ${d ? `${d}d ${h}h` : h ? `${h}h ${mm}m` : `${mm}m`}`;
 };
 async function getJson<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; status: number }> {
-  if (url.startsWith('/') && !url.startsWith('/cars/')) return { ok: false, status: 0 }; // (no game server set)
+  if (url.startsWith('/')) return { ok: false, status: 0 }; // (no game server set)
   try {
     const r = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(12_000) });
     if (!r.ok) return { ok: false, status: r.status };
@@ -64,11 +67,12 @@ async function signedIn() {
 
 // ---- state
 let session: Session | null = loadSession();
-let cars: CarEntry[] = [];
+const cars: CarEntry[] = CARS;
 let board: Leaderboard | null = null, boardDown = false;
 let rooms: RoomListing | null = null, roomsDown = false;
-let garage: GarageListing | null = null, garageErr: 0 | 502 | 1 = 0, garageFor: string | null = null, garageAll = false;
+let garage: GarageListing | null = null, garageErr: 0 | 502 | 1 = 0, garageFor: string | null = null, garageSet = false, garageAll = false;
 let hero = FEATURED, heroOwned: GarageCar | null = null;
+let heroFor: string | null | undefined; // the wallet whose car the hero shows (undefined: not settled yet)
 let tt: Turntable | null = null;
 
 const drivable = (id: string | null | undefined): id is string => !!id && cars.some((c) => c.id === id && c.modelled);
@@ -90,6 +94,9 @@ const withServer = (href: string) => (serverQ ? `${href}${href.includes('?') ? '
 
 // ---- hero
 const heroBox = $('h-car'), heroImg = $<HTMLImageElement>('h-img'), canvas3d = $<HTMLCanvasElement>('h-3d');
+const root = document.documentElement;
+let heroSeq = 0, settled: () => void;
+const heroSettled = new Promise<void>((r) => (settled = r));
 function renderHero() {
   const c = carOf(hero);
   const owned = heroOwned;
@@ -111,34 +118,54 @@ function renderHero() {
   $<HTMLAnchorElement>('h-race').href = withServer(`/online.html?car=${encodeURIComponent(raceCar())}`);
   $<HTMLAnchorElement>('h-garage').href = garageHref(hero);
 }
+/** Put this car in the hero: shown at once while the hero waits (hero-wait: nothing on screen yet), else the car on
+ *  screen fades out and this one in. */
 async function setHero(id: string, owned: GarageCar | null) {
-  if (id === hero && owned?.mint === heroOwned?.mint) return;
+  const n = ++heroSeq;
   const swap = id !== hero;
+  if (swap && !root.classList.contains('hero-wait')) {
+    root.classList.add('hero-wait');
+    await new Promise((r) => setTimeout(r, 300));
+    if (n !== heroSeq) return; // (another car meanwhile)
+  }
+  if (swap) tt?.clear(); // (hidden: the old car never shows over the new one's still)
   hero = id;
   heroOwned = owned;
   renderHero();
   renderTracks();
-  if (swap && tt) {
-    heroBox.classList.remove('live3d'); // (the new car's still while its model loads)
-    await tt.show(id).catch(() => {});
-    if (hero === id) heroBox.classList.add('live3d');
-  }
+  root.classList.remove('hero-wait');
+  settled();
+  if (swap && tt) void show3d();
 }
-/** The hero: the garage's best drivable car (the list comes rarest and most valuable first), else the featured one. */
-function pickHero() {
+/** The hero for the garage on show: its best drivable car (the list comes rarest and most valuable first), else the
+ *  featured one - decided once per wallet. A fresher listing later (the live one after the remembered one) doesn't swap
+ *  the car on show; it only says whether it's still yours. */
+function settleHero() {
+  if (heroFor !== undefined && heroFor === garageFor) {
+    const owned = garageFor ? garage?.cars.find((c) => c.model === hero) ?? null : null;
+    if (owned?.mint !== heroOwned?.mint) (heroOwned = owned), renderHero(), renderTracks();
+    return;
+  }
+  heroFor = garageFor;
   const best = garage?.cars.find((c) => drivable(c.model)) ?? null;
   void setHero(best ? best.model! : FEATURED, best);
 }
+/** The hero's car in 3D, over its still (the same frame) once it's in. */
+async function show3d() {
+  const id = hero;
+  heroBox.classList.remove('live3d');
+  if ((await tt!.show(id).catch(() => false)) && hero === id) requestAnimationFrame(() => heroBox.classList.add('live3d'));
+}
+let started3d = false;
 function start3d() {
   const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-  if (tt || c?.saveData || /2g/.test(c?.effectiveType ?? '') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (started3d || c?.saveData || /2g/.test(c?.effectiveType ?? '') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  started3d = true;
   import('./turntable').then(async ({ createTurntable }) => {
+    await heroSettled; // (the car the hero stays on: not the featured one first)
     tt = createTurntable(canvas3d, { interactive: true });
-    const id = hero;
-    await tt.show(id);
-    if (hero !== id) await tt.show(hero);
-    requestAnimationFrame(() => heroBox.classList.add('live3d'));
     Object.assign(window as object, { __turntable: tt });
+    await show3d();
   }).catch((e) => console.warn('turntable', e));
 }
 
@@ -278,19 +305,26 @@ let garageTries = 0;
 async function loadGarage(again = false) {
   const w = garageWallet();
   if (!again) garageTries = 0;
-  if (w !== garageFor) (garage = null), (garageErr = 0), (garageAll = false);
-  garageFor = w;
+  if (!garageSet || w !== garageFor) {
+    // another wallet (or the first look): what its garage held last time, at once - and the hero with it
+    garage = w ? lastGarage(w) : null;
+    garageErr = 0;
+    garageAll = false;
+    garageFor = w;
+    garageSet = true;
+    if (!w || garage) settleHero();
+  }
   renderGarage();
-  if (!w) return pickHero();
-  const r = await getJson<GarageListing>(`${HTTP}/garage?wallet=${w}`);
+  if (!w) return;
+  const r = await fetchGarage(w, HTTP);
   if (garageFor !== w) return; // (signed out or in as someone else meanwhile)
   if (r.ok) {
-    garage = r.data;
+    garage = r.garage;
     garageErr = 0;
-    if (r.data.partial && ++garageTries < 4) setTimeout(() => garageFor === w && void loadGarage(true), 2500);
+    if (r.garage.partial && ++garageTries < 4) setTimeout(() => garageFor === w && void loadGarage(true), 2500);
   } else if (!garage) garageErr = r.status === 502 ? 502 : 1;
   renderGarage();
-  pickHero();
+  settleHero();
 }
 function renderGarage() {
   const body = $('g-body'), act = $('g-act'), title = $('garage-h');
@@ -344,10 +378,11 @@ function renderFoot() {
 // ---- go
 async function main() {
   void mountNav('home');
+  void loadGarage(); // (the hero settles at once - signed out, or the wallet's garage from last time - or once it's in)
+  if (heroFor === undefined) setTimeout(() => heroFor === undefined && settleHero(), HERO_WAIT);
   renderHero();
   renderTracks();
   renderFoot();
-  renderGarage();
   // the 3D car: on the visitor's first touch, scroll or key - or, on a computer (a fine pointer, 8+ cores), once the page
   // has loaded and gone idle. A phone that's never touched keeps the still (three.js is ~170 kB gzipped plus the car)
   const go3d = () => {
@@ -358,12 +393,8 @@ async function main() {
   if (matchMedia('(pointer: fine)').matches && (navigator.hardwareConcurrency ?? 0) >= 8) {
     addEventListener('load', () => ('requestIdleCallback' in window ? requestIdleCallback(go3d, { timeout: 2500 }) : setTimeout(go3d, 800)));
   }
-  const list = await getJson<{ cars: CarEntry[] }>('/cars/index.json');
-  cars = list.ok ? list.data.cars : [];
-  renderHero();
   void pollRooms();
   void loadBoard();
-  void loadGarage();
   void checkSession(HTTP); // (a sign-in this server no longer takes is dropped: onSession follows)
   setInterval(() => !document.hidden && void pollRooms(), 3000);
   setInterval(() => !document.hidden && void loadBoard(), 60_000);

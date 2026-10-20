@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { carFile } from '../catalog';
 import { splitGlass } from '../glass';
 import type { CarSpec, VehicleState, WheelSpec } from './types';
 
@@ -78,9 +79,8 @@ function trimGlass(glass: THREE.Mesh) {
 }
 
 export async function loadRig(carId: string): Promise<Rig> {
-  const base = `/cars/${carId}/`;
-  const json = (f: string) => fetch(base + f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const [info, meta, gltf] = await Promise.all([json('model.json'), json('meta.json'), new GLTFLoader().loadAsync(base + 'model.glb')]);
+  const json = (f: string) => fetch(carFile(carId, f)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [info, meta, gltf] = await Promise.all([json('model.json'), json('meta.json'), new GLTFLoader().loadAsync(carFile(carId, 'model.glb'))]);
   const model = gltf.scene;
   const body = (model.getObjectByName('body') as THREE.Mesh | undefined) ?? (model.children.find((c) => c instanceof THREE.Mesh) as THREE.Mesh);
   const pivots = model.children.filter((o) => o.name.startsWith('wheel_'));

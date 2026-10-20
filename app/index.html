@@ -27,6 +27,11 @@
     <script>
       // old links to the pack-rip reveal (it was this page): / with its knobs goes to rip.html, the query kept
       if (/[?&](car|mode|t|card|az|el|yaw|unlit|reveal|rarity)=/.test(location.search)) location.replace('/rip.html' + location.search + location.hash);
+      // signed in: the hero waits for the wallet's own car (home/main.ts) - it never shows the featured one first
+      try {
+        var s = JSON.parse(localStorage.getItem('ripcars.session') || 'null');
+        if ((s && s.exp * 1000 > Date.now() + 60000) || /[?&]garage=/.test(location.search)) document.documentElement.classList.add('hero-wait');
+      } catch (e) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -62,21 +67,21 @@
         <div class="tracks" id="tracks">
           <article class="trk" data-track="meadow" style="--c:#6fd35a">
             <div class="trk-pic"><img src="/src/home/img/track-meadow-1600.webp" srcset="/src/home/img/track-meadow-800.webp 800w, /src/home/img/track-meadow-1600.webp 1600w"
-              sizes="(max-width: 980px) 100vw, 33vw" alt="Meadow: a car in the air" loading="lazy" decoding="async" /><h3><i></i>Meadow</h3></div>
+              sizes="(max-width: 980px) 100vw, 33vw" alt="Meadow from above" loading="lazy" decoding="async" /><h3><i></i>Meadow</h3></div>
             <div class="trk-go"><button type="button" class="btn primary sm" data-tt="meadow">Time trial</button>
               <a class="btn ghost sm" data-race href="/online.html?track=meadow">Race</a><a class="btn ghost sm" data-drive href="/drive.html?car=skyline-hck01">Drive</a></div>
             <ol class="board"></ol>
           </article>
           <article class="trk" data-track="sky" style="--c:#ff6b00">
             <div class="trk-pic"><img src="/src/home/img/track-sky-1600.webp" srcset="/src/home/img/track-sky-800.webp 800w, /src/home/img/track-sky-1600.webp 1600w"
-              sizes="(max-width: 980px) 100vw, 33vw" alt="Sky Tower: a car in the air" loading="lazy" decoding="async" /><h3><i></i>Sky Tower</h3></div>
+              sizes="(max-width: 980px) 100vw, 33vw" alt="Sky Tower from above" loading="lazy" decoding="async" /><h3><i></i>Sky Tower</h3></div>
             <div class="trk-go"><button type="button" class="btn primary sm" data-tt="sky">Time trial</button>
               <a class="btn ghost sm" data-race href="/online.html?track=sky">Race</a><a class="btn ghost sm" data-drive href="/drive.html?car=skyline-hck01&amp;track=sky">Drive</a></div>
             <ol class="board"></ol>
           </article>
           <article class="trk" data-track="touge" style="--c:#9d6bff">
             <div class="trk-pic"><img src="/src/home/img/track-touge-1600.webp" srcset="/src/home/img/track-touge-800.webp 800w, /src/home/img/track-touge-1600.webp 1600w"
-              sizes="(max-width: 980px) 100vw, 33vw" alt="Touge: the tunnel jump over the switchbacks" loading="lazy" decoding="async" /><h3><i></i>Touge</h3></div>
+              sizes="(max-width: 980px) 100vw, 33vw" alt="Touge from above" loading="lazy" decoding="async" /><h3><i></i>Touge</h3></div>
             <div class="trk-go"><button type="button" class="btn primary sm" data-tt="touge">Time trial</button>
               <a class="btn ghost sm" data-race href="/online.html?track=touge">Race</a><a class="btn ghost sm" data-drive href="/drive.html?car=skyline-hck01&amp;track=touge">Drive</a></div>
             <ol class="board"></ol>

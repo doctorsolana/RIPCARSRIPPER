@@ -1,12 +1,13 @@
 import { isAddress, shortWallet } from '../auth/address';
 import { loadSession, onSession, type Session } from '../auth/session';
+import { CARS, carFile, type CarEntry } from '../catalog';
 import { isDev, onDev } from '../dev';
 import type { GarageListing } from '../drive/net/protocol';
 import { STARTER_CAR } from '../drive/net/protocol';
 import { serverHttp, serverUrl } from '../drive/net/prefs';
 import { carImg } from '../home/tracks';
 import { EXT, mountNav, RIPCARS_URL, WALLET } from '../nav';
-import { raceableCars } from '../owned';
+import { fetchGarage, lastGarage, raceableCars } from '../owned';
 import { STATS, type CarStats } from './stats';
 import type { Viewer } from './viewer';
 
@@ -15,9 +16,10 @@ import type { Viewer } from './viewer';
 // stats (measured in the sim: stats.ts, npm run stats) and what you can do with it: Drive and Race online for a car
 // your wallet may race (your Rip Cars the game has, and the starter), Test drive for any other. Under it the rail:
 // your Rip Cars (signed in: the wallet's garage, one card per car with how many you hold) and every car the game has.
+// It opens on the link's car, else your first - from the garage the wallet had last time (owned.ts keeps it) at once,
+// or once it's in (a first visit waits a moment) - else the featured one, and never swaps the car on show by itself.
 // Knobs: ?car=<id>, ?garage=<wallet> (dev mode: any wallet's garage), ?server=ws://host:port.
 
-interface CarEntry { id: string; make: string; model: string; year: number | null; rarity: string; modelled: boolean }
 type GarageCar = GarageListing['cars'][number];
 /** A card on the rail: a car the game has (`model`), or a Rip Car it hasn't (photo only); `count` of them held. */
 interface Card { key: string; model: string | null; name: string; sub: string; image: string | null; rarity: string | null; toy: string | null; count: number }
@@ -25,6 +27,7 @@ interface Card { key: string; model: string | null; name: string; sub: string; i
 const q = new URLSearchParams(location.search);
 const SERVER = serverUrl(q), HTTP = serverHttp(SERVER), serverQ = q.get('server');
 const FEATURED = 'skyline-hck01';
+const WAIT = 2500; // ms a wallet's first visit waits for its garage before opening on the featured car
 const RARITY: Record<string, string> = {
   common: '#a3a8b8', uncommon: '#1fdc85', rare: '#3d8bff', epic: '#b45cff', legendary: '#ffc531', chase: '#ff3d6e',
 };
@@ -44,10 +47,10 @@ const withServer = (href: string) => (serverQ ? `${href}${href.includes('?') ? '
 
 // ---- state
 let session: Session | null = loadSession();
-let cars: CarEntry[] = [];
-let garage: GarageListing | null = null, garageErr = 0, garageFor: string | null = null;
+const cars: CarEntry[] = CARS.filter((c) => c.modelled && STATS[c.id]);
+let garage: GarageListing | null = null, garageErr = 0, garageFor: string | null = null, garageSet = false;
 let raceable = new Set<string>([STARTER_CAR]);
-let tab: 'mine' | 'all' = 'all';
+let tab: 'mine' | 'all' = 'all', tabPicked = false;
 let sel: Card | null = null;
 let viewer: Viewer | null = null;
 const toys = new Map<string, string>(); // car id -> toy number (its meta.json)
@@ -80,6 +83,19 @@ function mineCards(): Card[] {
   return [...by.values()].sort((a, b) => Number(!a.model) - Number(!b.model));
 }
 const list = () => (tab === 'mine' ? mineCards() : allCards());
+/** The tab to open on: your Rip Cars (signed in; while they load too), unless you have none or the link's car isn't one. */
+function openTab(): 'mine' | 'all' {
+  if (!garageFor) return 'all';
+  if (!garage) return 'mine';
+  const mine = mineCards(), want = q.get('car');
+  return mine.length && (!want || mine.some((c) => c.model === want)) ? 'mine' : 'all';
+}
+/** The car to open on: the link's (?car=), else your first (a car the game has first), else the featured one. */
+function firstCard(): Card {
+  const want = q.get('car'), all = allCards(), cards = list();
+  return (want ? cards.find((c) => c.model === want) ?? all.find((c) => c.model === want) : undefined) ?? (tab === 'mine' ? cards[0] : undefined)
+    ?? all.find((c) => c.model === FEATURED) ?? all[0];
+}
 
 // ---- the stage: the car in 3D (or its photo)
 const stage = $('stage'), still = $<HTMLImageElement>('still'), canvas = $<HTMLCanvasElement>('c3d'), photo = $('photo');
@@ -150,7 +166,7 @@ async function renderInfo() {
     ${rows ? `<ul class="g-stats">${rows}</ul>` : ''}`;
   if (!toy) {
     // the toy number: the car's meta.json (once per car)
-    const m = await fetch(`/cars/${id}/meta.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const m = await fetch(carFile(id, 'meta.json')).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (typeof m?.toy === 'string') toys.set(id, (toy = m.toy as string));
     if (toy && sel === card) el.querySelector('.g-eyebrow')!.outerHTML = head().split('</p>')[0] + '</p>';
   }
@@ -217,6 +233,7 @@ $('tabs').addEventListener('click', (e) => {
   const t = (e.target as HTMLElement).closest<HTMLElement>('[data-tab]')?.dataset.tab as 'mine' | 'all' | undefined;
   if (!t || t === tab) return;
   tab = t;
+  tabPicked = true;
   renderTabs();
   renderStrip();
   // the car on show stays if it's in this list too, else the list's first
@@ -237,37 +254,42 @@ addEventListener('keydown', (e) => {
 });
 
 // ---- the wallet's garage
+/** The rail as the garage on show has it now; the car on show stays (as your copy of it, if you hold one: its rarity,
+ *  how many), or - none yet - the first one. */
+function railChanged() {
+  if (!tabPicked) tab = openTab();
+  renderTabs();
+  renderStrip();
+  if (!sel) {
+    if (!garageFor || garage || q.get('car')) select(firstCard(), false);
+    return;
+  }
+  sel = list().find((c) => c.key === sel!.key || (c.model && c.model === sel!.model)) ?? sel;
+  void renderInfo();
+}
 let tries = 0;
 async function loadGarage(again = false) {
   const w = garageWallet();
   if (!again) tries = 0;
-  if (w !== garageFor) (garage = null), (garageErr = 0);
-  garageFor = w;
-  if (!w) tab = 'all';
-  renderTabs();
+  if (!garageSet || w !== garageFor) {
+    // another wallet (or the first look): what its garage held last time, at once
+    garageSet = true;
+    garage = w ? lastGarage(w) : null;
+    garageErr = 0;
+    garageFor = w;
+    tabPicked = false;
+    railChanged();
+  }
   if (!w) return;
-  try {
-    if (!HTTP) throw Object.assign(new Error('no server'), { status: 0 });
-    const r = await fetch(`${HTTP}/garage?wallet=${w}`, { cache: 'no-store', signal: AbortSignal.timeout(15_000) });
-    if (garageFor !== w) return;
-    if (!r.ok) throw Object.assign(new Error('garage'), { status: r.status });
-    garage = (await r.json()) as GarageListing;
+  const a = await fetchGarage(w, HTTP);
+  if (garageFor !== w) return;
+  if (a.ok) {
+    garage = a.garage;
     garageErr = 0;
     if (garage.partial && ++tries < 4) setTimeout(() => garageFor === w && void loadGarage(true), 2500);
-  } catch (err) {
-    if (garageFor !== w) return;
-    if (!garage) garageErr = (err as { status?: number }).status === 502 ? 502 : 1;
-  }
-  const first = !again && tab === 'all' && !!garage?.cars.length;
-  if (first) tab = 'mine'; // (your cars, once they're in)
-  renderTabs();
-  if (tab === 'mine') {
-    renderStrip();
-    const cards = list();
-    const keep = cards.find((c) => c.key === sel?.key || (c.model && c.model === sel?.model));
-    if (keep) select(keep, false);
-    else if (first && !q.get('car')) select(cards[0], false);
-  }
+  } else if (!garage) garageErr = a.status === 502 ? 502 : 1;
+  railChanged();
+  if (!sel) select(firstCard(), false); // (it didn't answer: the featured car)
 }
 async function loadRaceable() {
   raceable = await raceableCars(session?.wallet ?? null);
@@ -281,14 +303,8 @@ async function main() {
     nav = n;
     if (sel?.model) n.setCar(sel.model);
   });
-  const r = await fetch('/cars/index.json').then((x) => x.json()).catch(() => ({ cars: [] }));
-  cars = (r.cars as CarEntry[]).filter((c) => c.modelled && STATS[c.id]);
-  renderTabs();
-  renderStrip();
-  const want = q.get('car');
-  const all = allCards();
-  select(all.find((c) => c.model === want) ?? all.find((c) => c.model === FEATURED) ?? all[0], false);
-  void loadGarage();
+  void loadGarage(); // (opens on a car at once - the link's, signed out, or the wallet's garage from last time - or once it's in)
+  if (!sel) setTimeout(() => !sel && select(firstCard(), false), WAIT);
   void loadRaceable();
   onSession((s) => {
     const was = session?.wallet ?? null;

@@ -14,8 +14,11 @@ const EL = 0.19; // rad: the camera's height angle
 const FILL = 0.92; // of the frame's width the car's length takes, side on
 
 export interface Turntable {
-  /** Show this car (loads its GLB), turned to START. */
-  show(car: string): Promise<void>;
+  /** Show this car (loads its GLB), turned to START. Resolves true once it's on, false if another car (or none: clear)
+   *  was asked for while it loaded - the last one asked for is the one shown. */
+  show(car: string): Promise<boolean>;
+  /** Show no car (the one on show is freed). */
+  clear(): void;
   /** The frame as a webp data URL (the stills). */
   still(q?: number): string;
   /** Turning on its own (false: hold the angle - the stills). */
@@ -65,20 +68,35 @@ export function createTurntable(canvas: HTMLCanvasElement, o: { interactive?: bo
   turn.add(shadow);
 
   let rig: Rig | null = null, radius = 2.6, centreY = 0.5, angle = START, vel = 0, drag: { x: number; t: number } | null = null;
+  let asks = 0; // (show / clear calls: a car that loads after a later one was asked for isn't shown)
   let visible = true, running = true, raf = 0, last = performance.now();
   const tt: Turntable = {
     spin: true,
     async show(car: string) {
+      const n = ++asks;
       const r = await loadRig(car);
+      if (n !== asks || !running) {
+        r.dispose();
+        return false;
+      }
       rig?.dispose();
       rig = r;
       turn.add(r.root);
+      shadow.visible = true;
       const { length, width, height } = r.spec;
       shadow.scale.set(length * 1.35, width * 2.1, 1);
       radius = Math.hypot(length / 2, width / 2, height / 2);
       centreY = height * 0.42;
       angle = START;
       vel = 0;
+      frame();
+      return true;
+    },
+    clear() {
+      asks++;
+      rig?.dispose();
+      rig = null;
+      shadow.visible = false;
       frame();
     },
     still(q = 0.86) {

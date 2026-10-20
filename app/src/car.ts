@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { carFile } from './catalog';
 
 // ---- data from asset-generation/: scripts/extract.py (pack photo), params.json/meta.json (Claude) ----
 
@@ -51,13 +52,13 @@ export interface CarData {
 
 export async function loadCar(id: string): Promise<CarData> {
   const base = `${import.meta.env.BASE_URL}cars/${id}/`;
-  const json = (f: string) => fetch(base + f).then((r) => r.json());
-  const optional = (f: string) => fetch(base + f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const json = (f: string) => fetch(carFile(id, f)).then((r) => r.json());
+  const optional = (f: string) => fetch(carFile(id, f)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [extract, params, meta] = await Promise.all([json('extract.json'), optional('params.json'), json('meta.json')]);
   const loader = new THREE.TextureLoader();
   const [sideTex, photoTex] = await Promise.all([
-    loader.loadAsync(base + extract.texture.src),
-    loader.loadAsync(base + extract.photo.src),
+    loader.loadAsync(carFile(id, extract.texture.src)),
+    loader.loadAsync(carFile(id, extract.photo.src)),
   ]);
   for (const t of [sideTex, photoTex]) {
     t.colorSpace = THREE.SRGBColorSpace;

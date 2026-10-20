@@ -1,6 +1,7 @@
 import { shortWallet } from './auth/address';
 import { clearSession, loadSession, onSession, type Session } from './auth/session';
 import { WORDMARK } from './brand';
+import { CARS } from './catalog';
 import { isDev, onDev, setDev } from './dev';
 import { carImg } from './home/tracks';
 import { tierOf } from './rarity';
@@ -15,7 +16,7 @@ import { tierOf } from './rarity';
 // picker: auth/wallets.ts, loaded only then), the wallet's icon and short address signed in, with a menu - copy the
 // address, dev mode, disconnect. Your wallet is your name in online races (auth/session.ts). Self-contained (its own
 // styles), so it drops into any page.
-interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean; rarity?: string }
+interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean; rarity?: string | null }
 
 /** A dropdown of links in the bar, before the car dropdown (the drive page's tracks): the button shows the current
  *  option's dot and name, the panel each option's picture, name and a few words (title); picking one follows its link. */
@@ -385,7 +386,7 @@ export async function mountNav(
   mountWallet(el);
   document.body.prepend(el);
 
-  const { cars } = (await fetch('/cars/index.json').then((r) => r.json()).catch(() => ({ cars: [] }))) as { cars: NavCar[] };
+  const cars: NavCar[] = CARS;
   const allowed = opts.allow ? await opts.allow.catch(() => null) : null; // (online: the cars this wallet may race)
   const modelled = cars.filter((c) => c.modelled && (!allowed || allowed.has(c.id)));
   const rip = el.querySelector<HTMLAnchorElement>('[data-page="rip"]')!;

@@ -1,4 +1,5 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import { buildId } from './server/build-id.ts';
@@ -62,9 +63,47 @@ function buildIdModule(): Plugin {
   };
 }
 
+/** `import { CARS, CAR_V } from 'virtual:cars'`: assets/cars/index.json's cars, built into the pages (no fetch, never a
+ *  stale list), and each car's version - a hash of the files in its folder - that src/catalog.ts puts on the URLs of
+ *  its files: a car whose model changed is a new URL, so a browser never keeps the old one (vercel.json keeps a
+ *  versioned car file a year). In dev the module is made again when a car's files change (the pages reload). */
+const CARS_DIR = new URL('../asset-generation/assets/cars/', import.meta.url).pathname;
+function carsModule(): Plugin {
+  const ID = 'virtual:cars', RID = '\0virtual:cars';
+  return {
+    name: 'cars',
+    resolveId: (id) => (id === ID ? RID : undefined),
+    load(id) {
+      if (id !== RID) return;
+      const { cars } = JSON.parse(readFileSync(join(CARS_DIR, 'index.json'), 'utf8')) as { cars: { id: string }[] };
+      const v: Record<string, string> = {};
+      for (const c of cars) {
+        const dir = join(CARS_DIR, c.id);
+        if (!existsSync(dir)) continue;
+        const h = createHash('sha1');
+        for (const f of readdirSync(dir).sort()) {
+          if (f.startsWith('.') || !statSync(join(dir, f)).isFile()) continue; // (its own files: not the review folders)
+          h.update(f).update(readFileSync(join(dir, f)));
+        }
+        v[c.id] = h.digest('hex').slice(0, 10);
+      }
+      return `export const CARS = ${JSON.stringify(cars)};\nexport const CAR_V = ${JSON.stringify(v)};\n`;
+    },
+    configureServer(server) {
+      const changed = (f: string) => {
+        const m = server.moduleGraph.getModuleById(RID);
+        if (!m || !f.startsWith(CARS_DIR) || f.slice(CARS_DIR.length).split('/').length > 2) return; // (index.json, a car's own files)
+        server.moduleGraph.invalidateModule(m);
+        server.ws.send({ type: 'full-reload' });
+      };
+      server.watcher.on('change', changed).on('add', changed).on('unlink', changed);
+    },
+  };
+}
+
 export default defineConfig({
   publicDir: '../asset-generation/assets',
-  plugins: [siteRoot(), buildIdModule()],
+  plugins: [siteRoot(), buildIdModule(), carsModule()],
   build: {
     rollupOptions: {
       input: {
