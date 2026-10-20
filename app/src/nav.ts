@@ -16,7 +16,7 @@ import { tierOf } from './rarity';
 // picker: auth/wallets.ts, loaded only then), the wallet's icon and short address signed in, with a menu - copy the
 // address, dev mode, disconnect. Your wallet is your name in online races (auth/session.ts). Self-contained (its own
 // styles), so it drops into any page.
-interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean; rarity?: string | null }
+export interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean; rarity?: string | null }
 
 /** A dropdown of links in the bar, before the car dropdown (the drive page's tracks): the button shows the current
  *  option's dot and name, the panel each option's picture, name and a few words (title); picking one follows its link. */
@@ -64,7 +64,7 @@ const CSS = `
 #nav button:hover { border-color: rgba(61, 255, 139, 0.6); }
 /* the track and car dropdowns: a button showing the pick, a panel of pictures under it */
 #nav .dd { position: relative; flex: none; min-width: 0; }
-#nav .dd.car { flex: 0 1 auto; }
+#nav .dd.cpick { flex: 0 1 auto; }
 #nav .dd-b { gap: 8px; max-width: 280px; height: 34px; }
 #nav .dd-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #nav .dd-b .chev { width: 10px; height: 10px; flex: none; opacity: 0.55; transition: transform 0.15s; }
@@ -86,18 +86,26 @@ const CSS = `
 #nav .tr:hover, #nav .tr:focus-visible { background: rgba(255, 255, 255, 0.06); outline: none; }
 #nav .tr[aria-current] { border-color: var(--dot); background: rgba(255, 255, 255, 0.04); }
 #nav .dd-p.cars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: min(600px, calc(100vw - 32px)); }
-#nav .dd-p .cc { position: relative; display: grid; gap: 3px; align-content: start; max-width: none; padding: 6px 8px 10px; text-align: left;
+#nav .dd-p .cc, .dd-pop .cc { position: relative; display: grid; gap: 3px; align-content: start; max-width: none; padding: 6px 8px 10px; text-align: left;
   border-radius: 10px; border: 1px solid transparent; background: none; }
-#nav .dd-p .cc:hover, #nav .dd-p .cc:focus-visible { background: rgba(255, 255, 255, 0.06); border-color: transparent; outline: none; }
-#nav .dd-p .cc[aria-selected="true"] { border-color: #3dff8b; background: rgba(61, 255, 139, 0.06); }
-#nav .cc img, #nav .cc .ph { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; display: block; }
-#nav .cc .ph { border-radius: 8px; background: #1d1f27; }
-#nav .cc b { font: 600 12.5px/1.25 Inter, system-ui, sans-serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-#nav .cc small { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(238, 240, 243, 0.5); white-space: nowrap; }
-#nav .cc small i { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--r); }
-#nav .cc em { position: absolute; top: 6px; left: 6px; padding: 3px 6px 2px; border-radius: 5px; font: 700 9px/1 Inter, system-ui, sans-serif;
+#nav .dd-p .cc:hover, #nav .dd-p .cc:focus-visible, .dd-pop .cc:hover, .dd-pop .cc:focus-visible { background: rgba(255, 255, 255, 0.06); border-color: transparent; outline: none; }
+#nav .dd-p .cc[aria-selected="true"], .dd-pop .cc[aria-selected="true"] { border-color: #3dff8b; background: rgba(61, 255, 139, 0.06); }
+#nav .cc img, #nav .cc .ph, .dd-pop .cc img, .dd-pop .cc .ph { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; display: block; }
+#nav .cc .ph, .dd-pop .cc .ph { border-radius: 8px; background: #1d1f27; }
+#nav .cc b, .dd-pop .cc b { font: 600 12.5px/1.25 Inter, system-ui, sans-serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#nav .cc small, .dd-pop .cc small { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(238, 240, 243, 0.5); white-space: nowrap; }
+#nav .cc small i, .dd-pop .cc small i { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--r); }
+#nav .cc em, .dd-pop .cc em { position: absolute; top: 6px; left: 6px; padding: 3px 6px 2px; border-radius: 5px; font: 700 9px/1 Inter, system-ui, sans-serif;
   letter-spacing: 0.1em; text-transform: uppercase; font-style: normal; color: #0b0c10; background: #3dff8b; }
-#nav .cc em.st { color: #eef0f3; background: rgba(255, 255, 255, 0.16); }
+#nav .cc em.st, .dd-pop .cc em.st { color: #eef0f3; background: rgba(255, 255, 255, 0.16); }
+/* a car dropdown off the bar (the lobby's, the room card's: the page styles its button): the panel floats over the page,
+   placed by the button as it opens (carDropdown) */
+.dd-pop { position: fixed; z-index: 40; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 6px; border-radius: 14px;
+  background: #14151b; border: 1px solid #33353f; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; font: 500 13px/1 Inter, system-ui, sans-serif; color: #eef0f3; text-align: left; text-shadow: none; }
+.dd-pop[hidden], .dd-pop .cc[hidden] { display: none !important; }
+.dd-pop .cc { font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+@media (max-width: 640px) { .dd-pop { grid-template-columns: repeat(2, 1fr); } }
 /* the wallet chip and its menu */
 #nav .wal { position: relative; flex: none; }
 #nav .wal .w-chip { position: relative; max-width: none; font-variant-numeric: tabular-nums; }
@@ -263,13 +271,14 @@ const CHEV = '<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentC
 
 /** A dropdown's open/close and keys: the button toggles the panel; in it the arrows move between the items (a grid:
  *  up/down by a row), Home/End, Escape closes back to the button, a click outside closes. Opening focuses the pick. */
-function dropdown(box: HTMLElement, btn: HTMLButtonElement, panel: HTMLElement, onOpen?: () => void) {
-  const items = () => [...panel.querySelectorAll<HTMLElement>('a, button')];
+function dropdown(box: HTMLElement, btn: HTMLButtonElement, panel: HTMLElement, onOpen?: () => void, place?: () => void) {
+  const items = () => [...panel.querySelectorAll<HTMLElement>('a:not([hidden]), button:not([hidden])')];
   const open = (on: boolean, refocus = true) => {
     if (on === !panel.hidden) return;
     panel.hidden = !on;
     btn.setAttribute('aria-expanded', String(on));
     if (on) {
+      place?.();
       onOpen?.();
       const cur = panel.querySelector<HTMLElement>('[aria-current], [aria-selected="true"]') ?? items()[0];
       cur?.focus({ preventScroll: true });
@@ -277,8 +286,8 @@ function dropdown(box: HTMLElement, btn: HTMLButtonElement, panel: HTMLElement, 
     } else if (refocus) btn.focus();
   };
   btn.addEventListener('click', () => open(panel.hidden === true));
-  addEventListener('pointerdown', (e) => !box.contains(e.target as Node) && open(false, false));
-  box.addEventListener('keydown', (e) => {
+  addEventListener('pointerdown', (e) => !box.contains(e.target as Node) && !panel.contains(e.target as Node) && open(false, false));
+  const keys = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && !panel.hidden) return e.preventDefault(), open(false);
     if (panel.hidden || !panel.contains(e.target as Node)) return;
     const all = items(), i = all.indexOf(e.target as HTMLElement);
@@ -287,7 +296,14 @@ function dropdown(box: HTMLElement, btn: HTMLButtonElement, panel: HTMLElement, 
     if (step === undefined || i < 0) return;
     e.preventDefault();
     all[Math.max(0, Math.min(all.length - 1, i + step))].focus();
-  });
+  };
+  box.addEventListener('keydown', keys);
+  if (place) {
+    // floating (the panel is the body's): its keys too; a scroll under it or a resize would leave it behind - it closes
+    panel.addEventListener('keydown', keys);
+    addEventListener('scroll', (e) => !panel.contains(e.target as Node) && open(false, false), true);
+    addEventListener('resize', () => open(false, false));
+  }
   return open;
 }
 
@@ -310,10 +326,11 @@ function trackDropdown(sw: NavSwitch) {
 }
 
 /** The car dropdown: the current car's picture and name; the panel, every car's picture, model, make, year and rarity.
- *  `mine`: mark the signed-in wallet's own Rip Cars (Yours) and the starter (the drive page: any car is a test drive). */
-function carDropdown(cars: NavCar[], title: string, pick: (id: string) => void, mine: boolean) {
+ *  `mine`: mark the signed-in wallet's own Rip Cars (Yours) and the starter (the drive page: any car is a test drive).
+ *  `float`: off the bar (a page's own field - it styles the button): the panel floats over the page by the button. */
+export function carDropdown(cars: NavCar[], title: string, pick: (id: string) => void, mine: boolean, float = false) {
   const box = document.createElement('div');
-  box.className = 'dd car';
+  box.className = 'dd cpick'; // (not .car: the drive HUD's car label has that)
   const name = (c: NavCar) => `${c.make} ${c.model}`;
   box.innerHTML = `<button type="button" class="dd-b" aria-haspopup="listbox" aria-expanded="false" title="${esc(title)}"><span class="pick"></span>${CHEV}</button>
     <div class="dd-p cars" role="listbox" aria-label="${esc(title)}" hidden>${cars.map((c) => {
@@ -322,6 +339,20 @@ function carDropdown(cars: NavCar[], title: string, pick: (id: string) => void, 
         ${img ? `<img src="${img.small}" alt="" loading="lazy" decoding="async">` : '<i class="ph"></i>'}<b>${esc(c.model)}</b><small><i></i>${esc(c.make)}${c.year ? ` · ${c.year}` : ''}</small></button>`;
     }).join('')}</div>`;
   const btn = box.querySelector<HTMLButtonElement>('.dd-b')!, panel = box.querySelector<HTMLElement>('.dd-p')!;
+  /** (floating) under the button - or over it, when there's more room above - across it, inside the screen */
+  const place = () => {
+    const r = btn.getBoundingClientRect(), m = 12, w = Math.min(600, innerWidth - 2 * m);
+    const below = innerHeight - r.bottom - 8 - m, above = r.top - 8 - 56; // (56: under the top bar)
+    const down = below >= 420 || below >= above;
+    Object.assign(panel.style, {
+      width: `${w}px`, left: `${Math.max(m, Math.min(innerWidth - w - m, r.left + r.width / 2 - w / 2))}px`,
+      top: down ? `${r.bottom + 8}px` : '', bottom: down ? '' : `${innerHeight - r.top + 8}px`, maxHeight: `${Math.max(180, down ? below : above)}px`,
+    });
+  };
+  if (float) {
+    panel.classList.replace('dd-p', 'dd-pop');
+    document.body.append(panel);
+  }
   let marked = false;
   const open = dropdown(box, btn, panel, () => {
     if (marked || !mine || !loadSession()) return;
@@ -335,7 +366,7 @@ function carDropdown(cars: NavCar[], title: string, pick: (id: string) => void, 
         el.insertAdjacentHTML('beforeend', id === STARTER_CAR ? '<em class="st">Starter</em>' : '<em>Yours</em>');
       }
     }).catch(() => {});
-  });
+  }, float ? place : undefined);
   panel.addEventListener('click', (e) => {
     const c = (e.target as HTMLElement).closest<HTMLElement>('.cc');
     if (!c) return;
@@ -344,6 +375,12 @@ function carDropdown(cars: NavCar[], title: string, pick: (id: string) => void, 
   });
   return {
     box,
+    btn,
+    /** Show only these cars (null: all). */
+    only(ids: Set<string> | null) {
+      for (const el of panel.querySelectorAll<HTMLElement>('.cc')) el.hidden = !!ids && !ids.has(el.dataset.id!);
+    },
+    close: () => open(false, false),
     set(id: string) {
       const c = cars.find((x) => x.id === id);
       if (!c) return;

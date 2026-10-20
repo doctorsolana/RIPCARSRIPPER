@@ -60,7 +60,7 @@ async function getJson<T>(url: string): Promise<{ ok: true; data: T } | { ok: fa
 }
 /** A signed-in wallet - or the picker for one (false: closed without signing in). */
 async function signedIn() {
-  if (loadSession()) return true;
+  if (loadSession() || isDev()) return true; // (dev mode: no wallet needed - a guest)
   const { connectWallet } = await import('../auth/wallets');
   return !!(await connectWallet());
 }
@@ -86,8 +86,8 @@ const garageWallet = () => {
   const g = q.get('garage');
   return isDev() && isAddress(g) ? g : session?.wallet ?? null;
 };
-/** The car the online buttons race: the hero if the wallet may race it (one of its Rip Cars), else the starter. */
-const raceCar = () => (heroOwned && garageFor === session?.wallet ? hero : STARTER_CAR);
+/** The car the online buttons race: the hero if the wallet may race it (one of its Rip Cars; dev mode: any), else the starter. */
+const raceCar = () => ((heroOwned && garageFor === session?.wallet) || isDev() ? hero : STARTER_CAR);
 const garageHref = (car: string) => `/garage.html?car=${encodeURIComponent(car)}`;
 const driveHref = (car: string, track?: string) => `/drive.html?car=${encodeURIComponent(car)}${track && track !== 'meadow' ? `&track=${encodeURIComponent(track)}` : ''}`;
 const withServer = (href: string) => (serverQ ? `${href}${href.includes('?') ? '&' : '?'}server=${encodeURIComponent(serverQ)}` : href);

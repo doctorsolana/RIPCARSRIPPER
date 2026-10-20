@@ -3,7 +3,7 @@ import { checkSession, loadSession, onSession, type Session } from './auth/sessi
 import { CARS } from './catalog';
 import { openCreateRoom } from './create-room';
 import { isDev } from './dev';
-import { mountNav, RIPCARS_URL, WALLET } from './nav';
+import { carDropdown, mountNav, RIPCARS_URL, WALLET, type NavCar } from './nav';
 import { raceableCars } from './owned';
 import { BUILD_ID } from 'virtual:build-id';
 import type { RoomListing } from './drive/net/protocol';
@@ -13,12 +13,11 @@ import { DEFAULT_CAR, roomHref, saveCar, savedCar, serverHttp, serverUrl } from 
 // short address; signed out: Connect wallet) - and your car (remembered), the open rooms on the game server (GET /rooms,
 // every 2 s) with a Join on each - all of them, or one track's (the switch; ?track=<id> from the landing's Race) - and
 // Create room (create-room.ts: a name, the track, laps, bots). Join and Create need a signed-in wallet: signed out they
-// open the wallet picker first (auth/wallets.ts), then go on to the room - the drive page in it (?online=1&room=...:
+// open the wallet picker first (auth/wallets.ts; dev mode: no wallet needed - a guest, with any car), then go on to the
+// room - the drive page in it (?online=1&room=...:
 // net/online.ts), where the room's own lobby is. A remembered sign-in the server no longer takes (it restarted with a
 // new secret, say) is dropped on load. When the server isn't there it says so (in dev mode with the command that starts
 // it). Knobs: ?car=<id> (from the top bar's links), ?track=<id>, ?server=ws://host:port.
-
-interface NavCar { id: string; make: string; model: string; year: number | null; modelled: boolean }
 
 const CSS = `
 :root { --bg: #0d0e12; --panel: #16171d; --panel2: #1d1f27; --text: #eef0f3; --muted: #8b90a0; --line: #2a2c35; --accent: #3dff8b;
@@ -31,9 +30,18 @@ body { background: radial-gradient(90% 60% at 50% 0%, #181a22 0%, var(--bg) 70%)
 h1 { font: 400 56px/1 Anton, Impact, sans-serif; letter-spacing: 0.02em; margin: 0; }
 .you { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; margin-top: 24px; padding: 16px; background: var(--panel);
   border: 1px solid var(--line); border-radius: 16px; align-items: start; }
-label, .me { display: grid; gap: 7px; min-width: 0; }
-label > span, .me > span { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
-label > em { font: 500 12px/1.3 Inter, system-ui, sans-serif; font-style: normal; color: var(--muted); } label > em a { color: var(--text); }
+label, .me, .carf { display: grid; gap: 7px; min-width: 0; }
+label > span, .me > span, .carf > span { font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+label > em, .carf > em { font: 500 12px/1.3 Inter, system-ui, sans-serif; font-style: normal; color: var(--muted); } label > em a, .carf > em a { color: var(--text); }
+/* your car: the top bar's car dropdown as a field (nav.ts carDropdown: its panel floats over the page) */
+.carf .dd { position: relative; min-width: 0; }
+.carf .dd-b { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; min-height: 42px; padding: 0 12px 0 6px; border-radius: 10px;
+  font: 600 15px/1 Inter, system-ui, sans-serif; color: var(--text); text-align: left; background: var(--panel2); border: 1px solid var(--line); cursor: pointer; }
+.carf .dd-b:hover, .carf .dd-b[aria-expanded="true"] { border-color: var(--accent); }
+.carf .thumb { width: 48px; height: 30px; object-fit: contain; flex: none; }
+.carf .dd-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.carf .chev { width: 10px; height: 10px; flex: none; opacity: 0.55; transition: transform 0.15s; }
+.carf .dd-b[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .me-v { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 10px; background: var(--panel2);
   border: 1px solid var(--line); font: 600 15px/1 Inter, system-ui, sans-serif; color: var(--text); }
 .me-v img, .me-v svg { width: 22px; height: 22px; border-radius: 6px; flex: none; }
@@ -129,13 +137,13 @@ async function main() {
     <h1>Race online</h1>
     <section class="you" aria-label="You">
       <div class="me" id="me"></div>
-      <label><span>Your car</span><select id="car"></select></label>
+      <div class="carf" id="carf"><span>Your car</span></div>
     </section>
     <div class="head"><div><h2>Open rooms <small id="count"></small></h2><nav class="filter" id="filter" aria-label="Track"></nav></div>
       <button type="button" class="btn primary" id="create">${PLUS}Create room</button></div>
     <div id="list" aria-live="polite"></div>`;
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-  const meBox = $('me'), carSel = $<HTMLSelectElement>('car'), list = $('list'), count = $('count');
+  const meBox = $('me'), carBox = $('carf'), list = $('list'), count = $('count');
   const createBtn = $<HTMLButtonElement>('create'), filterEl = $('filter');
   let only = q.get('track'); // one track's rooms (the landing's Race on a track), or all
 
@@ -151,36 +159,37 @@ async function main() {
   meBox.addEventListener('click', (e) => (e.target as HTMLElement).closest('#connect') && void signedIn());
   /** A signed-in wallet - or the picker for one (false: closed without signing in). */
   async function signedIn() {
-    if (loadSession()) return true;
+    if (loadSession() || isDev()) return true; // (dev mode: no wallet needed - a guest)
     const { connectWallet } = await import('./auth/wallets');
     return !!(await connectWallet());
   }
   const modelled: NavCar[] = CARS.filter((c) => c.modelled);
-  // the cars this wallet may race: its Rip Cars the game has, and the starter (signed out: the starter); a link's car
-  // that isn't one of them gets the starter and one line
+  // the cars this wallet may race: its Rip Cars the game has, and the starter (signed out: the starter; dev mode: every
+  // car); a link's car that isn't one of them gets the starter and one line
   const asked = q.get('car');
-  let carNote = false;
+  let carNote = false, chosen = '';
+  const pick = carDropdown(modelled, 'Your car', (id) => {
+    chosen = id;
+    saveCar(id);
+    pick.set(id);
+    nav.setCar(id);
+  }, isDev(), true);
+  carBox.append(pick.box);
   async function fillCars() {
-    const ok = await raceableCars();
-    const mine = modelled.filter((c) => ok.has(c.id));
-    const was = carSel.value;
-    carSel.innerHTML = mine.map((c) => `<option value="${c.id}">${esc(`${c.make} ${c.model}`)}${c.year ? ` · ${c.year}` : ''}</option>`).join('');
-    const want = [was, asked, savedCar(), DEFAULT_CAR].find((id) => id && ok.has(id) && mine.some((c) => c.id === id));
-    if (want) carSel.value = want;
-    carNote = !!asked && !ok.has(asked) && modelled.some((c) => c.id === asked);
-    carSel.closest('label')!.querySelector('em')?.remove();
-    if (carNote) carSel.closest('label')!.insertAdjacentHTML('beforeend', `<em class="note">Not in your garage · <a href="${RIPCARS_URL}" target="_blank" rel="noopener">Rip a pack</a></em>`);
-    nav.setCar(carSel.value);
+    const ok = isDev() ? null : await raceableCars();
+    pick.only(ok);
+    const want = [chosen, asked, savedCar(), DEFAULT_CAR].find((id) => !!id && modelled.some((c) => c.id === id) && (!ok || ok.has(id)));
+    if (want) pick.set((chosen = want));
+    carNote = !!ok && !!asked && !ok.has(asked) && modelled.some((c) => c.id === asked);
+    carBox.querySelector('em')?.remove();
+    if (carNote) carBox.insertAdjacentHTML('beforeend', `<em class="note">Not in your garage · <a href="${RIPCARS_URL}" target="_blank" rel="noopener">Rip a pack</a></em>`);
+    nav.setCar(chosen);
   }
   await fillCars();
   onSession(() => void fillCars());
-  carSel.addEventListener('change', () => {
-    saveCar(carSel.value);
-    nav.setCar(carSel.value);
-  });
   const myCar = () => {
-    saveCar(carSel.value);
-    return carSel.value || DEFAULT_CAR;
+    saveCar(chosen);
+    return chosen || DEFAULT_CAR;
   };
 
   // ---- the rooms, every 2 s

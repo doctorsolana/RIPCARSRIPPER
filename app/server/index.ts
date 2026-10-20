@@ -8,7 +8,7 @@ import { COURSES, courseOf, isCourse } from '../src/drive/tracks/index.ts';
 import { ALLOWED, handleAuth, ipOf, originOk, verifySession } from './auth.ts';
 import { buildId } from './build-id.ts';
 import { garageCached, garageOf } from './garage.ts';
-import { mayDrive, newPlayerId, NOT_YOURS, Room, type Player } from './room.ts';
+import { mayRace, newPlayerId, NOT_YOURS, Room, type Player } from './room.ts';
 import { carName, trackOf } from './sim.ts';
 import { board, DB_PATH, flushLaps, lapsWritten } from './store.ts';
 
@@ -20,7 +20,9 @@ import { board, DB_PATH, flushLaps, lapsWritten } from './store.ts';
 // Players are wallets: a join carries the session token of a wallet sign-in (auth.ts: POST /auth/challenge, /auth/verify)
 // and is refused without a valid one; the player's name is the wallet's short form, set here. One connection per wallet
 // on the whole server: a new join from a wallet closes its older connection (that car leaves, as on a disconnect), so a
-// wallet never drives two cars. A browser's WebSocket from an origin not on ALLOWED_ORIGINS is refused.
+// wallet never drives two cars. A browser's WebSocket from an origin not on ALLOWED_ORIGINS is refused. Dev mode (the
+// page's: testing with friends) joins with any car the game has, and without a sign-in as "Guest n"; a lap in a car
+// that isn't the wallet's is never stored, so the leaderboard stays wallet laps in wallet cars. DEV_PLAY=0 turns it off.
 // The clock: each step is due at its own moment of real time (hrtime), the timer set for the next one; a late wake
 // runs the steps it owes at once (never drifting), and more than half a second behind drops the backlog.
 // GET http://localhost:8790/stats: rooms, players, step time, how late the steps ran, GC pauses and bandwidth as JSON
@@ -50,6 +52,8 @@ const DRAIN_S = Number(process.env.DRAIN_S) || 180; // s a SIGTERM waits for the
 const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 16, MAX_BOT_ROOMS = Number(process.env.MAX_BOT_ROOMS) || 4;
 const MAX_SOCKETS_PER_IP = Number(process.env.MAX_SOCKETS_PER_IP) || 80;
 const JOIN_WITHIN_S = Number(process.env.JOIN_WITHIN_S) || 20, MAX_MSGS_PER_S = Number(process.env.MAX_MSGS_PER_S) || 400;
+const DEV_PLAY = process.env.DEV_PLAY !== '0'; // dev mode's joins: any car, guests without a wallet (DEV_PLAY=0: refused)
+let guests = 0; // (dev-mode guests so far: "Guest n")
 const socketsByIp = new Map<string, number>();
 const botRooms = new WeakSet<Room>(); // rooms made with bots (marked before the bots' cars load)
 const rooms = new Map<string, Room>();
@@ -339,12 +343,16 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
         send({ t: 'error', code: 'restart', msg: 'The game server is restarting for an update' });
         return void ws.close(1012, 'restarting');
       }
+      const dev = m.dev === true && DEV_PLAY; // (any car; no sign-in needed - a guest)
       const auth = verifySession(m.token);
-      if (!auth) return send({ t: 'error', code: 'auth', msg: 'Sign in with your wallet to race' });
+      if (!auth && !dev) return send({ t: 'error', code: 'auth', msg: 'Sign in with your wallet to race' });
+      const who = auth?.wallet ?? null; // (null: a guest)
+      const mine = (q: Player) => who !== null && q.wallet === who;
       joining = true;
       const rn = String(m.room ?? '').replace(/[^a-z0-9_-]/gi, '').slice(0, 32) || 'demo';
-      // a car the wallet doesn't hold races as the starter (and the page is told: below)
-      const asked = String(m.car).slice(0, 64), car = (await mayDrive(auth.wallet, asked)) ? asked : STARTER_CAR;
+      // a car the player may not race races as the starter (and the page is told: below)
+      const asked = String(m.car).slice(0, 64), fit = await mayRace({ wallet: who, dev }, asked);
+      const car = fit.ok ? asked : STARTER_CAR, unranked = fit.ok ? !fit.counts : !who;
       if (gone) return;
       const laps = Math.min(9, Math.max(1, Math.round(Number(m.laps)) || 3));
       const solo = m.solo === true; // a time trial: this wallet alone
@@ -358,20 +366,20 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       // an open room this join can't go into: say so before touching the wallet's car elsewhere
       let r = rooms.get(rn);
       if (r && r.solo !== solo) return refuse(r, 'solo'); // (a time trial is its own room, and only one)
-      if (r && r.solo && !r.players.some((q) => q.wallet === auth.wallet)) return refuse(r, 'solo');
+      if (r && r.solo && !r.players.some(mine)) return refuse(r, 'solo');
       if (r && elsewhere(r)) return refuse(r, 'track'); // the room races another course: reload on it
-      if (r && r.players.length >= r.max && !r.players.some((q) => q.wallet === auth.wallet)) return refuse(r, 'full');
+      if (r && r.players.length >= r.max && !r.players.some(mine)) return refuse(r, 'full');
       // one car per wallet: this connection takes over from the wallet's older one, whose car leaves first (if it was
       // its room's last human, that room closes - the room is looked up again below)
-      wallet = auth.wallet;
-      const prev = byWallet.get(wallet);
-      byWallet.set(wallet, conn);
+      wallet = who;
+      const prev = who ? byWallet.get(who) : undefined;
+      if (who) byWallet.set(who, conn);
       if (prev && prev !== conn) prev.replace();
       r = rooms.get(rn);
       const wantBots = solo ? 0 : Math.min(9, Math.max(0, Math.round(Number(m.bots)) || 0));
       if (!r && (rooms.size >= MAX_ROOMS || (wantBots && [...rooms.values()].filter((x) => botRooms.has(x)).length >= MAX_BOT_ROOMS))) {
         joining = false;
-        if (byWallet.get(wallet) === conn) byWallet.delete(wallet);
+        if (wallet && byWallet.get(wallet) === conn) byWallet.delete(wallet);
         wallet = null;
         return send({ t: 'error', code: 'full', msg: 'The server is busy right now: join an open room, or try again in a few minutes' });
       }
@@ -389,17 +397,18 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       if (gone) return closeIfEmpty(r); // (closed, or replaced, while the room was made)
       if (elsewhere(r)) return refuse(r, 'track');
       entering = r;
-      const p = await r.join({ id: newPlayerId(), wallet, name: shortWallet(wallet), car, send, sendBin, ready: false, ping: 0, auto: m.auto === true }, tick);
+      const name = who ? shortWallet(who) : `Guest ${++guests}`;
+      const p = await r.join({ id: newPlayerId(), wallet: who, name, car, send, sendBin, ready: false, ping: 0, auto: m.auto === true, dev, unranked }, tick);
       entering = null;
       if (!p) {
-        if (byWallet.get(wallet) === conn) byWallet.delete(wallet);
+        if (wallet && byWallet.get(wallet) === conn) byWallet.delete(wallet);
         wallet = null;
         return refuse(r, 'full');
       }
       if (gone) return leaveRoom(r, p); // (closed or replaced while its car loaded)
       room = r;
       me = p;
-      console.log(`[room ${rn}] + ${p.name} (${wallet}, #${p.id}, ${car}) slot ${p.slot}; ${r.players.length} in the room`);
+      console.log(`[room ${rn}] + ${p.name} (${who ?? 'guest'}${dev ? ', dev' : ''}, #${p.id}, ${car}) slot ${p.slot}; ${r.players.length} in the room`);
       send({ t: 'welcome', you: p.id, room: rn, track: r.course, laps: r.laps, tick });
       if (car !== asked) send({ t: 'car', car, msg: NOT_YOURS });
       r.broadcastRoom();
@@ -409,11 +418,11 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     if (m.t === 'auto') me.auto = true; // (the console's autopilot: one way, never back)
     else if (m.t === 'ready') room.setReady(me, !!m.on);
     else if (m.t === 'car') {
-      // only a car the wallet holds (or the starter); refused, the player keeps the car it has (the page is told)
+      // only a car the wallet holds (or the starter) - dev mode: any car; refused, the player keeps its car (the page is told)
       const want = String(m.car).slice(0, 64), seq = ++carAsks, p = me, r = room;
-      const ok = await mayDrive(p.wallet, want);
+      const fit = await mayRace(p, want);
       if (seq !== carAsks || me !== p || room !== r) return; // (a later pick, or left, meanwhile)
-      if (ok) r.setCar(p, want);
+      if (fit.ok) (p.unranked = !fit.counts), r.setCar(p, want);
       else send({ t: 'car', car: p.car, msg: NOT_YOURS });
     } else if (m.t === 'leave') ws.close();
   });

@@ -152,12 +152,13 @@ export interface GarageListing {
 
 /** Client -> server. */
 export type C2S =
-  /** token: the wallet sign-in's session (server/auth.ts); without a valid one the server refuses the join (error 'auth').
-   *  Your name is your wallet's, set by the server. */
+  /** token: the wallet sign-in's session (server/auth.ts); without a valid one the server refuses the join (error 'auth'),
+   *  unless it's dev mode's (a guest). Your name is your wallet's (or "Guest n"), set by the server. */
   | {
       t: 'join'; room: string; token: string; car: string; track: string; laps: number; min?: number; bots?: number;
       solo?: boolean; // a time trial: a room of your own (no bots, no one else, not listed)
       auto?: boolean; // the page's autopilot drives (?auto=1): its laps never make the leaderboard
+      dev?: boolean; // dev mode: any car the game has, and no sign-in needed (a guest) - laps in a car that isn't the wallet's aren't stored
       v: string; // the page's sim build id (server/build-id.ts): another than the server's is refused (error 'version')
     }
   | { t: 'ready'; on: boolean }

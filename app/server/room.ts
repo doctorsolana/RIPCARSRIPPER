@@ -37,13 +37,17 @@ const BOT_CARS = ['chevy-impala-jkb99', 'nissan-silvia-htf93', 'roxy-porsche-hrv
 
 export interface Player {
   id: number;
-  /** The wallet the player signed in with (server/auth.ts; null: a bot). One car per wallet on the whole server
-   *  (index.ts). Whether the wallet may race `car` is mayDrive's to say, at the join and at every car change. */
+  /** The wallet the player signed in with (server/auth.ts; null: a bot, or a dev-mode guest). One car per wallet on the
+   *  whole server (index.ts). Whether the player may race `car` is mayRace's to say, at the join and every car change. */
   wallet: string | null;
-  name: string; // shown to everyone: the wallet's short form (shortWallet), or "Bot n" - set here, never by a client
+  name: string; // shown to everyone: the wallet's short form (shortWallet), "Guest n" or "Bot n" - set here, never by a client
   car: string;
   /** The page said its autopilot drives (?auto=1): its laps are stored but never make the leaderboard. */
   auto: boolean;
+  /** Dev mode (the page's): any car the game has, and no wallet needed (a guest). */
+  dev: boolean;
+  /** Its car isn't the wallet's (dev mode; a guest's never is): its laps aren't stored, so never on the leaderboard. */
+  unranked: boolean;
   send: ((m: S2C) => void) | null; // JSON; null: a bot
   sendBin: ((b: Uint8Array) => void) | null; // binary (a snapshot)
   ready: boolean;
@@ -130,9 +134,9 @@ export class Room {
     // (c, pc: the car touched another during the lap / in the 3 s before it began - replay.ts checks them)
     this.writeLog({ k, lap: this.sim.cars.indexOf(c), n: c.lap.laps, time, what, c: c.lapTouch ? 1 : 0, pc: c.preTouch ? 1 : 0 });
     if (what === 'finish' && this.firstFinish < 0) this.firstFinish = k;
-    // a signed-in player's lap, while the race (and its log) runs: to the store
+    // a signed-in player's lap in a car of the wallet's, while the race (and its log) runs: to the store
     const p = this.byId.get(c.key);
-    if (p?.wallet && p.send && this.phase === 'race' && this.log) {
+    if (p?.wallet && p.send && !p.unranked && this.phase === 'race' && this.log) {
       recordLap({
         wallet: p.wallet, car: c.car, track: this.course, len: Math.round(this.sim.track.length), steps: time, lap: c.lap.laps, room: this.name,
         race: this.race, log: this.logPath, at: Date.now(), cars: this.sim.cars.length, contact: c.lapTouch, pre: c.preTouch, auto: p.auto,
@@ -157,10 +161,10 @@ export class Room {
   get max() {
     return this.solo ? 1 : MAX_PLAYERS;
   }
-  async join(p: Pick<Player, 'id' | 'wallet' | 'name' | 'car' | 'send' | 'sendBin' | 'ready' | 'ping'> & { auto?: boolean }, tick: number): Promise<Player | null> {
+  async join(p: Pick<Player, 'id' | 'wallet' | 'name' | 'car' | 'send' | 'sendBin' | 'ready' | 'ping'> & { auto?: boolean; dev?: boolean; unranked?: boolean }, tick: number): Promise<Player | null> {
     if (this.players.length >= this.max) return null;
     const pl: Player = {
-      ...p, auto: !!p.auto, slot: -1, viol: noViolations(), ring: new Int32Array(RING * 4), ringK: new Float64Array(RING).fill(-1), newest: -1, seen: -1,
+      ...p, auto: !!p.auto, dev: !!p.dev, unranked: !!p.unranked, slot: -1, viol: noViolations(), ring: new Int32Array(RING * 4), ringK: new Float64Array(RING).fill(-1), newest: -1, seen: -1,
       tokens: BURST, tokenAt: tick, hashes: new Map(), sim: null, bytesOut: 0, bytesIn: 0, has: new WeakMap(), lastR: [-1, -1, -2], lastRace: -1,
       snaps: 0, fulls: 0, fullK: -1e9, fullRef: new Float64Array(CORE_LENGTH),
     };
@@ -287,8 +291,8 @@ export class Room {
       let n = 0, all = true;
       for (const p of this.players) if ((this.botsOnly || p.send) && p.slot >= 0) (n++), (all &&= p.ready);
       if (n >= Math.max(1, this.min) && all && !Room.draining) {
-        // the gate drops only on cars their wallets hold right now: each human's car is checked again first (a car
-        // sold since it was picked goes back to the starter, and its player isn't ready any more)
+        // the gate drops only on cars their players may race right now: each human's car is checked again first (a
+        // car sold since it was picked goes back to the starter, and its player isn't ready any more)
         if (Date.now() - this.checked < 1000) this.countdown(k);
         else if (!this.checking) {
           this.checking = true;
@@ -341,13 +345,18 @@ export class Room {
   }
 
   private checking = false;
-  private checked = 0; // when every human's car last passed mayDrive (ms; the countdown waits for one under a second old)
+  private checked = 0; // when every human's car last passed mayRace (ms; the countdown waits for one under a second old)
   private async recheck() {
     let ok = true;
     for (const p of this.humans) {
-      if (await mayDrive(p.wallet, p.car)) continue;
+      const fit = await mayRace(p, p.car);
+      if (fit.ok) {
+        p.unranked = !fit.counts;
+        continue;
+      }
       ok = false;
       if (!this.players.includes(p)) continue;
+      p.unranked = !p.wallet; // (the starter: every wallet's)
       this.setCar(p, STARTER_CAR);
       p.send?.({ t: 'car', car: STARTER_CAR, msg: NOT_YOURS });
     }
@@ -560,6 +569,12 @@ export async function mayDrive(wallet: string | null, car: string): Promise<bool
   if (!validCar(car)) return false;
   if (wallet === null || car === STARTER_CAR) return true;
   return (await ownedModels(wallet)).has(car);
+}
+/** A human's car: whether they may race it, and whether its laps count. A car their wallet may race (mayDrive) counts;
+ *  dev mode (the page's) takes any car the game has, but one that isn't the wallet's doesn't count (a guest has none). */
+export async function mayRace(p: { wallet: string | null; dev: boolean }, car: string): Promise<{ ok: boolean; counts: boolean }> {
+  if (p.wallet && (await mayDrive(p.wallet, car))) return { ok: true, counts: true };
+  return { ok: p.dev && validCar(car), counts: false };
 }
 /** What the server says when it refuses a car. */
 export const NOT_YOURS = 'Not in your garage';

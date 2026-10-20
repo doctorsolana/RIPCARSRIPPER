@@ -157,7 +157,7 @@ async function renderInfo() {
     return;
   }
   const s = STATS[id];
-  const ok = raceable.has(id);
+  const ok = raceable.has(id) || isDev(); // (dev mode: any car, online too)
   const go = ok
     ? `<a class="btn primary big" href="/drive.html?car=${id}">Drive</a><a class="btn big" href="${withServer(`/online.html?car=${id}`)}">Race online</a>`
     : `<a class="btn primary big" href="/drive.html?car=${id}">Test drive</a>`;

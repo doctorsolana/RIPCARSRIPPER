@@ -39,10 +39,11 @@ export function serverUrl(q = new URLSearchParams(location.search)) {
 export const serverHttp = (ws: string) => ws.replace(/^ws/, 'http');
 
 /** The drive page in a room (the invite link is the same, `absolute`: the friend brings their own wallet and car).
- *  `solo`: a time trial - a room of your own (no bots, no one else). */
-export function roomHref(room: string, track: string, laps: number, o: { car?: string; bots?: number; server?: string | null; absolute?: boolean; solo?: boolean } = {}) {
+ *  `solo`: a time trial - a room of your own (no bots, no one else). `dev`: the link turns dev mode on (no wallet needed). */
+export function roomHref(room: string, track: string, laps: number, o: { car?: string; bots?: number; server?: string | null; absolute?: boolean; solo?: boolean; dev?: boolean } = {}) {
   const p = new URLSearchParams({ online: '1', room, track, laps: String(laps) });
   if (o.solo) p.set('solo', '1');
+  if (o.dev) p.set('dev', '1');
   if (o.car) p.set('car', o.car);
   if (o.bots) p.set('bots', String(o.bots));
   if (o.server) p.set('server', o.server);
